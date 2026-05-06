@@ -1,7 +1,5 @@
 # Triangle
 
-![Logo de Triangle](./public/triangle.png)
-
 Triangle es un fork personal nacido a partir de Circle, una interfaz de gestion de proyectos inspirada en Linear.
 
 Triangle es la version adaptada para uso personal. El objetivo no es reconstruir Linear completo, sino convertir la base visual original en una herramienta simple y usable para gestionar proyectos, issues y etiquetas.
