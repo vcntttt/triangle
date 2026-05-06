@@ -17,8 +17,8 @@ export const Route = createFileRoute('/issues')({
    validateSearch: (search) => issuesSearchSchema.parse(search),
    head: () => ({
       meta: [
-         { title: 'Issues | Circle' },
-         { name: 'description', content: 'Issue tracking for the personal Circle workspace.' },
+         { title: 'Issues | Triangle' },
+         { name: 'description', content: 'Issue tracking for the personal Triangle workspace.' },
       ],
    }),
    component: IssuesLayout,
@@ -49,7 +49,7 @@ function IssuesLayout() {
    }, [project, setDefaultProject]);
 
    useEffect(() => {
-      document.title = project ? `${project.name} issues | Circle` : 'Issues | Circle';
+      document.title = project ? `${project.name} issues | Triangle` : 'Issues | Triangle';
    }, [project]);
 
    return (

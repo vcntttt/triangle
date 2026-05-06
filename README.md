@@ -1,10 +1,10 @@
-# Circle Personal Fork
+# Triangle
 
-![Banner de Circle](./public/banner.png)
+![Logo de Triangle](./public/triangle.png)
 
-Este repositorio es un fork de Circle, una interfaz de gestion de proyectos inspirada en Linear.
+Triangle es un fork personal nacido a partir de Circle, una interfaz de gestion de proyectos inspirada en Linear.
 
-Esta version esta siendo adaptada para uso personal. El objetivo no es reconstruir Linear completo, sino convertir la base visual original en una herramienta simple y usable para gestionar proyectos, issues y etiquetas.
+Triangle es la version adaptada para uso personal. El objetivo no es reconstruir Linear completo, sino convertir la base visual original en una herramienta simple y usable para gestionar proyectos, issues y etiquetas.
 
 ## Enfoque de esta version
 
@@ -35,4 +35,4 @@ Este fork ya prioriza datos reales en PostgreSQL y evita depender de contenido f
 
 ## Credito
 
-Basado en Circle, proyecto original de UI inspirado en Linear.
+Nacio a partir de Circle, proyecto original de UI inspirado en Linear.

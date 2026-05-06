@@ -60,7 +60,7 @@ export function IssueLine({
                role="button"
                tabIndex={0}
                className={cn(
-                  'w-full flex items-center justify-start min-h-11 px-6 py-1.5 hover:bg-sidebar/50 cursor-pointer',
+                  'w-full flex items-center justify-start min-h-10 px-6 py-1 hover:bg-sidebar/50 cursor-pointer',
                   isSelected && 'bg-accent/70 hover:bg-accent/70'
                )}
                style={{
@@ -77,7 +77,7 @@ export function IssueLine({
                <div className="min-w-0 flex items-center justify-start mr-1 ml-0.5">
                   <div className="min-w-0">
                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-xs sm:text-sm font-medium sm:font-semibold truncate hover:underline">
+                        <span className="text-sm font-medium leading-5 truncate hover:underline">
                            {issue.title}
                         </span>
                         {childrenCount > 0 && (
@@ -106,7 +106,7 @@ export function IssueLine({
                      </IssueChip>
                   )}
                   {visibleProperties.createdAt && (
-                     <span className="text-xs text-muted-foreground shrink-0 hidden sm:inline-block">
+                     <span className="text-xs leading-none text-muted-foreground shrink-0 hidden sm:inline-block">
                         {format(new Date(issue.createdAt), 'MMM dd')}
                      </span>
                   )}

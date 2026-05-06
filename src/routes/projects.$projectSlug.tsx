@@ -53,7 +53,9 @@ export const Route = createFileRoute('/projects/$projectSlug')({
    head: ({ loaderData }) => ({
       meta: [
          {
-            title: loaderData?.project ? `${loaderData.project.name} | Circle` : 'Project | Circle',
+            title: loaderData?.project
+               ? `${loaderData.project.name} | Triangle`
+               : 'Project | Triangle',
          },
       ],
    }),
@@ -68,7 +70,7 @@ function ProjectPage() {
    if (databaseError) {
       return (
          <>
-            <ProjectHeader title="Project" />
+            <ProjectToolbar title="Project" />
             <div className="w-full p-6">
                <div className="max-w-2xl rounded-lg border bg-container p-6">
                   <h2 className="text-sm font-semibold">Database unavailable</h2>
@@ -82,7 +84,7 @@ function ProjectPage() {
    if (!project) {
       return (
          <>
-            <ProjectHeader title="Project not found" />
+            <ProjectToolbar title="Project not found" />
             <div className="mx-auto flex min-h-96 max-w-3xl flex-col justify-center px-6">
                <h1 className="text-xl font-semibold">Project not found</h1>
                <p className="mt-2 text-sm text-muted-foreground">
@@ -98,7 +100,6 @@ function ProjectPage() {
 
    return (
       <>
-         <ProjectHeader title={project.name} project={project} />
          <ProjectOverview
             initialProject={project}
             statusOptions={statusOptions}
@@ -111,9 +112,19 @@ function ProjectPage() {
    );
 }
 
-function ProjectHeader({ title, project }: { title: string; project?: ProjectLike }) {
+function ProjectToolbar({
+   title,
+   project,
+   activeTab,
+}: {
+   title: string;
+   project?: ProjectLike;
+   activeTab?: 'overview' | 'issues';
+}) {
+   const showTabs = project && activeTab;
+
    return (
-      <div className="flex h-10 w-full items-center justify-between border-b px-4">
+      <div className="flex min-h-10 w-full flex-wrap items-center justify-between gap-2 border-b px-4 py-1.5">
          <div className="flex min-w-0 items-center gap-2">
             {project ? (
                <ProjectIcon
@@ -125,9 +136,43 @@ function ProjectHeader({ title, project }: { title: string; project?: ProjectLik
             <span className="truncate text-sm font-medium">{title}</span>
             {project ? <span className="text-xs text-muted-foreground">{project.key}</span> : null}
          </div>
-         <Button size="icon" variant="ghost" className="size-7">
-            <MoreHorizontal className="size-4" />
-         </Button>
+         <div className="flex items-center gap-2">
+            {showTabs ? (
+               <div className="flex items-center gap-1">
+                  <Button
+                     asChild
+                     size="sm"
+                     variant={activeTab === 'overview' ? 'secondary' : 'ghost'}
+                     className="h-7 rounded-full px-3"
+                  >
+                     <Link
+                        to="/projects/$projectSlug"
+                        params={{ projectSlug: project.slug }}
+                        search={{ tab: 'overview' }}
+                     >
+                        Overview
+                     </Link>
+                  </Button>
+                  <Button
+                     asChild
+                     size="sm"
+                     variant={activeTab === 'issues' ? 'secondary' : 'ghost'}
+                     className="h-7 rounded-full px-3"
+                  >
+                     <Link
+                        to="/projects/$projectSlug"
+                        params={{ projectSlug: project.slug }}
+                        search={{ tab: 'issues' }}
+                     >
+                        Issues
+                     </Link>
+                  </Button>
+               </div>
+            ) : null}
+            <Button size="icon" variant="ghost" className="size-7">
+               <MoreHorizontal className="size-4" />
+            </Button>
+         </div>
       </div>
    );
 }
@@ -291,38 +336,7 @@ function ProjectOverview({
 
    return (
       <div className="min-h-full bg-container">
-         <div className="border-b px-3 py-2">
-            <div className="flex items-center gap-1">
-               <Button
-                  asChild
-                  size="sm"
-                  variant={activeTab === 'overview' ? 'secondary' : 'ghost'}
-                  className="h-7 rounded-full px-3"
-               >
-                  <Link
-                     to="/projects/$projectSlug"
-                     params={{ projectSlug: project.slug }}
-                     search={{ tab: 'overview' }}
-                  >
-                     Overview
-                  </Link>
-               </Button>
-               <Button
-                  asChild
-                  size="sm"
-                  variant={activeTab === 'issues' ? 'secondary' : 'ghost'}
-                  className="h-7 rounded-full px-3"
-               >
-                  <Link
-                     to="/projects/$projectSlug"
-                     params={{ projectSlug: project.slug }}
-                     search={{ tab: 'issues' }}
-                  >
-                     Issues
-                  </Link>
-               </Button>
-            </div>
-         </div>
+         <ProjectToolbar title={project.name} project={project} activeTab={activeTab} />
 
          {activeTab === 'issues' ? (
             <ProjectIssuesTab

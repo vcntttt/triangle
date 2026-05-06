@@ -17,7 +17,7 @@ export const Route = createFileRoute('/settings')({
       };
    },
    head: () => ({
-      meta: [{ title: 'Settings | Circle' }],
+      meta: [{ title: 'Settings | Triangle' }],
    }),
    component: SettingsPage,
 });

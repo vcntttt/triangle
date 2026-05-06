@@ -61,7 +61,8 @@ const features: Feature[] = [
    {
       icon: <Palette size={20} />,
       title: 'Appearance',
-      description: 'Keep the original Circle design system while allowing light local preferences.',
+      description:
+         'Keep the original Triangle design system while allowing light local preferences.',
       meta: 'Theme stays local',
    },
    {
@@ -229,7 +230,7 @@ export default function Settings({
          <div className="mb-10">
             <h1 className="text-2xl font-semibold mb-1">Workspace</h1>
             <p className="text-muted-foreground">
-               Personal configuration for this Circle fork. The goal is to keep the product small,
+               Personal configuration for this Triangle fork. The goal is to keep the product small,
                usable and visually aligned with the original design system.
             </p>
          </div>

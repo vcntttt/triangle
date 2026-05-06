@@ -69,7 +69,7 @@ export function ShortcutsHelpProvider() {
             <DialogHeader>
                <DialogTitle>Keyboard shortcuts</DialogTitle>
                <DialogDescription>
-                  Quick actions currently available in the personal Circle workspace.
+                  Quick actions currently available in the personal Triangle workspace.
                </DialogDescription>
             </DialogHeader>
 

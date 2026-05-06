@@ -47,7 +47,7 @@ export function NavWorkspace() {
 
          <div className="mt-3">
             <div className="px-2 mb-2 flex items-center justify-between">
-               <span className="text-xs font-medium text-muted-foreground">Pinned projects</span>
+               <span className="text-xs font-normal text-muted-foreground">Pinned projects</span>
                <Popover>
                   <PopoverTrigger asChild>
                      <button

@@ -116,13 +116,13 @@ export function GroupIssues({
                   isViewTypeGrid ? 'px-3' : 'px-6'
                )}
                style={{
-                  backgroundColor: isViewTypeGrid ? `${status.color}10` : `${status.color}08`,
+                  backgroundColor: isViewTypeGrid ? `${status.color}10` : `${status.color}06`,
                }}
             >
                <div className="flex items-center gap-2">
                   <status.icon />
-                  <span className="text-sm font-medium">{status.name}</span>
-                  <span className="text-sm text-muted-foreground">{count}</span>
+                  <span className="text-sm font-normal">{status.name}</span>
+                  <span className="text-sm leading-none text-muted-foreground">{count}</span>
                </div>
 
                <Button

@@ -7,10 +7,10 @@ export const Route = createFileRoute('/pulse')({
    loader: () => getProjectUpdatesPage(),
    head: () => ({
       meta: [
-         { title: 'Pulse | Circle' },
+         { title: 'Pulse | Triangle' },
          {
             name: 'description',
-            content: 'Timeline of project health updates for the personal Circle tracker.',
+            content: 'Timeline of project health updates for the personal Triangle tracker.',
          },
       ],
    }),
