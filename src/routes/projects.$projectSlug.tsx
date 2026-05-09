@@ -398,7 +398,7 @@ function ProjectOverview({
                />
             </div>
          ) : (
-            <div className="mx-auto max-w-[1030px] px-6 py-16">
+            <div className="mx-auto w-full max-w-4xl px-10 py-16">
                <div className="flex items-start justify-between gap-6">
                   <div className="min-w-0">
                      <div className="mb-5">
@@ -415,8 +415,8 @@ function ProjectOverview({
                         placeholder="Untitled project"
                         maxLength={120}
                         disabled={isSavingDetails}
-                        displayClassName="block max-w-3xl truncate text-3xl font-semibold tracking-normal hover:text-muted-foreground"
-                        inputClassName="h-11 max-w-3xl text-3xl font-semibold"
+                        displayClassName="block max-w-5xl truncate text-3xl font-semibold tracking-normal hover:text-muted-foreground"
+                        inputClassName="h-11 max-w-5xl text-3xl font-semibold"
                         onSave={(value) => handleProjectFieldSave('name', value)}
                      />
 
@@ -496,15 +496,15 @@ function ProjectOverview({
                      Description
                      <span className="text-xs">⌄</span>
                   </button>
-                  <div className="mt-3 max-w-3xl whitespace-pre-wrap text-sm leading-6 text-foreground">
+                  <div className="mt-3 max-w-5xl whitespace-pre-wrap text-sm leading-6 text-foreground">
                      <InlineEditableText
                         value={project.description || ''}
                         placeholder="Add a project description to capture scope, decisions, and links."
                         maxLength={500}
                         disabled={isSavingDetails}
                         multiline
-                        displayClassName="block min-h-6 max-w-3xl whitespace-pre-wrap rounded-sm hover:text-muted-foreground"
-                        inputClassName="min-h-28 max-w-3xl resize-none text-sm leading-6"
+                        displayClassName="block min-h-6 max-w-5xl whitespace-pre-wrap rounded-sm hover:text-muted-foreground"
+                        inputClassName="min-h-28 max-w-5xl resize-none text-sm leading-6"
                         onSave={(value) => handleProjectFieldSave('description', value)}
                      />
                   </div>
