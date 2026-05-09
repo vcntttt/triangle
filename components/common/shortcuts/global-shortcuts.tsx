@@ -28,16 +28,19 @@ function hasOpenDialog() {
 }
 
 export function GlobalShortcuts() {
-   const pathname = useRouterState({ select: (state) => state.location.pathname });
+   const location = useRouterState({ select: (state) => state.location });
    const { openModal } = useCreateIssueStore();
    const { openSearch } = useSearchStore();
    const { open } = useShortcutsHelpStore();
 
    useEffect(() => {
       const handleKeyDown = (event: KeyboardEvent) => {
+         const pathname = location.pathname;
+         const search = location.search as { tab?: string };
          const isIssuesRoute = pathname === '/issues' || pathname.startsWith('/issues/');
+         const isProjectIssuesRoute = pathname.startsWith('/projects/') && search.tab === 'issues';
 
-         if (!isIssuesRoute) {
+         if (!isIssuesRoute && !isProjectIssuesRoute) {
             return;
          }
 
@@ -82,7 +85,7 @@ export function GlobalShortcuts() {
 
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
-   }, [open, openModal, openSearch, pathname]);
+   }, [location, open, openModal, openSearch]);
 
    return null;
 }
