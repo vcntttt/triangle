@@ -51,6 +51,14 @@ export default function Projects({
          return true;
       })
       .sort((a, b) => {
+         const priorityOrder: Record<string, number> = {
+            'urgent': 0,
+            'high': 1,
+            'medium': 2,
+            'low': 3,
+            'no-priority': 4,
+         };
+
          if (sort === 'title-asc') return a.name.localeCompare(b.name);
          if (sort === 'title-desc') return b.name.localeCompare(a.name);
          if (sort === 'date-asc')
@@ -59,6 +67,10 @@ export default function Projects({
             return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
          if (sort === 'status-asc') return a.status.name.localeCompare(b.status.name);
          if (sort === 'status-desc') return b.status.name.localeCompare(a.status.name);
+         if (sort === 'priority-asc')
+            return (priorityOrder[a.priority.id] ?? 99) - (priorityOrder[b.priority.id] ?? 99);
+         if (sort === 'priority-desc')
+            return (priorityOrder[b.priority.id] ?? 99) - (priorityOrder[a.priority.id] ?? 99);
          return 0;
       });
 

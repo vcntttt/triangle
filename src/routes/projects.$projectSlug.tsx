@@ -105,6 +105,7 @@ function ProjectPage() {
    return (
       <>
          <ProjectOverview
+            key={project.id}
             initialProject={project}
             statusOptions={statusOptions}
             priorityOptions={priorityOptions}

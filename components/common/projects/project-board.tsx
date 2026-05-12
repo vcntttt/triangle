@@ -17,6 +17,14 @@ import { ProjectBoardColumn } from './project-board-column';
 import { health as allHealth, priorities, status as allStatuses } from '@/lib/ui-catalog';
 import { CheckCircle2, CircleAlert, CircleDashed, CircleHelp } from 'lucide-react';
 
+const prioritySortOrder: Record<string, number> = {
+   'urgent': 0,
+   'high': 1,
+   'medium': 2,
+   'low': 3,
+   'no-priority': 4,
+};
+
 interface ProjectBoardProps {
    projects: Project[];
    statusOptions: ProjectOptionLike[];
@@ -64,6 +72,16 @@ export function ProjectBoard({ projects, statusOptions, priorityOptions }: Proje
          }
 
          grouped.set(targetGroupId, [project]);
+      }
+
+      if (groupBy !== 'priority') {
+         for (const group of grouped.values()) {
+            group.sort(
+               (a, b) =>
+                  (prioritySortOrder[a.priority.id] ?? 99) -
+                  (prioritySortOrder[b.priority.id] ?? 99)
+            );
+         }
       }
 
       return definitions.flatMap((group) => {

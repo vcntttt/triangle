@@ -15,26 +15,12 @@ export function useProjectFieldUpdates(
    const [currentPriority, setCurrentPriority] = useState(project.priority);
 
    useEffect(() => {
-      if (currentStatus.id !== project.status.id || currentStatus.name !== project.status.name) {
-         setCurrentStatus(project.status);
-      }
+      setCurrentStatus(project.status);
+   }, [project.status.id, project.status.name]);
 
-      if (
-         currentPriority.id !== project.priority.id ||
-         currentPriority.name !== project.priority.name
-      ) {
-         setCurrentPriority(project.priority);
-      }
-   }, [
-      currentPriority.id,
-      currentPriority.name,
-      currentStatus.id,
-      currentStatus.name,
-      project.priority.id,
-      project.priority.name,
-      project.status.id,
-      project.status.name,
-   ]);
+   useEffect(() => {
+      setCurrentPriority(project.priority);
+   }, [project.priority.id, project.priority.name]);
 
    const handleStatusChange = async (statusId: string) => {
       if (statusId === currentStatus.id) {

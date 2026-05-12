@@ -6,7 +6,9 @@ export type ProjectsSort =
    | 'date-asc'
    | 'date-desc'
    | 'status-asc'
-   | 'status-desc';
+   | 'status-desc'
+   | 'priority-asc'
+   | 'priority-desc';
 
 export interface ProjectsFilterState {
    filters: {

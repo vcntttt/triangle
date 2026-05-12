@@ -5,7 +5,7 @@ import { useDrag } from 'react-dnd';
 import { getEmptyImage } from 'react-dnd-html5-backend';
 import { format } from 'date-fns';
 import * as m from 'motion/react-m';
-import { CheckCircle2, CircleAlert, CircleDashed, CircleHelp, ExternalLink } from 'lucide-react';
+import { CheckCircle2, CircleAlert, CircleDashed, CircleHelp } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
 import type { Project, ProjectUpdate } from '@/lib/models';
@@ -78,74 +78,45 @@ export function ProjectBoardCard({
          <ContextMenuTrigger asChild>
             <m.div
                ref={drag}
-               role="button"
-               tabIndex={0}
-               onClick={() => onOpenIssues(project)}
-               onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                     event.preventDefault();
-                     onOpenIssues(project);
-                  }
-               }}
                layoutId={`project-board-${project.id}`}
                className={cn(
                   'group rounded-md border border-border/60 bg-background p-3 shadow-xs transition-colors',
-                  'hover:border-border hover:bg-accent/20 focus:outline-none focus:ring-2 focus:ring-primary/20',
+                  'hover:border-border hover:bg-accent/20',
                   isDragging && 'opacity-50',
                   isReadOnly && 'cursor-default',
                   !isReadOnly && 'cursor-grab active:cursor-grabbing'
                )}
             >
-               <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                     <h3 className="text-sm font-medium leading-5 line-clamp-2">{project.name}</h3>
-                     {project.description ? (
-                        <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
-                           {project.description}
-                        </p>
-                     ) : null}
-                  </div>
-
-                  <button
-                     type="button"
-                     className="size-7 rounded-md border border-border/50 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground group-hover:opacity-100"
-                     onClick={(event) => {
-                        event.stopPropagation();
-                        onOpenIssues(project);
-                     }}
-                     aria-label={`Open issues for ${project.name}`}
-                  >
-                     <ExternalLink className="mx-auto size-4" />
-                  </button>
-               </div>
+               <button
+                  type="button"
+                  onClick={() => onOpenIssues(project)}
+                  className="w-full text-left cursor-pointer bg-transparent border-0 p-0"
+               >
+                  <h3 className="text-sm font-medium leading-5 line-clamp-2 group-hover:underline">
+                     {project.name}
+                  </h3>
+                  {project.description ? (
+                     <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+                        {project.description}
+                     </p>
+                  ) : null}
+               </button>
 
                <div className="mt-3 flex flex-wrap gap-2">
                   {groupBy !== 'status' ? (
-                     <div
-                        onMouseDownCapture={(event) => event.stopPropagation()}
-                        onClickCapture={(event) => event.stopPropagation()}
-                     >
-                        <StatusWithPercent
-                           status={project.status}
-                           options={statusOptions}
-                           onStatusChange={(statusId) => onStatusChange(project.id, statusId)}
-                        />
-                     </div>
+                     <StatusWithPercent
+                        status={project.status}
+                        options={statusOptions}
+                        onStatusChange={(statusId) => onStatusChange(project.id, statusId)}
+                     />
                   ) : null}
 
                   {groupBy !== 'priority' ? (
-                     <div
-                        onMouseDownCapture={(event) => event.stopPropagation()}
-                        onClickCapture={(event) => event.stopPropagation()}
-                     >
-                        <PrioritySelector
-                           priority={project.priority}
-                           options={priorityOptions}
-                           onPriorityChange={(priorityId) =>
-                              onPriorityChange(project.id, priorityId)
-                           }
-                        />
-                     </div>
+                     <PrioritySelector
+                        priority={project.priority}
+                        options={priorityOptions}
+                        onPriorityChange={(priorityId) => onPriorityChange(project.id, priorityId)}
+                     />
                   ) : null}
 
                   {visibleProperties.health && (
