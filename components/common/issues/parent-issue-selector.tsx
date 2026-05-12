@@ -81,12 +81,12 @@ export function ParentIssueSelector({
          <PopoverTrigger asChild>
             <Button
                id={id}
-               size={compact ? 'sm' : 'xs'}
-               variant={compact ? 'ghost' : 'secondary'}
+               size="sm"
+               variant="ghost"
                role="combobox"
                aria-expanded={open}
                aria-controls={listId}
-               className={compact ? issueChipClassName : 'max-w-full justify-start gap-1.5'}
+               className={compact ? issueChipClassName : 'max-w-full justify-start gap-1.5 h-7'}
             >
                <GitBranchPlus className={compact ? issueChipIconClassName : 'size-4'} />
                <span className="max-w-[180px] truncate">

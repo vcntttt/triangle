@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import type { ButtonProps } from '@/components/ui/button';
 import { useProjectOptions } from '@/hooks/use-project-options';
 import {
    Command,
@@ -26,6 +27,8 @@ interface ProjectSelectorProps {
    onOpenChange?: (open: boolean) => void;
    showShortcut?: boolean;
    triggerClassName?: string;
+   variant?: ButtonProps['variant'];
+   size?: ButtonProps['size'];
 }
 
 export function ProjectSelector({
@@ -35,6 +38,8 @@ export function ProjectSelector({
    onOpenChange,
    showShortcut = true,
    triggerClassName,
+   variant = 'secondary',
+   size = 'xs',
 }: ProjectSelectorProps) {
    const id = useId();
    const listId = `${id}-list`;
@@ -66,8 +71,8 @@ export function ProjectSelector({
                <Button
                   id={id}
                   className={cn('flex items-center gap-1.5', triggerClassName)}
-                  size="xs"
-                  variant="secondary"
+                  size={size}
+                  variant={variant}
                   role="combobox"
                   title={showShortcut ? 'Open project picker (Alt+P)' : 'Open project picker'}
                   aria-expanded={isOpen}

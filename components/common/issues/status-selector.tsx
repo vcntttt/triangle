@@ -57,8 +57,8 @@ export function StatusSelector({ status, issueId, display = 'icon' }: StatusSele
                         ? 'size-7 flex items-center justify-center'
                         : issueChipClassName
                   )}
-                  size={display === 'icon' ? 'icon' : 'xs'}
-                  variant={display === 'icon' ? 'ghost' : 'outline'}
+                  size={display === 'icon' ? 'icon' : 'sm'}
+                  variant="ghost"
                   role="combobox"
                   aria-expanded={open}
                   aria-controls={listId}
