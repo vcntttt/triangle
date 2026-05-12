@@ -1,5 +1,6 @@
 import HeaderNav from './header-nav';
-import HeaderOptions from './header-options';
+import { Filter } from './filter';
+import { DisplayMenu } from './header-options';
 
 interface HeaderProps {
    count: number;
@@ -8,9 +9,11 @@ interface HeaderProps {
 
 export default function Header({ count, isConnected }: HeaderProps) {
    return (
-      <div className="w-full flex flex-col items-center">
-         <HeaderNav count={count} isConnected={isConnected} />
-         <HeaderOptions />
-      </div>
+      <HeaderNav
+         count={count}
+         isConnected={isConnected}
+         leftActions={<Filter />}
+         rightActions={<DisplayMenu />}
+      />
    );
 }

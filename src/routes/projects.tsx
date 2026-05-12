@@ -24,6 +24,7 @@ function ProjectsPage() {
 
    return (
       <MainLayout
+         headersNumber={1}
          header={
             isProjectsIndex ? <Header count={projects.length} isConnected={isConnected} /> : null
          }
