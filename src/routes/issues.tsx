@@ -57,6 +57,7 @@ function IssuesLayout() {
 
    return (
       <MainLayout
+         headersNumber={1}
          header={
             <Header
                count={filteredIssues.length}

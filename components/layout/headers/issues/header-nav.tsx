@@ -14,9 +14,18 @@ interface HeaderNavProps {
    isConnected: boolean;
    projectTitle?: string;
    project?: Project;
+   leftActions?: React.ReactNode;
+   rightActions?: React.ReactNode;
 }
 
-export default function HeaderNav({ count, isConnected, projectTitle, project }: HeaderNavProps) {
+export default function HeaderNav({
+   count,
+   isConnected,
+   projectTitle,
+   project,
+   leftActions,
+   rightActions,
+}: HeaderNavProps) {
    const { openModal } = useCreateIssueStore();
    const { isSearchOpen, toggleSearch, closeSearch, setSearchQuery, searchQuery } =
       useSearchStore();
@@ -106,9 +115,11 @@ export default function HeaderNav({ count, isConnected, projectTitle, project }:
                   <SearchIcon className="size-4" />
                </Button>
             )}
+            {leftActions}
          </div>
 
          <div className="flex items-center gap-2">
+            {rightActions}
             <Button
                className="relative"
                size="xs"
