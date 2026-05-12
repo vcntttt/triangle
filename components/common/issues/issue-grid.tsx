@@ -38,6 +38,7 @@ function IssueDragPreview({ issue }: { issue: Issue }) {
          </div>
 
          <div className="block mb-3">
+            <div className="mb-1 text-xs font-medium text-muted-foreground">{issue.identifier}</div>
             <h3 className="text-sm font-semibold line-clamp-2 hover:underline">{issue.title}</h3>
          </div>
 
@@ -145,7 +146,14 @@ export function IssueGrid({ issue, isSelected = false, onSelect }: IssueGridProp
                         <StatusSelector status={issue.status} issueId={issue.id} />
                      </div>
                   </div>
-                  <h3 className="text-sm font-semibold mb-3 line-clamp-2">{issue.title}</h3>
+                  <div className="mb-3 space-y-1">
+                     {visibleProperties.identifier && (
+                        <div className="text-xs font-medium text-muted-foreground">
+                           {issue.identifier}
+                        </div>
+                     )}
+                     <h3 className="text-sm font-semibold line-clamp-2">{issue.title}</h3>
+                  </div>
                   {(visibleProperties.labels || visibleProperties.project) && (
                      <div className="flex flex-wrap gap-1.5 mb-3 min-h-[1.5rem]">
                         {visibleProperties.labels && <LabelBadge label={issue.labels} />}

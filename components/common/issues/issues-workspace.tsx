@@ -259,14 +259,35 @@ function IssuesListPanel({
    const { viewType } = useViewStore();
    const isViewTypeGrid = viewType === 'grid';
    const statuses = useIssuesStatuses();
-   const issuesByStatus = useMemo(() => groupIssuesForDisplayByStatus(issues), [issues]);
+   const { hideCompletedIssues } = useViewStore();
+   const completedStatus = statuses.find((status) => status.id === 'completed');
+   const completedIssuesCount = useMemo(
+      () => issues.filter((issue) => issue.status.id === 'completed').length,
+      [issues]
+   );
+   const displayIssues = useMemo(
+      () =>
+         hideCompletedIssues ? issues.filter((issue) => issue.status.id !== 'completed') : issues,
+      [hideCompletedIssues, issues]
+   );
+   const issuesByStatus = useMemo(
+      () => groupIssuesForDisplayByStatus(displayIssues),
+      [displayIssues]
+   );
    const displayedStatuses = useMemo(() => {
       if (showEmptyStatuses) {
-         return statuses;
+         return hideCompletedIssues
+            ? statuses.filter((status) => status.id !== 'completed')
+            : statuses;
       }
 
-      return statuses.filter((status) => (issuesByStatus[status.id] ?? []).length > 0);
-   }, [issuesByStatus, showEmptyStatuses, statuses]);
+      return statuses.filter(
+         (status) =>
+            (!hideCompletedIssues || status.id !== 'completed') &&
+            (issuesByStatus[status.id] ?? []).length > 0
+      );
+   }, [hideCompletedIssues, issuesByStatus, showEmptyStatuses, statuses]);
+   const showCompletedSummary = hideCompletedIssues && completedIssuesCount > 0 && completedStatus;
 
    return (
       <div className="h-full w-full overflow-hidden border-r border-border/60 bg-container">
@@ -294,9 +315,43 @@ function IssuesListPanel({
                         />
                      );
                   })}
+                  {showCompletedSummary && (
+                     <CompletedIssuesSummary
+                        color={completedStatus.color}
+                        count={completedIssuesCount}
+                        isGrid={isViewTypeGrid}
+                     />
+                  )}
                </div>
             </div>
          )}
+      </div>
+   );
+}
+
+function CompletedIssuesSummary({
+   color,
+   count,
+   isGrid,
+}: {
+   color: string;
+   count: number;
+   isGrid: boolean;
+}) {
+   return (
+      <div
+         className={cn(
+            'flex items-center text-sm text-muted-foreground',
+            isGrid ? 'h-full w-[348px] shrink-0 rounded-md px-3' : 'h-10 border-t px-6'
+         )}
+         style={{
+            backgroundColor: `${color}08`,
+            borderColor: `${color}24`,
+         }}
+      >
+         <span>
+            {count} {count === 1 ? 'issue completado' : 'issues completados'}
+         </span>
       </div>
    );
 }

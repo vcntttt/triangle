@@ -80,6 +80,11 @@ export function IssueLine({
                   <div className="min-w-0 flex items-center justify-start mr-1 ml-0.5">
                      <div className="min-w-0">
                         <div className="flex items-center gap-2 min-w-0">
+                           {visibleProperties.identifier && (
+                              <span className="shrink-0 text-xs font-medium leading-5 text-muted-foreground">
+                                 {issue.identifier}
+                              </span>
+                           )}
                            <span className="text-sm font-medium leading-5 truncate hover:underline">
                               {issue.title}
                            </span>
