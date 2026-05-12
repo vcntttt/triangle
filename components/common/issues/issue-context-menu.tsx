@@ -35,6 +35,7 @@ import {
    Clock3,
    GitBranchPlus,
    Link2Off,
+   CheckIcon,
 } from 'lucide-react';
 import React, { useState } from 'react';
 import { currentUser, personalAssigneeOptions } from '@/lib/current-user';
@@ -74,6 +75,9 @@ export function IssueContextMenu({ issueId }: IssueContextMenuProps) {
       getIssueById,
       getIssueChildrenCount,
       updateIssueParent,
+      getAllIssues,
+      getSubissues,
+      updateIssueEstimatedHours,
    } = useIssuesStore();
 
    const handleStatusChange = (statusId: string) => {
@@ -223,11 +227,40 @@ export function IssueContextMenu({ issueId }: IssueContextMenuProps) {
       });
    };
 
-   const handleRemoveFromParent = () => {
+   const handleSetParent = (parentId: string | null) => {
       if (!issueId) return;
-      updateIssueParent(issueId, null);
-      toast.success('Removed from parent');
+
+      if (parentId === null) {
+         updateIssueParent(issueId, null);
+         toast.success('Removed from parent');
+         return;
+      }
+
+      const selected = getAllIssues().find((issue) => issue.id === parentId);
+      if (!selected) return;
+
+      updateIssueParent(issueId, {
+         id: selected.id,
+         identifier: selected.identifier,
+         title: selected.title,
+      });
+      toast.success(`Parent set to ${selected.identifier}`);
    };
+
+   const parentOptions = (() => {
+      if (!issueId) return [];
+      const issue = getIssueById(issueId);
+      if (!issue) return [];
+
+      const currentChildren = getSubissues(issueId);
+      return getAllIssues().filter(
+         (candidate) =>
+            candidate.id !== issueId &&
+            !candidate.parentIssueId &&
+            !currentChildren.some((child) => child.id === candidate.id) &&
+            (issue.project ? candidate.project?.id === issue.project.id : !candidate.project)
+      );
+   })();
 
    return (
       <ContextMenuContent className="w-64">
@@ -389,11 +422,37 @@ export function IssueContextMenu({ issueId }: IssueContextMenuProps) {
             <GitBranchPlus className="size-4" /> Add subissue
          </ContextMenuItem>
 
-         {issueId && getIssueById(issueId)?.parent && (
-            <ContextMenuItem onClick={handleRemoveFromParent}>
-               <Link2Off className="size-4" /> Remove from parent
-            </ContextMenuItem>
-         )}
+         <ContextMenuSub>
+            <ContextMenuSubTrigger>
+               <GitBranchPlus className="mr-2 size-4" /> Parent
+            </ContextMenuSubTrigger>
+            <ContextMenuSubContent className="w-64 max-h-80 overflow-y-auto">
+               <ContextMenuItem onClick={() => handleSetParent(null)}>
+                  <Link2Off className="size-4" /> No parent
+                  {issueId && !getIssueById(issueId)?.parent && (
+                     <CheckIcon className="ml-auto size-4" />
+                  )}
+               </ContextMenuItem>
+               {parentOptions.map((option) => {
+                  const isCurrent = issueId && getIssueById(issueId)?.parent?.id === option.id;
+                  return (
+                     <ContextMenuItem key={option.id} onClick={() => handleSetParent(option.id)}>
+                        <span
+                           className="inline-block size-2 rounded-full"
+                           style={{ backgroundColor: option.status.color }}
+                        />
+                        <span className="min-w-0">
+                           <span className="text-xs text-muted-foreground">
+                              {option.identifier}
+                           </span>
+                           <span className="truncate"> {option.title}</span>
+                        </span>
+                        {isCurrent && <CheckIcon className="ml-auto size-4 shrink-0" />}
+                     </ContextMenuItem>
+                  );
+               })}
+            </ContextMenuSubContent>
+         </ContextMenuSub>
 
          {issueId && getIssueChildrenCount(issueId) > 0 && (
             <ContextMenuItem disabled>
