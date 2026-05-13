@@ -5,27 +5,7 @@ import { useRouterState } from '@tanstack/react-router';
 import { useCreateIssueStore } from '@/store/create-issue-store';
 import { useSearchStore } from '@/store/search-store';
 import { useShortcutsHelpStore } from '@/store/shortcuts-help-store';
-
-function isEditableTarget(target: EventTarget | null) {
-   if (!(target instanceof HTMLElement)) {
-      return false;
-   }
-
-   if (target.isContentEditable) {
-      return true;
-   }
-
-   const editableParent = target.closest('[contenteditable="true"]');
-   if (editableParent) {
-      return true;
-   }
-
-   return Boolean(target.closest('input, textarea, select'));
-}
-
-function hasOpenDialog() {
-   return Boolean(document.querySelector('[role="dialog"]'));
-}
+import { hasOpenKeyboardBlockingLayer, isEditableTarget } from './keyboard-utils';
 
 export function GlobalShortcuts() {
    const location = useRouterState({ select: (state) => state.location });
@@ -52,7 +32,7 @@ export function GlobalShortcuts() {
             !event.altKey &&
             !event.repeat
          ) {
-            if (isEditableTarget(event.target) || hasOpenDialog()) {
+            if (isEditableTarget(event.target) || hasOpenKeyboardBlockingLayer()) {
                return;
             }
 
@@ -65,7 +45,7 @@ export function GlobalShortcuts() {
             return;
          }
 
-         if (isEditableTarget(event.target) || hasOpenDialog()) {
+         if (isEditableTarget(event.target) || hasOpenKeyboardBlockingLayer()) {
             return;
          }
 
