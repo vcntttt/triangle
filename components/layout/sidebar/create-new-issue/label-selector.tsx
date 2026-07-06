@@ -12,10 +12,11 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Kbd } from '@/components/ui/kbd';
 import { useLabelOptions } from '@/hooks/use-label-options';
-import { useIssuesStore } from '@/store/issues-store';
+import { useQuery } from '@tanstack/react-query';
 import type { LabelInterface } from '@/lib/models';
 import { CheckIcon, TagIcon } from 'lucide-react';
 import { useId, useState } from 'react';
+import { issuesPageQuery } from '@/src/data/issues';
 
 interface LabelSelectorProps {
    selectedLabels: LabelInterface[];
@@ -33,8 +34,7 @@ export function LabelSelector({
    const id = useId();
    const [internalOpen, setInternalOpen] = useState<boolean>(false);
    const labels = useLabelOptions();
-
-   const { filterByLabel } = useIssuesStore();
+   const { data } = useQuery(issuesPageQuery());
    const isOpen = open ?? internalOpen;
    const setOpen = onOpenChange ?? setInternalOpen;
 
@@ -114,7 +114,9 @@ export function LabelSelector({
                                  </div>
                                  {isSelected && <CheckIcon size={16} className="ml-auto" />}
                                  <span className="text-muted-foreground text-xs">
-                                    {filterByLabel(label.id).length}
+                                    {data?.issues.filter((issue) =>
+                                       issue.labels.some((item) => item.id === label.id)
+                                    ).length ?? 0}
                                  </span>
                               </CommandItem>
                            );

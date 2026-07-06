@@ -7,20 +7,17 @@ import {
    DialogTitle,
    DialogTrigger,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Popover, PopoverAnchor } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
-import { IssueListItem } from '@/lib/db/issues';
-import { currentUser } from '@/lib/current-user';
-import { getNextLexoRank } from '@/lib/utils';
-import { toPresentationIssue } from '@/lib/issues-presentation';
 import { Switch } from '@/components/ui/switch';
 import { RiEditLine } from '@remixicon/react';
-import { GitBranchPlus } from 'lucide-react';
+import { GitBranchPlus, Plus, X } from 'lucide-react';
 import {
    useState,
    useEffect,
+   useLayoutEffect,
    useCallback,
    useMemo,
    useRef,
@@ -28,13 +25,12 @@ import {
    type ReactNode,
 } from 'react';
 import { priorities, status, type Issue } from '@/lib/ui-catalog';
-import { useIssuesStore } from '@/store/issues-store';
 import { useCreateIssueStore } from '@/store/create-issue-store';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
-import { createIssue as createIssueMutation } from '@/src/server/issues';
 import { useProjectOptions } from '@/hooks/use-project-options';
 import { useLabelOptions } from '@/hooks/use-label-options';
+import { useViewerUser } from '@/hooks/use-viewer-user';
 import { normalizeInlineToken, parseIssueInlineTokens } from '@/lib/issue-inline-tokens';
 import {
    applyInlineTokenSuggestion,
@@ -49,6 +45,7 @@ import { ProjectSelector } from './project-selector';
 import { LabelSelector } from './label-selector';
 import { EstimatedHoursSelector } from './estimated-hours-selector';
 import { InlineTokenSuggestions } from './inline-token-suggestions';
+import { useIssueCommands } from '@/src/data/issues';
 
 type TitlePreviewSegment =
    | {
@@ -68,6 +65,11 @@ type TitlePreviewSegment =
         value: string;
         label: LabelInterface;
      };
+
+type DraftSubIssue = {
+   id: string;
+   title: string;
+};
 
 const trailingTokenPunctuation = /[.,;:!?]+$/;
 
@@ -175,21 +177,21 @@ function renderTitlePreviewSegment(segment: TitlePreviewSegment): ReactNode {
 
 export function CreateNewIssue() {
    const [createMore, setCreateMore] = useState<boolean>(false);
+   const [draftSubIssues, setDraftSubIssues] = useState<DraftSubIssue[]>([]);
    const [projectSelectorOpen, setProjectSelectorOpen] = useState(false);
    const [labelSelectorOpen, setLabelSelectorOpen] = useState(false);
    const [titleFocused, setTitleFocused] = useState(false);
    const [titleCaretPosition, setTitleCaretPosition] = useState(0);
    const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
-   const titleInputRef = useRef<HTMLInputElement | null>(null);
+   const titleInputRef = useRef<HTMLTextAreaElement | null>(null);
    const { isOpen, defaultStatus, defaultProject, defaultParentIssue, openModal, closeModal } =
       useCreateIssueStore();
-   const { addIssue, getAllIssues } = useIssuesStore();
+   const { createIssueWithSubissues } = useIssueCommands();
    const projectOptions = useProjectOptions();
    const labelOptions = useLabelOptions();
+   const currentUser = useViewerUser();
 
    const createDefaultData = useCallback(() => {
-      const currentIssues = getAllIssues();
-
       return {
          id: uuidv4(),
          identifier: '',
@@ -206,9 +208,9 @@ export function CreateNewIssue() {
          parentIssueId: defaultParentIssue?.id ?? null,
          parent: defaultParentIssue ?? null,
          subissues: [],
-         rank: getNextLexoRank(currentIssues.map((issue) => issue.rank)),
+         rank: Date.now().toString(36),
       };
-   }, [defaultParentIssue, defaultProject, defaultStatus, getAllIssues]);
+   }, [currentUser, defaultParentIssue, defaultProject, defaultStatus]);
 
    const [addIssueForm, setAddIssueForm] = useState<Issue>(() => createDefaultData());
 
@@ -220,6 +222,7 @@ export function CreateNewIssue() {
       () => parseIssueInlineTokens(addIssueForm.title, projectOptions, labelOptions),
       [addIssueForm.title, projectOptions, labelOptions]
    );
+   const canCreateSubIssues = !addIssueForm.parent;
 
    const inlineSuggestion = useMemo(
       () =>
@@ -260,8 +263,22 @@ export function CreateNewIssue() {
          setLabelSelectorOpen(false);
          setTitleFocused(false);
          setActiveSuggestionIndex(0);
+         setDraftSubIssues([]);
       }
    }, [isOpen]);
+
+   useEffect(() => {
+      if (!canCreateSubIssues) {
+         setDraftSubIssues([]);
+      }
+   }, [canCreateSubIssues]);
+
+   useLayoutEffect(() => {
+      const el = titleInputRef.current;
+      if (!el) return;
+      el.setAttribute('style', `${el.getAttribute('style') ?? ''}; height: auto;`);
+      el.setAttribute('style', `${el.getAttribute('style') ?? ''}; height: ${el.scrollHeight}px;`);
+   }, [addIssueForm.title]);
 
    useEffect(() => {
       if (!isOpen) {
@@ -345,6 +362,20 @@ export function CreateNewIssue() {
       setActiveSuggestionIndex(0);
    };
 
+   const addDraftSubIssue = () => {
+      setDraftSubIssues((current) => [...current, { id: uuidv4(), title: '' }]);
+   };
+
+   const updateDraftSubIssueTitle = (id: string, title: string) => {
+      setDraftSubIssues((current) =>
+         current.map((subIssue) => (subIssue.id === id ? { ...subIssue, title } : subIssue))
+      );
+   };
+
+   const removeDraftSubIssue = (id: string) => {
+      setDraftSubIssues((current) => current.filter((subIssue) => subIssue.id !== id));
+   };
+
    const handleTitleKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
       if (!inlineSuggestion || inlineSuggestion.items.length === 0) {
          return;
@@ -391,38 +422,55 @@ export function CreateNewIssue() {
       }
 
       try {
-         const createdIssue = await createIssueMutation({
-            data: {
-               title: finalTitle,
-               description: addIssueForm.description,
-               status: addIssueForm.status.id,
-               priority: addIssueForm.priority.id,
-               assigneeId: addIssueForm.assignee?.id ?? null,
-               estimatedHours: addIssueForm.estimatedHours ?? null,
-               rank: addIssueForm.rank,
-               dueDate: addIssueForm.dueDate ?? null,
-               parentIssueId: addIssueForm.parent?.id ?? null,
-               projectName: finalProject?.name ?? null,
-               // Keep the server contract aligned with project-by-name creation.
-               labelNames: finalLabels.map((label) => label.name),
-            },
+         const subIssueTitles = canCreateSubIssues
+            ? draftSubIssues.flatMap((subIssue) => {
+                 const title = subIssue.title.trim();
+                 return title ? [title] : [];
+              })
+            : [];
+
+         await createIssueWithSubissues({
+            title: finalTitle,
+            description: addIssueForm.description,
+            status: addIssueForm.status.id,
+            priority: addIssueForm.priority.id,
+            assigneeId: addIssueForm.assignee?.id ?? null,
+            estimatedHours: addIssueForm.estimatedHours ?? null,
+            dueDate: addIssueForm.dueDate ?? null,
+            parentIssueId: addIssueForm.parent?.id ?? null,
+            projectId: finalProject?.id ?? null,
+            labelIds: finalLabels.map((label) => label.id),
+            subissues: subIssueTitles.map((title) => ({ title })),
          });
 
-         addIssue(toPresentationIssue(createdIssue as IssueListItem));
-         toast.success('Issue created');
+         toast.success(
+            subIssueTitles.length > 0
+               ? `Issue created with ${subIssueTitles.length} sub-issue${subIssueTitles.length > 1 ? 's' : ''}`
+               : 'Issue created'
+         );
 
          if (!createMore) {
             closeModal();
          }
 
          setAddIssueForm(createDefaultData());
+         setDraftSubIssues([]);
          setProjectSelectorOpen(false);
          setLabelSelectorOpen(false);
       } catch (error) {
          console.error('Failed to create issue.', error);
          toast.error('Issue could not be created');
       }
-   }, [addIssue, addIssueForm, closeModal, createMore, createDefaultData, inlineDraft]);
+   }, [
+      addIssueForm,
+      closeModal,
+      createIssueWithSubissues,
+      createMore,
+      createDefaultData,
+      draftSubIssues,
+      inlineDraft,
+      canCreateSubIssues,
+   ]);
 
    useEffect(() => {
       if (!isOpen) {
@@ -464,7 +512,7 @@ export function CreateNewIssue() {
                      <div className="relative w-full">
                         <div
                            aria-hidden="true"
-                           className="pointer-events-none absolute inset-0 flex items-center overflow-hidden px-0 py-1 text-2xl font-medium leading-tight"
+                           className="pointer-events-none absolute inset-0 flex items-start px-0 py-1 text-2xl font-medium leading-tight"
                         >
                            {titlePreviewSegments.length > 0 ? (
                               <div className="whitespace-pre-wrap break-words text-foreground">
@@ -474,10 +522,11 @@ export function CreateNewIssue() {
                               <span className="text-muted-foreground">Issue title</span>
                            )}
                         </div>
-                        <Input
+                        <Textarea
                            ref={titleInputRef}
-                           className="relative z-10 w-full border-none bg-transparent px-0 py-1 text-2xl md:text-2xl font-medium leading-tight text-transparent shadow-none outline-none caret-foreground placeholder:text-transparent focus-visible:ring-0 overflow-hidden text-ellipsis whitespace-normal break-words"
+                           className="relative z-10 w-full border-none bg-transparent px-0 py-1 text-2xl md:text-2xl font-medium leading-tight text-transparent shadow-none outline-none caret-foreground placeholder:text-transparent focus-visible:ring-0 resize-none overflow-hidden break-words whitespace-pre-wrap min-h-0"
                            placeholder="Issue title"
+                           rows={1}
                            value={addIssueForm.title}
                            onChange={(event) =>
                               handleTitleCaretChange(
@@ -540,6 +589,68 @@ export function CreateNewIssue() {
                      setAddIssueForm((current) => ({ ...current, description: e.target.value }))
                   }
                />
+
+               {canCreateSubIssues && (
+                  <div className="space-y-2">
+                     <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                           <GitBranchPlus className="size-4" />
+                           <span>Sub-issues</span>
+                        </div>
+                        <Button
+                           type="button"
+                           variant="ghost"
+                           size="sm"
+                           className="h-7 gap-1 px-2 text-muted-foreground hover:text-foreground"
+                           onClick={addDraftSubIssue}
+                        >
+                           <Plus className="size-4" />
+                           Add
+                        </Button>
+                     </div>
+                     {draftSubIssues.length > 0 && (
+                        <div className="space-y-1.5">
+                           {draftSubIssues.map((subIssue, index) => (
+                              <div
+                                 key={subIssue.id}
+                                 className="flex items-center gap-2 rounded-md bg-secondary/45 px-2 py-1.5"
+                              >
+                                 <span className="w-5 shrink-0 text-right text-xs text-muted-foreground">
+                                    {index + 1}
+                                 </span>
+                                 <Input
+                                    className="h-7 border-none bg-transparent px-0 shadow-none focus-visible:ring-0"
+                                    placeholder="Sub-issue title"
+                                    value={subIssue.title}
+                                    onChange={(event) =>
+                                       updateDraftSubIssueTitle(subIssue.id, event.target.value)
+                                    }
+                                    onKeyDown={(event) => {
+                                       if (
+                                          event.key === 'Enter' &&
+                                          subIssue.title.trim().length > 0
+                                       ) {
+                                          event.preventDefault();
+                                          addDraftSubIssue();
+                                       }
+                                    }}
+                                 />
+                                 <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-7 shrink-0 text-muted-foreground hover:text-foreground"
+                                    aria-label="Remove sub-issue"
+                                    onClick={() => removeDraftSubIssue(subIssue.id)}
+                                 >
+                                    <X className="size-4" />
+                                 </Button>
+                              </div>
+                           ))}
+                        </div>
+                     )}
+                  </div>
+               )}
 
                <div className="w-full flex items-center justify-start gap-1.5 flex-wrap">
                   <ProjectSelector

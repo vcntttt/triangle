@@ -2,6 +2,7 @@
 
 import { Moon, Sun, Laptop } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { useSyncExternalStore } from 'react';
 import { Button } from '@/components/ui/button';
 import {
    DropdownMenu,
@@ -12,6 +13,12 @@ import {
 
 export function ThemeToggle() {
    const { theme, setTheme } = useTheme();
+   const mounted = useSyncExternalStore(
+      () => () => {},
+      () => true,
+      () => false
+   );
+   const displayTheme = mounted ? theme : 'system';
 
    return (
       <DropdownMenu>
@@ -22,9 +29,9 @@ export function ThemeToggle() {
                className="size-8 shrink-0"
                suppressHydrationWarning
             >
-               {theme === 'light' ? (
+               {displayTheme === 'light' ? (
                   <Sun className="size-4" />
-               ) : theme === 'dark' ? (
+               ) : displayTheme === 'dark' ? (
                   <Moon className="size-4" />
                ) : (
                   <Laptop className="size-4" />

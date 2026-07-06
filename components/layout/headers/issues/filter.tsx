@@ -11,10 +11,10 @@ import {
    CommandSeparator,
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { currentUser, personalAssigneeOptions } from '@/lib/current-user';
 import { useLabelOptions } from '@/hooks/use-label-options';
 import { useProjectOptions } from '@/hooks/use-project-options';
-import { useIssuesStore } from '@/store/issues-store';
+import { useViewerUser } from '@/hooks/use-viewer-user';
+import { useQuery } from '@tanstack/react-query';
 import { useFilterStore } from '@/store/filter-store';
 import { priorities } from '@/lib/ui-catalog';
 import {
@@ -31,6 +31,7 @@ import { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useIssuesStatuses } from '@/components/common/issues/issues-status-context';
 import { ProjectIconGlyph } from '@/components/common/projects/project-icon';
+import { issuesPageQuery } from '@/src/data/issues';
 
 // Define filter types
 type FilterType = 'status' | 'assignee' | 'priority' | 'labels' | 'project';
@@ -41,11 +42,12 @@ export function Filter() {
    const labels = useLabelOptions();
    const projects = useProjectOptions();
    const allStatus = useIssuesStatuses();
+   const { data } = useQuery(issuesPageQuery());
+   const currentUser = useViewerUser();
+   const personalAssigneeOptions = [currentUser];
 
    const { filters, toggleFilter, clearFilters, getActiveFiltersCount } = useFilterStore();
-
-   const { filterByStatus, filterByAssignee, filterByPriority, filterByLabel, filterByProject } =
-      useIssuesStore();
+   const issues = data?.issues ?? [];
 
    return (
       <Popover open={open} onOpenChange={setOpen}>
@@ -198,7 +200,7 @@ export function Filter() {
                                  <CheckIcon size={16} className="ml-auto" />
                               )}
                               <span className="text-muted-foreground text-xs">
-                                 {filterByStatus(item.id).length}
+                                 {issues.filter((issue) => issue.status === item.id).length}
                               </span>
                            </CommandItem>
                         ))}
@@ -235,7 +237,7 @@ export function Filter() {
                               <CheckIcon size={16} className="ml-auto" />
                            )}
                            <span className="text-muted-foreground text-xs">
-                              {filterByAssignee(null).length}
+                              {issues.filter((issue) => issue.assigneeId === null).length}
                            </span>
                         </CommandItem>
                         {personalAssigneeOptions.map((user) => (
@@ -256,7 +258,7 @@ export function Filter() {
                                  <CheckIcon size={16} className="ml-auto" />
                               )}
                               <span className="text-muted-foreground text-xs">
-                                 {filterByAssignee(user.id).length}
+                                 {issues.filter((issue) => issue.assigneeId === user.id).length}
                               </span>
                            </CommandItem>
                         ))}
@@ -304,7 +306,7 @@ export function Filter() {
                                  <CheckIcon size={16} className="ml-auto" />
                               )}
                               <span className="text-muted-foreground text-xs">
-                                 {filterByPriority(item.id).length}
+                                 {issues.filter((issue) => issue.priority === item.id).length}
                               </span>
                            </CommandItem>
                         ))}
@@ -346,7 +348,11 @@ export function Filter() {
                                  <CheckIcon size={16} className="ml-auto" />
                               )}
                               <span className="text-muted-foreground text-xs">
-                                 {filterByLabel(label.id).length}
+                                 {
+                                    issues.filter((issue) =>
+                                       issue.labels.some((item) => item.id === label.id)
+                                    ).length
+                                 }
                               </span>
                            </CommandItem>
                         ))}
@@ -385,7 +391,7 @@ export function Filter() {
                                  <CheckIcon size={16} className="ml-auto" />
                               )}
                               <span className="text-muted-foreground text-xs">
-                                 {filterByProject(project.id).length}
+                                 {issues.filter((issue) => issue.project?.id === project.id).length}
                               </span>
                            </CommandItem>
                         ))}

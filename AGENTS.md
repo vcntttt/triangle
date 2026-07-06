@@ -8,7 +8,7 @@
 - Production server: `pnpm start`
 - Lint: `pnpm lint`
 - Format whole repo: `pnpm format`
-- Drizzle: `pnpm db:generate`, `pnpm db:migrate`, `pnpm db:studio`
+- Convex: `pnpm convex:dev`, `pnpm convex:push`, `pnpm convex:deploy`
 
 ## Verification
 
@@ -25,9 +25,10 @@
 - Canonical app routes are `/projects`, `/issues`, `/issues/$issueIdentifier`, and `/settings`.
 - `src/routes/$orgId*` files are legacy compatibility redirects only.
 - Shared app shell lives in `components/layout/main-layout.tsx` and `components/layout/sidebar/*`.
-- Server mutations/loaders live in `src/server/*` via `createServerFn`.
-- PostgreSQL access lives in `lib/db/*` through Drizzle.
-- Most client state is still Zustand under `store/*`. The issues page hydrates server data into `store/issues-store.ts` from `components/common/issues/all-issues.tsx`.
+- Convex schema and functions live in `convex/*`.
+- Client data modules live in `src/data/*` and should use Convex React/TanStack Query integration directly.
+- `lib/db/*` is a compatibility type surface for existing UI imports.
+- Client state under `store/*` should stay UI-oriented. Do not reintroduce a Zustand cache for Convex-backed remote data.
 
 ## Product Scope
 
@@ -38,10 +39,11 @@
 
 ## Data Reality
 
-- Projects, issues, and labels already have PostgreSQL-backed flows; extend those instead of adding new mock-only behavior.
+- Projects, issues, labels, project statuses, priorities, project updates, viewer profile, and viewer preferences are backed by Convex.
 - Avoid reintroducing `mock-data/*` or seed-driven sample content as product dependencies.
-- Local PostgreSQL is expected from the shared stack in `~/dev/postgres`.
-- `DATABASE_URL` is required for Drizzle commands and server-side DB access. See `.env.example`.
+- `VITE_CONVEX_URL` is required for the browser Convex client. See `.env.example`.
+- The Convex CLI targets the same self-hosted deployment used by production and development through `CONVEX_SELF_HOSTED_URL` and `CONVEX_SELF_HOSTED_ADMIN_KEY`.
+- Do not create or select local/anonymous Convex deployments for normal development.
 
 ## Styling And UI
 

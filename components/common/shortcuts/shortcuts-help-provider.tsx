@@ -62,6 +62,11 @@ const shortcuts = [
       context: 'Issues',
    },
    {
+      action: 'Set priority',
+      keys: 'P',
+      context: 'Issues',
+   },
+   {
       action: 'Set project',
       keys: 'Shift + P',
       context: 'Issues',

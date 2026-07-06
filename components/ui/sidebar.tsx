@@ -19,9 +19,8 @@ import {
 } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useViewerCommands, useViewerPreferences } from '@/src/data/viewer';
 
-const SIDEBAR_COOKIE_NAME = 'sidebar_state';
-const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 const SIDEBAR_WIDTH = '244px'; // 16rem
 const SIDEBAR_WIDTH_MOBILE = '260px'; // 18rem
 const SIDEBAR_WIDTH_ICON = '3rem';
@@ -62,25 +61,25 @@ function SidebarProvider({
    onOpenChange?: (open: boolean) => void;
 }) {
    const isMobile = useIsMobile();
+   const preferences = useViewerPreferences();
+   const { setSidebarOpen } = useViewerCommands();
    const [openMobile, setOpenMobile] = React.useState(false);
 
-   // This is the internal state of the sidebar.
-   // We use openProp and setOpenProp for control from outside the component.
-   const [_open, _setOpen] = React.useState(() => defaultOpen);
-   const open = openProp ?? _open;
+   const [localOpen, setLocalOpen] = React.useState<boolean | null>(null);
+   const open = openProp ?? localOpen ?? preferences?.sidebarOpen ?? defaultOpen;
+
    const setOpen = React.useCallback(
       (value: boolean | ((value: boolean) => boolean)) => {
          const openState = typeof value === 'function' ? value(open) : value;
          if (setOpenProp) {
             setOpenProp(openState);
          } else {
-            _setOpen(openState);
+            setLocalOpen(openState);
          }
 
-         // This sets the cookie to keep the sidebar state.
-         document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
+         void setSidebarOpen({ open: openState });
       },
-      [setOpenProp, open]
+      [setOpenProp, open, setSidebarOpen]
    );
 
    // Helper to toggle the sidebar.

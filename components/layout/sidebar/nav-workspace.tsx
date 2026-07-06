@@ -25,7 +25,7 @@ import { usePinnedProjectsStore } from '@/store/pinned-projects-store';
 
 export function NavWorkspace() {
    const projects = useProjectOptions();
-   const pinnedProjectIds = usePinnedProjectsStore((state) => state.pinnedProjectIds);
+   const { pinnedProjectIds } = usePinnedProjectsStore();
 
    const pinnedProjects = projects.filter((project) => pinnedProjectIds.includes(project.id));
 
@@ -72,7 +72,7 @@ export function NavWorkspace() {
 function PinnedProjectMenuItem({ project }: { project: Project }) {
    const navigate = useNavigate();
    const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
-   const togglePinnedProject = usePinnedProjectsStore((state) => state.togglePinnedProject);
+   const { togglePinnedProject } = usePinnedProjectsStore();
 
    const handleOpenProject = () => {
       void navigate({

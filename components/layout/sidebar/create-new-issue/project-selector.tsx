@@ -13,12 +13,13 @@ import {
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Kbd } from '@/components/ui/kbd';
-import { useIssuesStore } from '@/store/issues-store';
+import { useQuery } from '@tanstack/react-query';
 import type { Project } from '@/lib/models';
 import { Box, CheckIcon, FolderIcon } from 'lucide-react';
 import { useId, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { ProjectIconGlyph } from '@/components/common/projects/project-icon';
+import { issuesPageQuery } from '@/src/data/issues';
 
 interface ProjectSelectorProps {
    project: Project | undefined;
@@ -45,8 +46,7 @@ export function ProjectSelector({
    const listId = `${id}-list`;
    const [internalOpen, setInternalOpen] = useState<boolean>(false);
    const projects = useProjectOptions();
-
-   const { filterByProject } = useIssuesStore();
+   const { data } = useQuery(issuesPageQuery());
    const isOpen = open ?? internalOpen;
    const setOpen = onOpenChange ?? setInternalOpen;
 
@@ -134,7 +134,8 @@ export function ProjectSelector({
                               </div>
                               {value === project.id && <CheckIcon size={16} className="ml-auto" />}
                               <span className="text-muted-foreground text-xs">
-                                 {filterByProject(project.id).length}
+                                 {data?.issues.filter((issue) => issue.project?.id === project.id)
+                                    .length ?? 0}
                               </span>
                            </CommandItem>
                         ))}

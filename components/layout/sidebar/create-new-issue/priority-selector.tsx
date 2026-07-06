@@ -10,10 +10,11 @@ import {
    CommandList,
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { useIssuesStore } from '@/store/issues-store';
+import { useQuery } from '@tanstack/react-query';
 import { priorities, type Priority } from '@/lib/ui-catalog';
 import { CheckIcon } from 'lucide-react';
 import { useId, useState } from 'react';
+import { issuesPageQuery } from '@/src/data/issues';
 
 interface PrioritySelectorProps {
    priority: Priority;
@@ -24,8 +25,7 @@ export function PrioritySelector({ priority, onChange }: PrioritySelectorProps) 
    const id = useId();
    const listId = `${id}-list`;
    const [open, setOpen] = useState<boolean>(false);
-
-   const { filterByPriority } = useIssuesStore();
+   const { data } = useQuery(issuesPageQuery());
 
    const handlePriorityChange = (priorityId: string) => {
       setOpen(false);
@@ -88,7 +88,8 @@ export function PrioritySelector({ priority, onChange }: PrioritySelectorProps) 
                                  <CheckIcon size={16} className="ml-auto" />
                               )}
                               <span className="text-muted-foreground text-xs">
-                                 {filterByPriority(item.id).length}
+                                 {data?.issues.filter((issue) => issue.priority === item.id)
+                                    .length ?? 0}
                               </span>
                            </CommandItem>
                         ))}

@@ -47,7 +47,7 @@ const features: Feature[] = [
    {
       icon: <FolderKanban size={20} />,
       title: 'Projects',
-      description: 'Projects are part of the main product flow and already use PostgreSQL.',
+      description: 'Projects are part of the main product flow and already use Convex.',
       actionLabel: 'Open projects',
       activated: true,
    },
@@ -83,7 +83,7 @@ const features: Feature[] = [
       icon: <Database size={20} />,
       title: 'Database',
       description:
-         'Projects, issues and labels already rely on PostgreSQL as the single source of truth.',
+         'Projects, issues and labels already rely on Convex as the single source of truth.',
       activated: true,
    },
 ];
@@ -99,8 +99,8 @@ const integrations: Integration[] = [
    },
    {
       icon: <Server size={24} />,
-      title: 'PostgreSQL runtime',
-      description: 'The app expects a PostgreSQL server configured through DATABASE_URL.',
+      title: 'Convex runtime',
+      description: 'The app expects a Convex deployment configured through VITE_CONVEX_URL.',
       enabled: true,
       actionLabel: 'Enabled',
    },
@@ -114,9 +114,8 @@ const integrations: Integration[] = [
    {
       icon: <Eye size={24} />,
       title: 'View preferences',
-      description:
-         'List and board preferences remain local to the browser through lightweight persistence.',
-      actionLabel: 'Local only',
+      description: 'List and board preferences are synced through Convex viewer preferences.',
+      actionLabel: 'Synced',
    },
 ];
 
@@ -139,7 +138,7 @@ const guides: Guide[] = [
       title: 'Data migration',
       description:
          'Prefer real persistence over adding new product behavior on top of mock-only state.',
-      actionLabel: 'Keep moving to Postgres',
+      actionLabel: 'Keep moving on Convex',
    },
    {
       icon: <Shield size={20} />,
@@ -266,7 +265,7 @@ export default function Settings({
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                {integrations.map((integration) => (
-                  <IntegrationCard key={integration.name} integration={integration} />
+                  <IntegrationCard key={integration.title} integration={integration} />
                ))}
             </div>
          </div>

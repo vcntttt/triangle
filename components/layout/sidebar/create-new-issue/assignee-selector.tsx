@@ -10,12 +10,13 @@ import {
    CommandList,
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { currentUser, personalAssigneeOptions } from '@/lib/current-user';
-import { useIssuesStore } from '@/store/issues-store';
+import { useQuery } from '@tanstack/react-query';
 import type { User } from '@/lib/models';
 import { CheckIcon, UserCircle } from 'lucide-react';
 import { useId, useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { issuesPageQuery } from '@/src/data/issues';
+import { useViewerUser } from '@/hooks/use-viewer-user';
 
 interface AssigneeSelectorProps {
    assignee: User | null;
@@ -26,9 +27,10 @@ export function AssigneeSelector({ assignee, onChange }: AssigneeSelectorProps) 
    const id = useId();
    const listId = `${id}-list`;
    const [open, setOpen] = useState<boolean>(false);
-
-   const { filterByAssignee } = useIssuesStore();
+   const { data } = useQuery(issuesPageQuery());
    const value = assignee?.id ?? null;
+   const currentUser = useViewerUser();
+   const personalAssigneeOptions = [currentUser];
 
    const handleAssigneeChange = (userId: string) => {
       if (userId === 'unassigned') {
@@ -99,7 +101,8 @@ export function AssigneeSelector({ assignee, onChange }: AssigneeSelectorProps) 
                            </div>
                            {value === null && <CheckIcon size={16} className="ml-auto" />}
                            <span className="text-muted-foreground text-xs">
-                              {filterByAssignee(null).length}
+                              {data?.issues.filter((issue) => issue.assigneeId === null).length ??
+                                 0}
                            </span>
                         </CommandItem>
                         {personalAssigneeOptions.map((user) => (
@@ -118,7 +121,8 @@ export function AssigneeSelector({ assignee, onChange }: AssigneeSelectorProps) 
                               </div>
                               {value === user.id && <CheckIcon size={16} className="ml-auto" />}
                               <span className="text-muted-foreground text-xs">
-                                 {filterByAssignee(user.id).length}
+                                 {data?.issues.filter((issue) => issue.assigneeId === user.id)
+                                    .length ?? 0}
                               </span>
                            </CommandItem>
                         ))}

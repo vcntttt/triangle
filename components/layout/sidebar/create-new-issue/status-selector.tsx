@@ -10,11 +10,12 @@ import {
    CommandList,
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { useIssuesStore } from '@/store/issues-store';
+import { useQuery } from '@tanstack/react-query';
 import { type Status } from '@/lib/ui-catalog';
 import { CheckIcon } from 'lucide-react';
 import { useId, useState } from 'react';
 import { useIssuesStatuses } from '@/components/common/issues/issues-status-context';
+import { issuesPageQuery } from '@/src/data/issues';
 
 interface StatusSelectorProps {
    status: Status;
@@ -26,8 +27,7 @@ export function StatusSelector({ status, onChange }: StatusSelectorProps) {
    const listId = `${id}-list`;
    const [open, setOpen] = useState<boolean>(false);
    const allStatus = useIssuesStatuses();
-
-   const { filterByStatus } = useIssuesStore();
+   const { data } = useQuery(issuesPageQuery());
 
    const handleStatusChange = (statusId: string) => {
       setOpen(false);
@@ -86,7 +86,8 @@ export function StatusSelector({ status, onChange }: StatusSelectorProps) {
                               </div>
                               {status.id === item.id && <CheckIcon size={16} className="ml-auto" />}
                               <span className="text-muted-foreground text-xs">
-                                 {filterByStatus(item.id).length}
+                                 {data?.issues.filter((issue) => issue.status === item.id).length ??
+                                    0}
                               </span>
                            </CommandItem>
                         ))}

@@ -15,15 +15,7 @@ import {
    SheetTitle,
 } from '@/components/ui/sheet';
 import type { ProjectOptionLike } from '@/lib/projects-presentation';
-import {
-   createProjectPriority,
-   createProjectStatus,
-   deleteProjectPriority,
-   deleteProjectStatus,
-   reorderProjectStatuses,
-   updateProjectPriority,
-   updateProjectStatus,
-} from '@/src/server/projects';
+import { useProjectCommands } from '@/src/data/projects';
 
 type OptionType = 'status' | 'priority';
 
@@ -60,6 +52,15 @@ export function ProjectOptionsSettings({
    const [draggedStatusId, setDraggedStatusId] = useState<string | null>(null);
    const [isSaving, setIsSaving] = useState(false);
    const [sheetState, setSheetState] = useState<SheetState>(initialSheetState);
+   const {
+      createProjectPriority,
+      createProjectStatus,
+      deleteProjectPriority,
+      deleteProjectStatus,
+      reorderProjectStatuses,
+      updateProjectPriority,
+      updateProjectStatus,
+   } = useProjectCommands();
 
    const currentItems = sheetState.type === 'status' ? statuses : priorities;
    const orderedStatuses = useMemo(
@@ -98,11 +99,11 @@ export function ProjectOptionsSettings({
 
       try {
          if (type === 'status') {
-            await deleteProjectStatus({ data: { id } });
+            await deleteProjectStatus({ id });
             setStatuses((previous) => previous.filter((item) => item.id !== id));
             toast.success('Status deleted');
          } else {
-            await deleteProjectPriority({ data: { id } });
+            await deleteProjectPriority({ id });
             setPriorities((previous) => previous.filter((item) => item.id !== id));
             toast.success('Priority deleted');
          }
@@ -138,7 +139,7 @@ export function ProjectOptionsSettings({
       setStatuses(normalizedStatuses);
 
       try {
-         await reorderProjectStatuses({ data: { ids: normalizedStatuses.map((item) => item.id) } });
+         await reorderProjectStatuses({ ids: normalizedStatuses.map((item) => item.id) });
          toast.success('Statuses reordered');
       } catch (error) {
          setStatuses(previousStatuses);
@@ -162,17 +163,16 @@ export function ProjectOptionsSettings({
          if (sheetState.type === 'status') {
             if (sheetState.mode === 'create') {
                const created = (await createProjectStatus({
-                  data: { name: sheetState.name, color: sheetState.color },
+                  name: sheetState.name,
+                  color: sheetState.color,
                })) as ProjectOptionLike;
                setStatuses((previous) => [...previous, created]);
                toast.success('Status created');
             } else if (sheetState.optionId) {
                const updated = (await updateProjectStatus({
-                  data: {
-                     id: sheetState.optionId,
-                     name: sheetState.name,
-                     color: sheetState.color,
-                  },
+                  id: sheetState.optionId,
+                  name: sheetState.name,
+                  color: sheetState.color,
                })) as ProjectOptionLike;
                setStatuses((previous) =>
                   previous.map((item) => (item.id === updated.id ? updated : item))
@@ -181,17 +181,16 @@ export function ProjectOptionsSettings({
             }
          } else if (sheetState.mode === 'create') {
             const created = (await createProjectPriority({
-               data: { name: sheetState.name, color: sheetState.color },
+               name: sheetState.name,
+               color: sheetState.color,
             })) as ProjectOptionLike;
             setPriorities((previous) => [...previous, created]);
             toast.success('Priority created');
          } else if (sheetState.optionId) {
             const updated = (await updateProjectPriority({
-               data: {
-                  id: sheetState.optionId,
-                  name: sheetState.name,
-                  color: sheetState.color,
-               },
+               id: sheetState.optionId,
+               name: sheetState.name,
+               color: sheetState.color,
             })) as ProjectOptionLike;
             setPriorities((previous) =>
                previous.map((item) => (item.id === updated.id ? updated : item))

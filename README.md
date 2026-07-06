@@ -11,25 +11,24 @@ Se recorto el producto para priorizar un flujo personal:
 - proyectos
 - issues
 - etiquetas
-- persistencia real con PostgreSQL
+- persistencia real con Convex
 
 Y se dejaron fuera, o en segundo plano, las funciones orientadas a trabajo en equipo que no aportan al caso de uso personal.
 
 ## Desarrollo local
 
-Este proyecto espera una instancia compartida de PostgreSQL corriendo fuera del repo.
+Este proyecto espera un deployment Convex configurado mediante variables de entorno.
 
 Comandos principales:
 
 ```bash
 pnpm install
-pnpm db:migrate
 pnpm dev
 ```
 
 ## Estado actual
 
-Este fork ya prioriza datos reales en PostgreSQL y evita depender de contenido ficticio para funcionar.
+Este fork ya prioriza datos reales en Convex y evita depender de contenido ficticio para funcionar.
 
 ## Credito
 
