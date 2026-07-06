@@ -21,10 +21,34 @@ export const personalAssigneeOptions: User[] = [currentUser];
 
 export const personalMemberOptions: User[] = [currentUser];
 
-export function resolveCurrentAssignee(assigneeId: string | null | undefined): User | null {
+export type ViewerProfileLike = Omit<User, 'teamIds'> & {
+   teamIds?: string[];
+};
+
+export function viewerProfileToUser(profile: ViewerProfileLike | null | undefined): User {
+   if (!profile) {
+      return currentUser;
+   }
+
+   return {
+      id: profile.id,
+      name: profile.name,
+      avatarUrl: profile.avatarUrl,
+      email: profile.email,
+      status: profile.status,
+      role: profile.role,
+      joinedDate: profile.joinedDate,
+      teamIds: profile.teamIds ?? [],
+   };
+}
+
+export function resolveCurrentAssignee(
+   assigneeId: string | null | undefined,
+   viewer: User = currentUser
+): User | null {
    if (!assigneeId) {
       return null;
    }
 
-   return currentUser;
+   return viewer;
 }

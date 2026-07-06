@@ -1,5 +1,5 @@
 import { currentUser } from '@/lib/current-user';
-import type { ProjectIconType } from '@/lib/models';
+import type { ProjectIconType, User } from '@/lib/models';
 import {
    health,
    priorities,
@@ -85,7 +85,8 @@ function resolvePriority(
 export const toPresentationProject = (
    project: ProjectLike,
    statusOptions?: ProjectOptionLike[],
-   priorityOptions?: ProjectOptionLike[]
+   priorityOptions?: ProjectOptionLike[],
+   viewer: User = currentUser
 ): PresentationProject => {
    const resolvedStatus = resolveStatus(project.status, statusOptions);
 
@@ -102,7 +103,7 @@ export const toPresentationProject = (
       status: resolvedStatus,
       percentComplete: 0,
       startDate: project.createdAt,
-      lead: currentUser,
+      lead: viewer,
       priority: resolvePriority(project.priority, priorityOptions),
       health: project.latestUpdate
          ? (health.find((item) => item.id === project.latestUpdate?.health) ?? health[0])
