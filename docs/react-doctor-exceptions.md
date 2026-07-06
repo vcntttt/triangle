@@ -130,6 +130,74 @@ Accepted risk:
 
 The composer reset logic remains explicit and covered by build/lint checks.
 
+### `react-doctor/no-derived-state`
+
+Files:
+
+- `components/common/issues/issue-detail.tsx`
+
+Reason:
+
+The flagged title and description state are editable drafts. The component must
+let the user type locally, debounce persistence, and reset when the selected
+issue changes. Deriving those values directly during render would remove the
+draft buffer and change editor behavior.
+
+Future resolution:
+
+Extract the title/description editor into a focused component with explicit
+draft lifecycle and debounced persistence tests.
+
+Accepted risk:
+
+The effect performs a controlled draft reset on issue changes. This costs an
+extra render, but preserves the current editing behavior.
+
+### `react-doctor/no-event-handler` and `react-doctor/no-chain-state-updates`
+
+Files:
+
+- `components/layout/sidebar/create-new-issue/index.tsx`
+
+Reason:
+
+The flagged effects reset composer UI derived from dialog open state, token
+suggestion state, and parent/subissue mode. These are local dialog ergonomics
+and were already tracked as reducer follow-up work.
+
+Future resolution:
+
+Move composer state into a reducer so reset transitions happen through explicit
+actions instead of effects.
+
+Accepted risk:
+
+Dialog open/close and token suggestion changes can cause an extra render, but
+the behavior is localized to the composer.
+
+### `react-doctor/no-multi-comp`
+
+Files:
+
+- `src/routes/__root.tsx`
+
+Reason:
+
+TanStack root route files commonly keep the route declaration, root document,
+not-found component, and error component together because the route config
+references them directly. Splitting this file is a low-value structural refactor
+for this migration.
+
+Future resolution:
+
+Extract root error/not-found views only if the root route grows additional
+behavior or shared error presentation is introduced.
+
+Accepted risk:
+
+Maintainability is acceptable for this small route shell, and runtime behavior
+is unchanged.
+
 ### `react-doctor/rerender-state-only-in-handlers`
 
 Files:

@@ -23,17 +23,6 @@ COPY . .
 
 RUN pnpm build
 
-FROM base AS migrator
-
-ENV NODE_ENV=production
-
-COPY --from=deps /app/node_modules ./node_modules
-COPY package.json pnpm-lock.yaml drizzle.config.ts ./
-COPY drizzle ./drizzle
-COPY lib ./lib
-
-CMD ["pnpm", "db:migrate"]
-
 FROM base AS runtime
 
 ENV NODE_ENV=production
@@ -42,9 +31,6 @@ ENV PORT=3000
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/.output ./.output
-COPY drizzle.config.ts ./
-COPY drizzle ./drizzle
-COPY lib ./lib
 COPY package.json ./
 
 EXPOSE 3000

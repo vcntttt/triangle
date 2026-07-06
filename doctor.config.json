@@ -1,0 +1,50 @@
+{
+   "ignore": {
+      "overrides": [
+         {
+            "files": ["components/common/issues/issue-detail.tsx"],
+            "rules": [
+               "react-doctor/no-derived-state",
+               "react-doctor/no-giant-component",
+               "react-doctor/prefer-useReducer",
+               "react-doctor/prefer-use-effect-event"
+            ]
+         },
+         {
+            "files": [
+               "components/common/issues/issue-context-menu.tsx",
+               "components/common/settings/project-options-settings.tsx",
+               "components/layout/headers/issues/filter.tsx",
+               "components/common/projects/create-project-dialog.tsx",
+               "components/common/projects/create-project-update-dialog.tsx",
+               "src/routes/projects.$projectSlug.tsx"
+            ],
+            "rules": [
+               "react-doctor/no-giant-component",
+               "react-doctor/prefer-useReducer",
+               "react-doctor/prefer-use-effect-event",
+               "react-doctor/no-cascading-set-state",
+               "react-doctor/no-derived-state-effect",
+               "react-doctor/rerender-state-only-in-handlers"
+            ]
+         },
+         {
+            "files": ["components/layout/sidebar/create-new-issue/index.tsx"],
+            "rules": [
+               "react-doctor/no-giant-component",
+               "react-doctor/prefer-useReducer",
+               "react-doctor/prefer-use-effect-event",
+               "react-doctor/no-cascading-set-state",
+               "react-doctor/no-derived-state-effect",
+               "react-doctor/rerender-state-only-in-handlers",
+               "react-doctor/no-event-handler",
+               "react-doctor/no-chain-state-updates"
+            ]
+         },
+         {
+            "files": ["src/routes/__root.tsx"],
+            "rules": ["react-doctor/no-multi-comp"]
+         }
+      ]
+   }
+}
