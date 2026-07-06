@@ -1,4 +1,5 @@
 import { Outlet, createFileRoute, useMatches } from '@tanstack/react-router';
+import { useSuspenseQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import { useEffect, useMemo } from 'react';
 import Header from '@/components/layout/headers/issues/header';
@@ -6,17 +7,16 @@ import MainLayout from '@/components/layout/main-layout';
 import { useProjectOptions } from '@/hooks/use-project-options';
 import type { Project } from '@/lib/models';
 import { useCreateIssueStore } from '@/store/create-issue-store';
-import { getIssuesPage } from '@/src/server/issues';
+import { issuesPageQuery } from '@/src/data/issues';
 
 const issuesSearchSchema = z.object({
    projectId: z.string().optional(),
 });
 
-type IssuesPageData = Awaited<ReturnType<typeof getIssuesPage>>;
-
 export const Route = createFileRoute('/issues')({
    validateSearch: (search) => issuesSearchSchema.parse(search),
-   loader: () => getIssuesPage(),
+   loaderDeps: ({ search }) => ({ projectId: search.projectId }),
+   loader: ({ context, deps }) => context.queryClient.ensureQueryData(issuesPageQuery(deps)),
    head: () => ({
       meta: [
          { title: 'Issues | Triangle' },
@@ -27,9 +27,9 @@ export const Route = createFileRoute('/issues')({
 });
 
 function IssuesLayout() {
-   const pageData = Route.useLoaderData();
-   const { issues, isConnected } = pageData;
    const { projectId } = Route.useSearch();
+   const { data: pageData } = useSuspenseQuery(issuesPageQuery({ projectId }));
+   const { issues, isConnected } = pageData;
    const projects = useProjectOptions();
    const { setDefaultProject } = useCreateIssueStore();
 
@@ -78,18 +78,18 @@ export function useIssuesPageData() {
          const match = matches.find((item) => item.routeId === '/issues');
 
          return {
-            pageData: match?.loaderData as IssuesPageData | undefined,
             projectId: (match?.search as { projectId?: string } | undefined)?.projectId,
          };
       },
    });
+   const { data: pageData } = useSuspenseQuery(issuesPageQuery({ projectId: data.projectId }));
 
-   if (!data.pageData) {
+   if (!pageData) {
       throw new Error('Issues route data is unavailable.');
    }
 
    return {
-      pageData: data.pageData,
+      pageData,
       projectId: data.projectId,
    };
 }

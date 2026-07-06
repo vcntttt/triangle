@@ -1,16 +1,17 @@
 import { Outlet, createFileRoute, useRouterState } from '@tanstack/react-router';
+import { useSuspenseQuery } from '@tanstack/react-query';
 import Header from '@/components/layout/headers/projects/header';
 import MainLayout from '@/components/layout/main-layout';
-import { getProjectsPage } from '@/src/server/projects';
+import { projectsPageQuery } from '@/src/data/projects';
 
 export const Route = createFileRoute('/projects')({
-   loader: () => getProjectsPage(),
+   loader: ({ context }) => context.queryClient.ensureQueryData(projectsPageQuery()),
    head: () => ({
       meta: [
          { title: 'Projects | Triangle' },
          {
             name: 'description',
-            content: 'Projects backed by PostgreSQL for the personal Triangle tracker.',
+            content: 'Projects backed by Convex for the personal Triangle tracker.',
          },
       ],
    }),
@@ -18,7 +19,8 @@ export const Route = createFileRoute('/projects')({
 });
 
 function ProjectsPage() {
-   const { projects, isConnected } = Route.useLoaderData();
+   const { data } = useSuspenseQuery(projectsPageQuery());
+   const { projects, isConnected } = data;
    const pathname = useRouterState({ select: (state) => state.location.pathname });
    const isProjectsIndex = pathname === '/projects';
 

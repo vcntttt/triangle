@@ -1,10 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router';
+import { useSuspenseQuery } from '@tanstack/react-query';
 import { ProjectUpdatesTimeline } from '@/components/common/projects/project-updates-timeline';
 import MainLayout from '@/components/layout/main-layout';
-import { getProjectUpdatesPage } from '@/src/server/projects';
+import { projectUpdatesPageQuery } from '@/src/data/projects';
 
 export const Route = createFileRoute('/pulse')({
-   loader: () => getProjectUpdatesPage(),
+   loader: ({ context }) => context.queryClient.ensureQueryData(projectUpdatesPageQuery()),
    head: () => ({
       meta: [
          { title: 'Pulse | Triangle' },
@@ -18,7 +19,8 @@ export const Route = createFileRoute('/pulse')({
 });
 
 function PulsePage() {
-   const { updates, databaseError, isConnected } = Route.useLoaderData();
+   const { data } = useSuspenseQuery(projectUpdatesPageQuery());
+   const { updates, databaseError, isConnected } = data;
 
    return (
       <MainLayout headersNumber={1}>

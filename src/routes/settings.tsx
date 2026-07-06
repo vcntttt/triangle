@@ -1,20 +1,19 @@
 import { createFileRoute } from '@tanstack/react-router';
+import { useSuspenseQuery } from '@tanstack/react-query';
 import Settings from '@/components/common/settings/settings';
 import Header from '@/components/layout/headers/settings/header';
 import MainLayout from '@/components/layout/main-layout';
-import { getProjectPriorityList, getProjectStatusList } from '@/src/server/projects';
+import { projectPriorityListQuery, projectStatusListQuery } from '@/src/data/projects';
+import { viewerPreferencesQuery, viewerProfileQuery } from '@/src/data/viewer';
 
 export const Route = createFileRoute('/settings')({
-   loader: async () => {
-      const [projectStatuses, projectPriorities] = await Promise.all([
-         getProjectStatusList(),
-         getProjectPriorityList(),
+   loader: async ({ context }) => {
+      await Promise.all([
+         context.queryClient.ensureQueryData(projectStatusListQuery()),
+         context.queryClient.ensureQueryData(projectPriorityListQuery()),
+         context.queryClient.ensureQueryData(viewerProfileQuery()),
+         context.queryClient.ensureQueryData(viewerPreferencesQuery()),
       ]);
-
-      return {
-         projectStatuses,
-         projectPriorities,
-      };
    },
    head: () => ({
       meta: [{ title: 'Settings | Triangle' }],
@@ -23,7 +22,8 @@ export const Route = createFileRoute('/settings')({
 });
 
 function SettingsPage() {
-   const { projectStatuses, projectPriorities } = Route.useLoaderData();
+   const { data: projectStatuses } = useSuspenseQuery(projectStatusListQuery());
+   const { data: projectPriorities } = useSuspenseQuery(projectPriorityListQuery());
 
    return (
       <MainLayout header={<Header />} headersNumber={1}>
