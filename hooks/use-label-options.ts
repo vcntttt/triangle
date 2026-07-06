@@ -1,28 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import type { LabelInterface } from '@/lib/models';
-import { getLabelOptions } from '@/src/server/labels';
+import { labelOptionsQuery } from '@/src/data/labels';
 
 export function useLabelOptions() {
-   const [labels, setLabels] = useState<LabelInterface[]>([]);
+   const { data = [] } = useQuery(labelOptionsQuery());
 
-   useEffect(() => {
-      let isMounted = true;
-
-      void getLabelOptions()
-         .then((result) => {
-            if (!isMounted) return;
-            setLabels(result as LabelInterface[]);
-         })
-         .catch((error) => {
-            console.error('Failed to load label options.', error);
-         });
-
-      return () => {
-         isMounted = false;
-      };
-   }, []);
-
-   return labels;
+   return data as LabelInterface[];
 }
