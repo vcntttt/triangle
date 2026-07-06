@@ -7,6 +7,7 @@ import { routeTree } from './routeTree.gen';
 
 export function getRouter() {
    const convexUrl =
+      (typeof process !== 'undefined' && process.env?.CONVEX_SELF_HOSTED_URL) ||
       (typeof process !== 'undefined' && process.env?.VITE_CONVEX_URL) ||
       (import.meta.env.VITE_CONVEX_URL as string | undefined);
 
