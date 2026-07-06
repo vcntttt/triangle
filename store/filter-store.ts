@@ -1,97 +1,44 @@
-import { create } from 'zustand';
+import { useViewerCommands, useViewerPreferences } from '@/src/data/viewer';
 
-export interface FilterState {
-   // Filter options
-   filters: {
-      status: string[];
-      assignee: string[];
-      priority: string[];
-      labels: string[];
-      project: string[];
+type IssueFilterType = 'status' | 'assignee' | 'priority' | 'labels' | 'project';
+
+const emptyIssueFilters: Record<IssueFilterType, string[]> = {
+   status: [],
+   assignee: [],
+   priority: [],
+   labels: [],
+   project: [],
+};
+
+export function useFilterStore() {
+   const preferences = useViewerPreferences();
+   const { updatePreferences } = useViewerCommands();
+   const filters = preferences?.issueFilters ?? emptyIssueFilters;
+
+   const setFilter = (type: IssueFilterType, ids: string[]) => {
+      void updatePreferences({ issueFilters: { [type]: ids } });
    };
 
-   // Actions
-   setFilter: (
-      type: 'status' | 'assignee' | 'priority' | 'labels' | 'project',
-      ids: string[]
-   ) => void;
-   toggleFilter: (
-      type: 'status' | 'assignee' | 'priority' | 'labels' | 'project',
-      id: string
-   ) => void;
-   clearFilters: () => void;
-   clearFilterType: (type: 'status' | 'assignee' | 'priority' | 'labels' | 'project') => void;
-
-   // Utility
-   hasActiveFilters: () => boolean;
-   getActiveFiltersCount: () => number;
+   return {
+      filters,
+      setFilter,
+      toggleFilter: (type: IssueFilterType, id: string) => {
+         const currentFilters = filters[type];
+         setFilter(
+            type,
+            currentFilters.includes(id)
+               ? currentFilters.filter((item) => item !== id)
+               : [...currentFilters, id]
+         );
+      },
+      clearFilters: () => {
+         void updatePreferences({ issueFilters: emptyIssueFilters });
+      },
+      clearFilterType: (type: IssueFilterType) => setFilter(type, []),
+      hasActiveFilters: () => Object.values(filters).some((filterArray) => filterArray.length > 0),
+      getActiveFiltersCount: () =>
+         Object.values(filters).reduce((acc, current) => acc + current.length, 0),
+   };
 }
 
-export const useFilterStore = create<FilterState>((set, get) => ({
-   // Initial state
-   filters: {
-      status: [],
-      assignee: [],
-      priority: [],
-      labels: [],
-      project: [],
-   },
-
-   // Actions
-   setFilter: (type, ids) => {
-      set((state) => ({
-         filters: {
-            ...state.filters,
-            [type]: ids,
-         },
-      }));
-   },
-
-   toggleFilter: (type, id) => {
-      set((state) => {
-         const currentFilters = state.filters[type];
-         const newFilters = currentFilters.includes(id)
-            ? currentFilters.filter((item) => item !== id)
-            : [...currentFilters, id];
-
-         return {
-            filters: {
-               ...state.filters,
-               [type]: newFilters,
-            },
-         };
-      });
-   },
-
-   clearFilters: () => {
-      set({
-         filters: {
-            status: [],
-            assignee: [],
-            priority: [],
-            labels: [],
-            project: [],
-         },
-      });
-   },
-
-   clearFilterType: (type) => {
-      set((state) => ({
-         filters: {
-            ...state.filters,
-            [type]: [],
-         },
-      }));
-   },
-
-   // Utility
-   hasActiveFilters: () => {
-      const { filters } = get();
-      return Object.values(filters).some((filterArray) => filterArray.length > 0);
-   },
-
-   getActiveFiltersCount: () => {
-      const { filters } = get();
-      return Object.values(filters).reduce((acc, curr) => acc + curr.length, 0);
-   },
-}));
+export type FilterState = ReturnType<typeof useFilterStore>;

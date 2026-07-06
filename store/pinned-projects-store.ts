@@ -1,31 +1,16 @@
-import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
+import type { Id } from '@convex/_generated/dataModel';
+import { useViewerCommands, useViewerPreferences } from '@/src/data/viewer';
 
-interface PinnedProjectsState {
-   pinnedProjectIds: string[];
-   togglePinnedProject: (projectId: string) => void;
-   isPinned: (projectId: string) => boolean;
+export function usePinnedProjectsStore() {
+   const preferences = useViewerPreferences();
+   const { togglePinnedProject } = useViewerCommands();
+   const pinnedProjectIds = preferences?.pinnedProjectIds ?? [];
+
+   return {
+      pinnedProjectIds,
+      togglePinnedProject: (projectId: string) => {
+         void togglePinnedProject({ projectId: projectId as Id<'projects'> });
+      },
+      isPinned: (projectId: string) => pinnedProjectIds.includes(projectId as Id<'projects'>),
+   };
 }
-
-export const usePinnedProjectsStore = create<PinnedProjectsState>()(
-   persist(
-      (set, get) => ({
-         pinnedProjectIds: [],
-         togglePinnedProject: (projectId: string) =>
-            set((state) => {
-               const exists = state.pinnedProjectIds.includes(projectId);
-
-               return {
-                  pinnedProjectIds: exists
-                     ? state.pinnedProjectIds.filter((id) => id !== projectId)
-                     : [...state.pinnedProjectIds, projectId],
-               };
-            }),
-         isPinned: (projectId: string) => get().pinnedProjectIds.includes(projectId),
-      }),
-      {
-         name: 'pinned-projects-storage',
-         storage: createJSONStorage(() => localStorage),
-      }
-   )
-);

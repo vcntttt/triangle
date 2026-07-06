@@ -1,48 +1,46 @@
-import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
+import { useViewerCommands, useViewerPreferences } from '@/src/data/viewer';
 
 export type ProjectDisplayProperty = 'health' | 'priority' | 'lead' | 'targetDate' | 'status';
 export type ProjectViewType = 'list' | 'board';
 export type ProjectBoardGroupBy = 'status' | 'priority' | 'health';
 
-interface ProjectsViewState {
-   viewType: ProjectViewType;
-   groupBy: ProjectBoardGroupBy;
-   showEmptyGroups: boolean;
-   visibleProperties: Record<ProjectDisplayProperty, boolean>;
-   setViewType: (viewType: ProjectViewType) => void;
-   setGroupBy: (groupBy: ProjectBoardGroupBy) => void;
-   setShowEmptyGroups: (showEmptyGroups: boolean) => void;
-   toggleProperty: (property: ProjectDisplayProperty) => void;
-}
+const defaultProjectView = {
+   viewType: 'list' as ProjectViewType,
+   groupBy: 'status' as ProjectBoardGroupBy,
+   showEmptyGroups: false,
+   visibleProperties: {
+      health: true,
+      priority: true,
+      lead: true,
+      targetDate: true,
+      status: true,
+   },
+};
 
-export const useProjectsViewStore = create<ProjectsViewState>()(
-   persist(
-      (set) => ({
-         viewType: 'list',
-         groupBy: 'status',
-         showEmptyGroups: false,
-         visibleProperties: {
-            health: true,
-            priority: true,
-            lead: true,
-            targetDate: true,
-            status: true,
-         },
-         setViewType: (viewType: ProjectViewType) => set({ viewType }),
-         setGroupBy: (groupBy: ProjectBoardGroupBy) => set({ groupBy }),
-         setShowEmptyGroups: (showEmptyGroups: boolean) => set({ showEmptyGroups }),
-         toggleProperty: (property: ProjectDisplayProperty) =>
-            set((state) => ({
+export function useProjectsViewStore() {
+   const preferences = useViewerPreferences();
+   const { updatePreferences } = useViewerCommands();
+   const projectView = preferences?.projectView ?? defaultProjectView;
+
+   return {
+      ...projectView,
+      setViewType: (viewType: ProjectViewType) => {
+         void updatePreferences({ projectView: { viewType } });
+      },
+      setGroupBy: (groupBy: ProjectBoardGroupBy) => {
+         void updatePreferences({ projectView: { groupBy } });
+      },
+      setShowEmptyGroups: (showEmptyGroups: boolean) => {
+         void updatePreferences({ projectView: { showEmptyGroups } });
+      },
+      toggleProperty: (property: ProjectDisplayProperty) => {
+         void updatePreferences({
+            projectView: {
                visibleProperties: {
-                  ...state.visibleProperties,
-                  [property]: !state.visibleProperties[property],
+                  [property]: !projectView.visibleProperties[property],
                },
-            })),
-      }),
-      {
-         name: 'projects-view-storage',
-         storage: createJSONStorage(() => localStorage),
-      }
-   )
-);
+            },
+         });
+      },
+   };
+}

@@ -1,59 +1,45 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { useViewerCommands, useViewerPreferences } from '@/src/data/viewer';
 
 export type ViewType = 'list' | 'grid';
 export type IssueDisplayProperty = 'identifier' | 'labels' | 'project' | 'assignee' | 'createdAt';
 
-interface ViewState {
-   viewType: ViewType;
-   showEmptyStatuses: boolean;
-   hideCompletedIssues: boolean;
-   visibleProperties: Record<IssueDisplayProperty, boolean>;
-   setViewType: (viewType: ViewType) => void;
-   setShowEmptyStatuses: (showEmptyStatuses: boolean) => void;
-   setHideCompletedIssues: (hideCompletedIssues: boolean) => void;
-   toggleProperty: (property: IssueDisplayProperty) => void;
+const defaultIssueView = {
+   viewType: 'list' as ViewType,
+   showEmptyStatuses: true,
+   hideCompletedIssues: false,
+   visibleProperties: {
+      identifier: true,
+      labels: true,
+      project: true,
+      assignee: true,
+      createdAt: true,
+   },
+};
+
+export function useViewStore() {
+   const preferences = useViewerPreferences();
+   const { updatePreferences } = useViewerCommands();
+   const issueView = preferences?.issueView ?? defaultIssueView;
+
+   return {
+      ...issueView,
+      setViewType: (viewType: ViewType) => {
+         void updatePreferences({ issueView: { viewType } });
+      },
+      setShowEmptyStatuses: (showEmptyStatuses: boolean) => {
+         void updatePreferences({ issueView: { showEmptyStatuses } });
+      },
+      setHideCompletedIssues: (hideCompletedIssues: boolean) => {
+         void updatePreferences({ issueView: { hideCompletedIssues } });
+      },
+      toggleProperty: (property: IssueDisplayProperty) => {
+         void updatePreferences({
+            issueView: {
+               visibleProperties: {
+                  [property]: !issueView.visibleProperties[property],
+               },
+            },
+         });
+      },
+   };
 }
-
-export const useViewStore = create<ViewState>()(
-   persist(
-      (set) => ({
-         viewType: 'list',
-         showEmptyStatuses: true,
-         hideCompletedIssues: false,
-         visibleProperties: {
-            identifier: true,
-            labels: true,
-            project: true,
-            assignee: true,
-            createdAt: true,
-         },
-         setViewType: (viewType: ViewType) => set({ viewType }),
-         setShowEmptyStatuses: (showEmptyStatuses: boolean) => set({ showEmptyStatuses }),
-         setHideCompletedIssues: (hideCompletedIssues: boolean) => set({ hideCompletedIssues }),
-         toggleProperty: (property: IssueDisplayProperty) =>
-            set((state) => ({
-               visibleProperties: {
-                  ...state.visibleProperties,
-                  [property]: !state.visibleProperties[property],
-               },
-            })),
-      }),
-      {
-         name: 'view-storage',
-         storage: createJSONStorage(() => localStorage),
-         merge: (persistedState, currentState) => {
-            const persisted = persistedState as Partial<ViewState> | undefined;
-
-            return {
-               ...currentState,
-               ...persisted,
-               visibleProperties: {
-                  ...currentState.visibleProperties,
-                  ...persisted?.visibleProperties,
-               },
-            };
-         },
-      }
-   )
-);
