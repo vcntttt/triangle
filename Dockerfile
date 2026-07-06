@@ -18,6 +18,11 @@ RUN pnpm install --frozen-lockfile
 
 FROM base AS builder
 
+ARG VITE_CONVEX_URL
+ENV VITE_CONVEX_URL=${VITE_CONVEX_URL}
+ARG VITE_CONVEX_SITE_URL
+ENV VITE_CONVEX_SITE_URL=${VITE_CONVEX_SITE_URL}
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
