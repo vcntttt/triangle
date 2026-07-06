@@ -8,11 +8,12 @@ import {
    DropdownMenuSeparator,
    DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { currentUser, personalAssigneeOptions, statusUserColors } from '@/lib/current-user';
-import { useIssuesStore } from '@/store/issues-store';
+import { statusUserColors } from '@/lib/current-user';
+import { useIssuesData } from '@/components/common/issues/issues-data-context';
 import { CheckIcon, CircleUserRound, UserIcon } from 'lucide-react';
 import { useState } from 'react';
 import type { User } from '@/lib/models';
+import { useViewerUser } from '@/hooks/use-viewer-user';
 
 interface AssigneeUserProps {
    user: User | null;
@@ -38,12 +39,14 @@ function AssigneeAvatar({ user }: { user: User | null }) {
 
 export function AssigneeUser({ user, issueId }: AssigneeUserProps) {
    const [open, setOpen] = useState(false);
-   const { updateIssueAssignee } = useIssuesStore();
+   const { updateIssueAssignee } = useIssuesData();
+   const currentUser = useViewerUser();
+   const personalAssigneeOptions = [currentUser];
 
    return (
       <DropdownMenu open={open} onOpenChange={setOpen}>
          <DropdownMenuTrigger asChild>
-            <button className="relative w-fit focus:outline-none">
+            <button type="button" className="relative w-fit focus:outline-none">
                <AssigneeAvatar user={user} />
                {user && (
                   <span

@@ -12,9 +12,10 @@ import {
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { currentUser } from '@/lib/current-user';
+import { viewerProfileToUser } from '@/lib/current-user';
 import type { Health, ProjectTimelineUpdate } from '@/lib/models';
 import { cn } from '@/lib/utils';
+import { useViewerProfile } from '@/src/data/viewer';
 import { CreateProjectUpdateButton } from './create-project-update-dialog';
 
 interface ProjectUpdatesTimelineProps {
@@ -85,6 +86,7 @@ export function ProjectUpdatesTimeline({
    databaseError,
    isConnected,
 }: ProjectUpdatesTimelineProps) {
+   const viewer = viewerProfileToUser(useViewerProfile());
    const [activeFilter, setActiveFilter] = useState<TimelineFilter>('recent');
 
    const visibleUpdates = useMemo(() => {
@@ -179,13 +181,10 @@ export function ProjectUpdatesTimeline({
                               </span>
                               <span className="inline-flex items-center gap-1.5 text-muted-foreground">
                                  <Avatar className="size-5">
-                                    <AvatarImage
-                                       src={currentUser.avatarUrl}
-                                       alt={currentUser.name}
-                                    />
-                                    <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
+                                    <AvatarImage src={viewer.avatarUrl} alt={viewer.name} />
+                                    <AvatarFallback>{viewer.name.charAt(0)}</AvatarFallback>
                                  </Avatar>
-                                 {currentUser.name}
+                                 {viewer.name}
                               </span>
                               <span className="text-muted-foreground">
                                  {getRelativeDate(update.createdAt)}

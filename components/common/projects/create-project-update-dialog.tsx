@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useState } from 'react';
+import { useId, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import { useRouter } from '@tanstack/react-router';
 import { Activity, CheckIcon, CircleAlert, CircleHelp, Plus, Send } from 'lucide-react';
@@ -28,7 +28,8 @@ import { useProjectOptions } from '@/hooks/use-project-options';
 import type { Health, Project, ProjectUpdate } from '@/lib/models';
 import { health as healthOptions } from '@/lib/ui-catalog';
 import { cn } from '@/lib/utils';
-import { createProjectUpdate } from '@/src/server/projects';
+import { useProjectCommands } from '@/src/data/projects';
+import { ProjectIconGlyph } from './project-icon';
 
 interface CreateProjectUpdateDialogProps {
    project?: Pick<Project, 'id' | 'name' | 'health'>;
@@ -58,18 +59,16 @@ export function CreateProjectUpdateDialog({
    );
    const [body, setBody] = useState('');
    const [isSubmitting, setIsSubmitting] = useState(false);
+   const { createProjectUpdate } = useProjectCommands();
 
    const isOpen = open ?? internalOpen;
    const setIsOpen = onOpenChange ?? setInternalOpen;
+   const [previousOpen, setPreviousOpen] = useState(isOpen);
    const selectedProject = project ?? projects.find((item) => item.id === projectId);
    const selectedHealthOption =
       healthOptions.find((item) => item.id === selectedHealth) ?? healthOptions[0];
 
-   useEffect(() => {
-      if (!isOpen) {
-         return;
-      }
-
+   const resetForm = () => {
       setProjectId(project?.id ?? '');
       setSelectedHealth(
          project?.health.id && project.health.id !== 'no-update' ? project.health.id : 'on-track'
@@ -77,7 +76,23 @@ export function CreateProjectUpdateDialog({
       setBody('');
       setProjectPickerOpen(false);
       setHealthPickerOpen(false);
-   }, [isOpen, project?.health.id, project?.id, projects]);
+   };
+
+   if (isOpen !== previousOpen) {
+      setPreviousOpen(isOpen);
+
+      if (isOpen) {
+         resetForm();
+      }
+   }
+
+   const handleOpenChange = (nextOpen: boolean) => {
+      if (nextOpen) {
+         resetForm();
+      }
+
+      setIsOpen(nextOpen);
+   };
 
    const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -99,11 +114,9 @@ export function CreateProjectUpdateDialog({
 
       try {
          const update = await createProjectUpdate({
-            data: {
-               projectId: targetProjectId,
-               health: selectedHealth,
-               body: trimmedBody,
-            },
+            projectId: targetProjectId,
+            health: selectedHealth,
+            body: trimmedBody,
          });
 
          onProjectUpdate?.(targetProjectId, update);
@@ -119,7 +132,7 @@ export function CreateProjectUpdateDialog({
    };
 
    return (
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
          {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
          <DialogContent className="w-full p-0 shadow-xl sm:max-w-[750px] top-[30%]">
             <DialogHeader className="px-4 pt-4 pb-0">
@@ -189,7 +202,10 @@ export function CreateProjectUpdateDialog({
                                              className="flex items-center justify-between"
                                           >
                                              <div className="flex min-w-0 items-center gap-2">
-                                                <item.icon className="size-4 shrink-0" />
+                                                <ProjectIconGlyph
+                                                   icon={item.iconConfig}
+                                                   className="size-4 shrink-0"
+                                                />
                                                 <span className="truncate">{item.name}</span>
                                              </div>
                                              {projectId === item.id && (

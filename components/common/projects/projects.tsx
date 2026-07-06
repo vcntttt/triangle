@@ -8,9 +8,11 @@ import {
    type ProjectOptionLike,
    toPresentationProject,
 } from '@/lib/projects-presentation';
+import { viewerProfileToUser } from '@/lib/current-user';
 import type { ProjectUpdate } from '@/lib/models';
 import { useProjectsFilterStore } from '@/store/projects-filter-store';
 import { useProjectsViewStore } from '@/store/projects-view-store';
+import { useViewerProfile } from '@/src/data/viewer';
 
 interface ProjectsProps {
    projects: ProjectLike[];
@@ -28,6 +30,7 @@ export default function Projects({
    const { viewType, visibleProperties } = useProjectsViewStore();
    const { filters, sort } = useProjectsFilterStore();
    const [projectUpdates, setProjectUpdates] = useState<Record<string, ProjectUpdate>>({});
+   const viewer = viewerProfileToUser(useViewerProfile());
 
    const handleProjectUpdate = (projectId: string, update: ProjectUpdate) => {
       setProjectUpdates((updates) => ({ ...updates, [projectId]: update }));
@@ -35,7 +38,12 @@ export default function Projects({
 
    const presentationProjects = projects.map((project) => {
       const latestUpdate = projectUpdates[project.id] ?? project.latestUpdate;
-      return toPresentationProject({ ...project, latestUpdate }, statusOptions, priorityOptions);
+      return toPresentationProject(
+         { ...project, latestUpdate },
+         statusOptions,
+         priorityOptions,
+         viewer
+      );
    });
 
    const visibleProjects = presentationProjects

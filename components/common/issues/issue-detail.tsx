@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { format } from 'date-fns';
 import { Archive, ArrowLeft, Plus, Trash2 } from 'lucide-react';
@@ -9,21 +9,23 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { LabelSelector } from './label-selector';
+import { LabelBadge } from './label-badge';
 import { PrioritySelector } from './priority-selector';
 import { StatusSelector } from './status-selector';
 import { AssigneeUser } from './assignee-user';
-import { useIssuesStore } from '@/store/issues-store';
+import { useIssuesData } from '@/components/common/issues/issues-data-context';
 import { toast } from 'sonner';
 import type { Issue } from '@/lib/models';
 import { ProjectSelector } from '@/components/layout/sidebar/create-new-issue/project-selector';
 import { ParentIssueSelector } from './parent-issue-selector';
-import { createIssue as createIssueMutation } from '@/src/server/issues';
-import { cn, getNextLexoRank } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { priorities, status as statusOptions } from '@/lib/ui-catalog';
-import { toPresentationIssue } from '@/lib/issues-presentation';
-import type { IssueListItem } from '@/lib/db/issues';
 import { IssueChip, issueChipClassName } from './issue-chip';
-import { currentUser } from '@/lib/current-user';
+import { parseIssueInlineTokens } from '@/lib/issue-inline-tokens';
+import { useProjectOptions } from '@/hooks/use-project-options';
+import { useLabelOptions } from '@/hooks/use-label-options';
+import { useViewerUser } from '@/hooks/use-viewer-user';
+import { useIssueCommands } from '@/src/data/issues';
 
 export function IssueDetail({
    issueId,
@@ -43,18 +45,22 @@ export function IssueDetail({
    const navigate = useNavigate();
    const {
       getIssueById,
-      getAllIssues,
-      addIssue,
       updateIssueContent,
       deleteIssue,
       archiveIssue,
       updateIssueProject,
       updateIssueParent,
-   } = useIssuesStore();
+      addIssueLabel,
+   } = useIssuesData();
+   const { createIssue } = useIssueCommands();
+   const projectOptions = useProjectOptions();
+   const labelOptions = useLabelOptions();
+   const currentUser = useViewerUser();
    const presentationIssue = useMemo(
       () => getIssueById(issueId) ?? initialIssue ?? null,
       [getIssueById, issueId, initialIssue]
    );
+   const presentationDescription = presentationIssue?.description ?? '';
    const createdAtLabel = presentationIssue
       ? format(new Date(presentationIssue.createdAt), 'MMM dd, yyyy')
       : '';
@@ -69,6 +75,24 @@ export function IssueDetail({
    const [creatingSubissue, setCreatingSubissue] = useState(false);
    const newSubissueTitleRef = useRef<HTMLInputElement | null>(null);
 
+   const applyInlineTokenMetadata = useCallback(
+      (rawTitle: string) => {
+         const inlineDraft = parseIssueInlineTokens(rawTitle, projectOptions, labelOptions);
+         const finalTitle = inlineDraft.title || rawTitle.trim();
+
+         if (inlineDraft.project) {
+            updateIssueProject(issueId, inlineDraft.project);
+         }
+
+         inlineDraft.labels.forEach((label) => {
+            addIssueLabel(issueId, label);
+         });
+
+         return finalTitle;
+      },
+      [addIssueLabel, issueId, labelOptions, projectOptions, updateIssueProject]
+   );
+
    useEffect(() => {
       setTitle(presentationIssue?.title ?? '');
       setDescription(presentationIssue?.description ?? '');
@@ -76,33 +100,39 @@ export function IssueDetail({
 
    useEffect(() => {
       if (!presentationIssue) return;
-      const trimmed = title.trim();
-      if (trimmed === presentationIssue.title.trim() || !trimmed) return;
+      const inlineDraft = parseIssueInlineTokens(title, projectOptions, labelOptions);
+      const nextTitle = inlineDraft.title || title.trim();
+      if (!nextTitle) return;
+      if (nextTitle === presentationIssue.title.trim() && !inlineDraft.hasInlineTokens) return;
 
       const timeout = setTimeout(() => {
-         updateIssueContent(issueId, { title: trimmed });
+         const finalTitle = applyInlineTokenMetadata(title);
+         setTitle(finalTitle);
+         updateIssueContent(issueId, { title: finalTitle });
       }, 1000);
 
       return () => clearTimeout(timeout);
-   }, [title, presentationIssue?.title, issueId, updateIssueContent]);
+   }, [
+      applyInlineTokenMetadata,
+      labelOptions,
+      presentationIssue,
+      projectOptions,
+      title,
+      issueId,
+      updateIssueContent,
+   ]);
 
    useEffect(() => {
       if (!presentationIssue) return;
       const trimmed = description.trim();
-      if (trimmed === presentationIssue.description.trim()) return;
+      if (trimmed === presentationDescription.trim()) return;
 
       const timeout = setTimeout(() => {
          updateIssueContent(issueId, { description: trimmed });
       }, 1000);
 
       return () => clearTimeout(timeout);
-   }, [description, presentationIssue?.description, issueId, updateIssueContent]);
-
-   useEffect(() => {
-      if (!presentationIssue) return;
-      if (getIssueById(issueId)) return;
-      addIssue(presentationIssue);
-   }, [addIssue, getIssueById, issueId, presentationIssue]);
+   }, [description, issueId, presentationDescription, presentationIssue, updateIssueContent]);
 
    if (!presentationIssue) {
       return (
@@ -120,13 +150,14 @@ export function IssueDetail({
    const canBecomeSubissue = presentationIssue.subissues.length === 0;
 
    const persistTitle = () => {
-      const nextTitle = title.trim();
+      const nextTitle = applyInlineTokenMetadata(title);
 
       if (!nextTitle || nextTitle === presentationIssue.title) {
          setTitle(presentationIssue.title);
          return;
       }
 
+      setTitle(nextTitle);
       updateIssueContent(issueId, { title: nextTitle });
    };
 
@@ -177,7 +208,9 @@ export function IssueDetail({
    };
 
    const handleCreateSubissue = async () => {
-      const finalTitle = newSubissueTitle.trim();
+      const inlineDraft = parseIssueInlineTokens(newSubissueTitle, projectOptions, labelOptions);
+      const finalTitle = inlineDraft.title || newSubissueTitle.trim();
+      const finalProject = inlineDraft.project ?? presentationIssue.project;
 
       if (!finalTitle) {
          toast.error('Subissue title is required');
@@ -187,21 +220,16 @@ export function IssueDetail({
       setCreatingSubissue(true);
 
       try {
-         const createdIssue = await createIssueMutation({
-            data: {
-               title: finalTitle,
-               description: newSubissueDescription.trim() || undefined,
-               status: statusOptions.find((item) => item.id === 'to-do')?.id ?? statusOptions[0].id,
-               priority:
-                  priorities.find((item) => item.id === 'no-priority')?.id ?? priorities[0].id,
-               assigneeId: currentUser.id,
-               rank: getNextLexoRank(getAllIssues().map((issue) => issue.rank)),
-               parentIssueId: presentationIssue.id,
-               projectName: presentationIssue.project?.name ?? null,
-            },
+         await createIssue({
+            title: finalTitle,
+            description: newSubissueDescription.trim() || undefined,
+            status: statusOptions.find((item) => item.id === 'to-do')?.id ?? statusOptions[0].id,
+            priority: priorities.find((item) => item.id === 'no-priority')?.id ?? priorities[0].id,
+            assigneeId: currentUser.id,
+            parentIssueId: presentationIssue.id,
+            projectId: finalProject?.id ?? null,
+            labelIds: inlineDraft.labels.map((label) => label.id),
          });
-
-         addIssue(toPresentationIssue(createdIssue as IssueListItem));
          setNewSubissueTitle('');
          setNewSubissueDescription('');
          setSubissueComposerOpen(true);
@@ -370,8 +398,10 @@ export function IssueDetail({
                      const childIssue = getIssueById(subissue.id);
                      const subissueStatus = childIssue?.status ?? subissue.status;
                      const subissuePriority = childIssue?.priority ?? subissue.priority;
+                     const subissueLabels = childIssue?.labels ?? [];
                      const subissueDescription = childIssue?.description.trim();
                      const hasSubissueDescription = Boolean(subissueDescription);
+                     const hasSubissueLabels = subissueLabels.length > 0;
 
                      return (
                         <div
@@ -394,13 +424,17 @@ export function IssueDetail({
                            <Link
                               to="/issues/$issueIdentifier"
                               params={{ issueIdentifier: subissue.identifier }}
-                              className={cn(
-                                 'min-w-0 flex-1',
-                                 hasSubissueDescription && 'space-y-0.5'
-                              )}
+                              className="min-w-0 flex-1 space-y-1"
                            >
-                              <div className="text-sm font-medium leading-5 text-foreground">
-                                 {subissue.title}
+                              <div className="flex min-w-0 items-center gap-2">
+                                 <div className="min-w-0 flex-1 truncate text-sm font-medium leading-5 text-foreground">
+                                    {subissue.title}
+                                 </div>
+                                 {hasSubissueLabels && (
+                                    <div className="ml-auto flex shrink-0 items-center gap-1">
+                                       <LabelBadge label={subissueLabels} />
+                                    </div>
+                                 )}
                               </div>
                               {subissueDescription && (
                                  <p className="line-clamp-2 text-xs text-muted-foreground">

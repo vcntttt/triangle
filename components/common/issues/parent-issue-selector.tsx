@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
    Command,
@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CheckIcon, GitBranchPlus, Link2Off } from 'lucide-react';
-import { useIssuesStore } from '@/store/issues-store';
+import { useIssuesData } from '@/components/common/issues/issues-data-context';
 import type { Issue } from '@/lib/models';
 import { issueChipClassName, issueChipIconClassName } from './issue-chip';
 
@@ -34,13 +34,9 @@ export function ParentIssueSelector({
    const id = useId();
    const listId = `${id}-list`;
    const [open, setOpen] = useState(false);
-   const [value, setValue] = useState(parent?.id ?? 'no-parent');
-   const { getAllIssues, getSubissues } = useIssuesStore();
+   const { getAllIssues, getSubissues } = useIssuesData();
    const issues = getAllIssues();
-
-   useEffect(() => {
-      setValue(parent?.id ?? 'no-parent');
-   }, [parent?.id]);
+   const value = parent?.id ?? 'no-parent';
 
    const currentIssueChildren = getSubissues(issueId);
    const options = useMemo(
@@ -56,7 +52,6 @@ export function ParentIssueSelector({
 
    const handleSelect = (nextParentId: string) => {
       if (nextParentId === 'no-parent') {
-         setValue('no-parent');
          onChange(null);
          setOpen(false);
          return;
@@ -67,7 +62,6 @@ export function ParentIssueSelector({
          return;
       }
 
-      setValue(selected.id);
       onChange({
          id: selected.id,
          identifier: selected.identifier,

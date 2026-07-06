@@ -20,11 +20,12 @@ import {
 import { useLabelOptions } from '@/hooks/use-label-options';
 import { useProjectOptions } from '@/hooks/use-project-options';
 import type { Issue } from '@/lib/models';
-import { useIssuesStore } from '@/store/issues-store';
+import { priorities } from '@/lib/ui-catalog';
+import { useIssuesData } from '@/components/common/issues/issues-data-context';
 import { ProjectIconGlyph } from '@/components/common/projects/project-icon';
 import { useIssuesStatuses } from './issues-status-context';
 
-export type IssueActionKind = 'status' | 'label' | 'project';
+export type IssueActionKind = 'status' | 'label' | 'priority' | 'project';
 
 interface IssueActionCommandProps {
    open: boolean;
@@ -46,6 +47,11 @@ const actionCopy: Record<
       title: 'Set labels',
       description: 'Toggle a label across the targeted issue selection.',
       placeholder: 'Set labels...',
+   },
+   priority: {
+      title: 'Set priority',
+      description: 'Choose a priority for the targeted issue selection.',
+      placeholder: 'Set priority...',
    },
    project: {
       title: 'Set project',
@@ -72,8 +78,13 @@ export function IssueActionCommand({
    const statuses = useIssuesStatuses();
    const labels = useLabelOptions();
    const projects = useProjectOptions();
-   const { addIssueLabel, removeIssueLabel, updateIssueProject, updateIssueStatus } =
-      useIssuesStore();
+   const {
+      addIssueLabel,
+      removeIssueLabel,
+      updateIssuePriority,
+      updateIssueProject,
+      updateIssueStatus,
+   } = useIssuesData();
 
    const copy = action ? actionCopy[action] : actionCopy.status;
    const hasTargets = targetIssues.length > 0;
@@ -138,6 +149,18 @@ export function IssueActionCommand({
       showUpdatedToast(targetIssues, `Project set to ${nextProject.name}`);
    };
 
+   const handlePrioritySelect = (priorityId: string) => {
+      const nextPriority = priorities.find((priority) => priority.id === priorityId);
+      if (!nextPriority || !hasTargets) {
+         close();
+         return;
+      }
+
+      targetIssues.forEach((issue) => updateIssuePriority(issue.id, nextPriority));
+      close();
+      showUpdatedToast(targetIssues, `Priority updated to ${nextPriority.name}`);
+   };
+
    return (
       <Dialog open={open} onOpenChange={onOpenChange}>
          <DialogContent className="overflow-hidden p-0 sm:max-w-md">
@@ -177,6 +200,24 @@ export function IssueActionCommand({
                                  aria-hidden="true"
                               />
                               {label.name}
+                           </CommandItem>
+                        ))}
+                     </CommandGroup>
+                  )}
+                  {action === 'priority' && (
+                     <CommandGroup heading="Priority">
+                        {priorities.map((priority) => (
+                           <CommandItem
+                              key={priority.id}
+                              value={`${priority.name} ${priority.id}`}
+                              onSelect={() => handlePrioritySelect(priority.id)}
+                           >
+                              <priority.icon />
+                              {priority.name}
+                              {targetIssues.length > 0 &&
+                                 targetIssues.every(
+                                    (issue) => issue.priority.id === priority.id
+                                 ) && <CheckIcon className="ml-auto size-4" />}
                            </CommandItem>
                         ))}
                      </CommandGroup>

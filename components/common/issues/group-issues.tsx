@@ -1,7 +1,7 @@
 'use client';
 
 import type { Issue, Status } from '@/lib/models';
-import { useIssuesStore } from '@/store/issues-store';
+import { useIssuesData } from '@/components/common/issues/issues-data-context';
 import { useViewStore } from '@/store/view-store';
 import { cn } from '@/lib/utils';
 import { Plus } from 'lucide-react';
@@ -11,74 +11,10 @@ import { Button } from '../../ui/button';
 import { IssueDragType, IssueGrid } from './issue-grid';
 import { IssueLine } from './issue-line';
 import { useCreateIssueStore } from '@/store/create-issue-store';
-import { sortIssuesByPriority } from '@/lib/ui-catalog';
 import { AnimatePresence, LazyMotion, domAnimation } from 'motion/react';
 import * as m from 'motion/react-m';
 import { useMemo } from 'react';
-
-export type IssueListRow = {
-   issue: Issue;
-   nestingLevel: number;
-   childrenCount: number;
-   completedChildrenCount: number;
-};
-
-export function getIssueListRows(issues: Issue[]): IssueListRow[] {
-   const sortedIssues = sortIssuesByPriority(issues);
-   const issueMap = new Map(sortedIssues.map((issue) => [issue.id, issue]));
-   const rows: IssueListRow[] = [];
-   const seen = new Set<string>();
-
-   for (const issue of sortedIssues) {
-      if (seen.has(issue.id)) {
-         continue;
-      }
-
-      const visibleParent = issue.parentIssueId ? issueMap.get(issue.parentIssueId) : null;
-      if (visibleParent) {
-         continue;
-      }
-
-      const visibleChildren = sortedIssues.filter(
-         (candidate) => candidate.parentIssueId === issue.id
-      );
-
-      rows.push({
-         issue,
-         nestingLevel: 0,
-         childrenCount: visibleChildren.length,
-         completedChildrenCount: visibleChildren.filter(
-            (child) => child.status.id === 'completed' || child.status.id === 'archived'
-         ).length,
-      });
-      seen.add(issue.id);
-
-      for (const child of visibleChildren) {
-         rows.push({
-            issue: child,
-            nestingLevel: 1,
-            childrenCount: 0,
-            completedChildrenCount: 0,
-         });
-         seen.add(child.id);
-      }
-   }
-
-   for (const issue of sortedIssues) {
-      if (seen.has(issue.id)) {
-         continue;
-      }
-
-      rows.push({
-         issue,
-         nestingLevel: 0,
-         childrenCount: 0,
-         completedChildrenCount: 0,
-      });
-   }
-
-   return rows;
-}
+import { getIssueListRows } from './group-issue-rows';
 
 interface GroupIssuesProps {
    status: Status;
@@ -195,7 +131,7 @@ const IssueGridList: FC<{
    onToggleIssueSelection,
 }) => {
    const ref = useRef<HTMLDivElement>(null);
-   const { updateIssueStatus } = useIssuesStore();
+   const { updateIssueStatus } = useIssuesData();
 
    // Set up drop functionality to accept only issue items.
    const [{ isOver }, drop] = useDrop(() => ({

@@ -1,7 +1,7 @@
 'use client';
 
 import { useId, useState } from 'react';
-import { CheckIcon } from 'lucide-react';
+import { CheckIcon, CircleMinus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
    Command,
@@ -37,7 +37,7 @@ export function PrioritySelector({ priority, options, onPriorityChange }: Priori
    };
 
    const selectedOption = options.find((item) => item.id === priority.id);
-   const SelectedIcon = priorityIconMap[priority.id] ?? priorities[0].icon;
+   const SelectedIcon = priorityIconMap[priority.id] ?? priorities[0]?.icon ?? CircleMinus;
 
    return (
       <Popover open={open} onOpenChange={setOpen}>
@@ -65,7 +65,7 @@ export function PrioritySelector({ priority, options, onPriorityChange }: Priori
                   <CommandEmpty>No priority found.</CommandEmpty>
                   <CommandGroup>
                      {options.map((item) => {
-                        const Icon = priorityIconMap[item.id] ?? priorities[0].icon;
+                        const Icon = priorityIconMap[item.id] ?? priorities[0]?.icon ?? CircleMinus;
                         return (
                            <CommandItem
                               key={item.id}

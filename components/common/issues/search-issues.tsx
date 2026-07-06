@@ -1,8 +1,8 @@
 'use client';
 
-import { useIssuesStore } from '@/store/issues-store';
+import { useIssuesData, type IssuesData } from '@/components/common/issues/issues-data-context';
 import { useSearchStore } from '@/store/search-store';
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import { IssueLine } from './issue-line';
 import type { Issue } from '@/lib/models';
 
@@ -13,33 +13,28 @@ export function SearchIssues({
    onSelectIssue,
    onToggleIssueSelection,
 }: {
-   issues?: ReturnType<typeof useIssuesStore.getState>['issues'];
+   issues?: IssuesData['issues'];
    selectedIssueIdentifier?: string;
    selectedIssueIds?: Set<string>;
    onSelectIssue?: (issue: Issue) => void;
    onToggleIssueSelection?: (issue: Issue) => void;
 }) {
-   const [searchResults, setSearchResults] = useState<
-      ReturnType<typeof useIssuesStore.getState>['issues']
-   >([]);
-   const { searchIssues } = useIssuesStore();
+   const { searchIssues } = useIssuesData();
    const { searchQuery, isSearchOpen } = useSearchStore();
 
-   useEffect(() => {
+   const searchResults = useMemo(() => {
       if (searchQuery.trim() === '') {
-         setSearchResults([]);
-         return;
+         return [];
       }
 
       const normalizedQuery = searchQuery.toLowerCase();
-      const results = issues
+      return issues
          ? issues.filter(
               (issue) =>
                  issue.title.toLowerCase().includes(normalizedQuery) ||
                  issue.identifier.toLowerCase().includes(normalizedQuery)
            )
          : searchIssues(searchQuery);
-      setSearchResults(results);
    }, [issues, searchIssues, searchQuery]);
 
    if (!isSearchOpen) {

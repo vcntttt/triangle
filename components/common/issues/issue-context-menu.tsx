@@ -38,16 +38,40 @@ import {
    CheckIcon,
 } from 'lucide-react';
 import React, { useState } from 'react';
-import { currentUser, personalAssigneeOptions } from '@/lib/current-user';
-import { useIssuesStore } from '@/store/issues-store';
+import { useIssuesData } from '@/components/common/issues/issues-data-context';
 import { useCreateIssueStore } from '@/store/create-issue-store';
 import { useLabelOptions } from '@/hooks/use-label-options';
 import { useProjectOptions } from '@/hooks/use-project-options';
+import { useViewerUser } from '@/hooks/use-viewer-user';
 import { archivedStatus, priorities } from '@/lib/ui-catalog';
 import { usePinnedProjectsStore } from '@/store/pinned-projects-store';
 import { toast } from 'sonner';
 import { useIssuesStatuses } from './issues-status-context';
 import { ProjectIconGlyph } from '@/components/common/projects/project-icon';
+
+function notifyLinkAdded() {
+   toast.success('Link added');
+}
+
+function notifyIssueCopied() {
+   toast.success('Issue copied');
+}
+
+function notifyRelatedIssueCreated() {
+   toast.success('Related issue created');
+}
+
+function notifyMarkedAs(type: string) {
+   toast.success(`Marked as ${type}`);
+}
+
+function notifyIssueMoved() {
+   toast.success('Issue moved');
+}
+
+function notifyReminderSet() {
+   toast.success('Reminder set');
+}
 
 interface IssueContextMenuProps {
    issueId?: string;
@@ -61,6 +85,8 @@ export function IssueContextMenu({ issueId }: IssueContextMenuProps) {
    const issueStatusOptions = useIssuesStatuses();
    const { isPinned, togglePinnedProject } = usePinnedProjectsStore();
    const { openModal } = useCreateIssueStore();
+   const currentUser = useViewerUser();
+   const personalAssigneeOptions = [currentUser];
 
    const {
       updateIssueStatus,
@@ -78,7 +104,7 @@ export function IssueContextMenu({ issueId }: IssueContextMenuProps) {
       getAllIssues,
       getSubissues,
       updateIssueEstimatedHours,
-   } = useIssuesStore();
+   } = useIssuesData();
 
    const handleStatusChange = (statusId: string) => {
       if (!issueId) return;
@@ -160,26 +186,6 @@ export function IssueContextMenu({ issueId }: IssueContextMenuProps) {
       toast.success(hours === null ? 'Estimate cleared' : `Estimate set to ${hours}h`);
    };
 
-   const handleAddLink = () => {
-      toast.success('Link added');
-   };
-
-   const handleMakeCopy = () => {
-      toast.success('Issue copied');
-   };
-
-   const handleCreateRelated = () => {
-      toast.success('Related issue created');
-   };
-
-   const handleMarkAs = (type: string) => {
-      toast.success(`Marked as ${type}`);
-   };
-
-   const handleMove = () => {
-      toast.success('Issue moved');
-   };
-
    const handleArchive = () => {
       if (!issueId) return;
       archiveIssue(issueId);
@@ -209,10 +215,6 @@ export function IssueContextMenu({ issueId }: IssueContextMenuProps) {
          navigator.clipboard.writeText(issue.title);
          toast.success('Copied to clipboard');
       }
-   };
-
-   const handleRemindMe = () => {
-      toast.success('Reminder set');
    };
 
    const handleAddSubissue = () => {
@@ -388,7 +390,7 @@ export function IssueContextMenu({ issueId }: IssueContextMenuProps) {
 
             <ContextMenuSeparator />
 
-            <ContextMenuItem onClick={handleAddLink}>
+            <ContextMenuItem onClick={notifyLinkAdded}>
                <LinkIcon className="size-4" /> Add link…
                <ContextMenuShortcut>Ctrl L</ContextMenuShortcut>
             </ContextMenuItem>
@@ -407,14 +409,14 @@ export function IssueContextMenu({ issueId }: IssueContextMenuProps) {
                </ContextMenuSubContent>
             </ContextMenuSub>
 
-            <ContextMenuItem onClick={handleMakeCopy}>
+            <ContextMenuItem onClick={notifyIssueCopied}>
                <CopyIcon className="size-4" /> Make a copy…
             </ContextMenuItem>
          </ContextMenuGroup>
 
          <ContextMenuSeparator />
 
-         <ContextMenuItem onClick={handleCreateRelated}>
+         <ContextMenuItem onClick={notifyRelatedIssueCreated}>
             <PlusSquare className="size-4" /> Create related
          </ContextMenuItem>
 
@@ -465,19 +467,19 @@ export function IssueContextMenu({ issueId }: IssueContextMenuProps) {
                <Flag className="mr-2 size-4" /> Mark as
             </ContextMenuSubTrigger>
             <ContextMenuSubContent className="w-48">
-               <ContextMenuItem onClick={() => handleMarkAs('Completed')}>
+               <ContextMenuItem onClick={() => notifyMarkedAs('Completed')}>
                   <CheckCircle2 className="size-4" /> Completed
                </ContextMenuItem>
-               <ContextMenuItem onClick={() => handleMarkAs('Duplicate')}>
+               <ContextMenuItem onClick={() => notifyMarkedAs('Duplicate')}>
                   <CopyIcon className="size-4" /> Duplicate
                </ContextMenuItem>
-               <ContextMenuItem onClick={() => handleMarkAs("Won't Fix")}>
+               <ContextMenuItem onClick={() => notifyMarkedAs("Won't Fix")}>
                   <Clock className="size-4" /> Won&apos;t Fix
                </ContextMenuItem>
             </ContextMenuSubContent>
          </ContextMenuSub>
 
-         <ContextMenuItem onClick={handleMove}>
+         <ContextMenuItem onClick={notifyIssueMoved}>
             <ArrowRightLeft className="size-4" /> Move
          </ContextMenuItem>
 
@@ -497,7 +499,7 @@ export function IssueContextMenu({ issueId }: IssueContextMenuProps) {
             <Clipboard className="size-4" /> Copy
          </ContextMenuItem>
 
-         <ContextMenuItem onClick={handleRemindMe}>
+         <ContextMenuItem onClick={notifyReminderSet}>
             <AlarmClock className="size-4" /> Remind me
             <ContextMenuShortcut>H</ContextMenuShortcut>
          </ContextMenuItem>

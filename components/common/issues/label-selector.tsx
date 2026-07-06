@@ -12,16 +12,16 @@ import {
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useLabelOptions } from '@/hooks/use-label-options';
-import { useIssuesStore } from '@/store/issues-store';
+import { useIssuesData } from '@/components/common/issues/issues-data-context';
 import { IssueChip, issueChipDotClassName } from './issue-chip';
 
 export function LabelSelector({ issueId }: { issueId: string }) {
    const [open, setOpen] = useState(false);
    const allLabels = useLabelOptions();
-   const currentLabels = useIssuesStore(
+   const currentLabels = useIssuesData(
       (state) => state.issues.find((issue) => issue.id === issueId)?.labels ?? []
    );
-   const { addIssueLabel, removeIssueLabel } = useIssuesStore();
+   const { addIssueLabel, removeIssueLabel } = useIssuesData();
 
    const selectedIds = useMemo(
       () => new Set(currentLabels.map((label) => label.id)),
@@ -43,7 +43,10 @@ export function LabelSelector({ issueId }: { issueId: string }) {
    return (
       <Popover open={open} onOpenChange={setOpen}>
          <PopoverTrigger asChild>
-            <button className="flex flex-wrap items-center gap-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <button
+               type="button"
+               className="flex flex-wrap items-center gap-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
                {currentLabels.length > 0 ? (
                   currentLabels.map((label) => (
                      <IssueChip key={label.id}>

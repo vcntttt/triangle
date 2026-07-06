@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
@@ -18,8 +18,22 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { health as healthOptions } from '@/lib/ui-catalog';
-import { createProjectUpdate } from '@/src/server/projects';
 import { ProjectIconGlyph } from './project-icon';
+import { useProjectCommands } from '@/src/data/projects';
+
+function getHealthIcon(healthId: string) {
+   switch (healthId) {
+      case 'on-track':
+         return <CircleCheck className="size-4 text-green-500" />;
+      case 'off-track':
+         return <CircleX className="size-4 text-red-500" />;
+      case 'at-risk':
+         return <AlertCircle className="size-4 text-amber-500" />;
+      case 'no-update':
+      default:
+         return <HelpCircle className="size-4 text-muted-foreground" />;
+   }
+}
 
 interface HealthPopoverProps {
    project: Project;
@@ -28,31 +42,14 @@ interface HealthPopoverProps {
 
 export function HealthPopover({ project, onProjectUpdate }: HealthPopoverProps) {
    const [isComposing, setIsComposing] = useState(false);
-   const [selectedHealth, setSelectedHealth] = useState<Project['health']['id']>(
-      project.health.id === 'no-update' ? 'on-track' : project.health.id
-   );
+   const defaultHealth = project.health.id === 'no-update' ? 'on-track' : project.health.id;
+   const [draftHealth, setDraftHealth] = useState<Project['health']['id'] | null>(null);
+   const selectedHealth = draftHealth ?? defaultHealth;
    const [body, setBody] = useState('');
    const [isSubmitting, setIsSubmitting] = useState(false);
-
-   const getHealthIcon = (healthId: string) => {
-      switch (healthId) {
-         case 'on-track':
-            return <CircleCheck className="size-4 text-green-500" />;
-         case 'off-track':
-            return <CircleX className="size-4 text-red-500" />;
-         case 'at-risk':
-            return <AlertCircle className="size-4 text-amber-500" />;
-         case 'no-update':
-         default:
-            return <HelpCircle className="size-4 text-muted-foreground" />;
-      }
-   };
-
+   const { createProjectUpdate } = useProjectCommands();
    const isMobile = useIsMobile();
 
-   useEffect(() => {
-      setSelectedHealth(project.health.id === 'no-update' ? 'on-track' : project.health.id);
-   }, [project.health.id]);
    const latestUpdateDate = project.latestUpdate
       ? new Date(project.latestUpdate.createdAt).toLocaleDateString()
       : new Date(project.startDate).toLocaleDateString();
@@ -69,15 +66,14 @@ export function HealthPopover({ project, onProjectUpdate }: HealthPopoverProps) 
 
       try {
          const update = await createProjectUpdate({
-            data: {
-               projectId: project.id,
-               health: selectedHealth,
-               body: trimmedBody,
-            },
+            projectId: project.id,
+            health: selectedHealth,
+            body: trimmedBody,
          });
 
          onProjectUpdate?.(project.id, update);
          setBody('');
+         setDraftHealth(null);
          setIsComposing(false);
          toast.success('Project update posted');
       } catch (error) {
@@ -156,9 +152,7 @@ export function HealthPopover({ project, onProjectUpdate }: HealthPopoverProps) 
                   <div className="space-y-2 border-t pt-3">
                      <Select
                         value={selectedHealth}
-                        onValueChange={(value) =>
-                           setSelectedHealth(value as Project['health']['id'])
-                        }
+                        onValueChange={(value) => setDraftHealth(value as Project['health']['id'])}
                      >
                         <SelectTrigger className="h-8">
                            <SelectValue />

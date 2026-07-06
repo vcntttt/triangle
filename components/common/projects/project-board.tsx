@@ -11,11 +11,11 @@ import type { Project, ProjectUpdate } from '@/lib/models';
 import type { ProjectOptionLike } from '@/lib/projects-presentation';
 import type { ProjectDisplayProperty, ProjectBoardGroupBy } from '@/store/projects-view-store';
 import { useProjectsViewStore } from '@/store/projects-view-store';
-import { persistProjectUpdate } from './project-update';
 import { ProjectBoardCardPreview, ProjectDragType } from './project-board-card';
 import { ProjectBoardColumn } from './project-board-column';
 import { health as allHealth, priorities, status as allStatuses } from '@/lib/ui-catalog';
 import { CheckCircle2, CircleAlert, CircleDashed, CircleHelp } from 'lucide-react';
+import { useProjectCommands } from '@/src/data/projects';
 
 const prioritySortOrder: Record<string, number> = {
    'urgent': 0,
@@ -51,6 +51,7 @@ export function ProjectBoard({ projects, statusOptions, priorityOptions }: Proje
    const { groupBy, showEmptyGroups, visibleProperties } = useProjectsViewStore();
    const navigate = useNavigate();
    const [projectOverrides, setProjectOverrides] = useState<Record<string, Partial<Project>>>({});
+   const { updateProject } = useProjectCommands();
    const boardProjects = useMemo(
       () => projects.map((project) => ({ ...project, ...projectOverrides[project.id] })),
       [projectOverrides, projects]
@@ -175,10 +176,10 @@ export function ProjectBoard({ projects, statusOptions, priorityOptions }: Proje
       }));
 
       try {
-         await persistProjectUpdate(
+         await updateProject({
             projectId,
-            field === 'status' ? { status: value } : { priority: value }
-         );
+            ...(field === 'status' ? { status: value } : { priority: value }),
+         });
          toast.success(successMessage);
       } catch (error) {
          console.error(`Failed to update project ${field}.`, error);

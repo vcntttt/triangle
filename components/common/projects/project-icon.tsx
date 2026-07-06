@@ -1,10 +1,53 @@
 'use client';
 
-import { DynamicIcon, iconNames, type IconName } from 'lucide-react/dynamic.mjs';
+import {
+   BookOpen,
+   Box,
+   Briefcase,
+   Bug,
+   Calculator,
+   Calendar,
+   ChartNoAxesColumn,
+   ClipboardList,
+   Code,
+   Database,
+   FolderKanban,
+   Globe,
+   Layers,
+   Lock,
+   Palette,
+   Rocket,
+   Settings,
+   Terminal,
+   Wrench,
+   Zap,
+   type LucideIcon,
+} from 'lucide-react';
 import type { Project, ProjectIconConfig } from '@/lib/models';
 import { cn } from '@/lib/utils';
 
-const lucideIconNames = new Set<string>(iconNames);
+const projectIconMap: Record<string, LucideIcon> = {
+   'box': Box,
+   'folder-kanban': FolderKanban,
+   'calculator': Calculator,
+   'rocket': Rocket,
+   'code': Code,
+   'database': Database,
+   'palette': Palette,
+   'bug': Bug,
+   'terminal': Terminal,
+   'calendar': Calendar,
+   'chart-no-axes-column': ChartNoAxesColumn,
+   'settings': Settings,
+   'lock': Lock,
+   'zap': Zap,
+   'globe': Globe,
+   'briefcase': Briefcase,
+   'book-open': BookOpen,
+   'clipboard-list': ClipboardList,
+   'layers': Layers,
+   'wrench': Wrench,
+};
 
 interface ProjectIconProps {
    project?: Pick<Project, 'iconConfig'>;
@@ -43,13 +86,7 @@ export function ProjectIconGlyph({
       );
    }
 
-   const iconName = lucideIconNames.has(icon.value) ? icon.value : 'box';
+   const Icon = projectIconMap[icon.value] ?? Box;
 
-   return (
-      <DynamicIcon
-         name={iconName as IconName}
-         className={className}
-         fallback={() => <DynamicIcon name="box" className={className} />}
-      />
-   );
+   return <Icon className={className} />;
 }

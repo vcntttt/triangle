@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -18,17 +19,40 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ProjectIconPicker } from '@/components/common/projects/project-icon-picker';
 import type { ProjectIconConfig } from '@/lib/models';
-import type { ProjectOptionLike } from '@/lib/projects-presentation';
 import { toast } from 'sonner';
 import {
-   createProject as createProjectMutation,
-   getProjectPriorityList,
-   getProjectStatusList,
-} from '@/src/server/projects';
+   projectPriorityListQuery,
+   projectStatusListQuery,
+   useProjectCommands,
+} from '@/src/data/projects';
 
 interface CreateProjectDialogProps {
    disabled?: boolean;
 }
+
+const normalizeProjectKey = (value: string) =>
+   value
+      .toUpperCase()
+      .trim()
+      .replace(/[^A-Z0-9]+/g, '')
+      .slice(0, 3);
+
+const createProjectKeyFromName = (name: string) => {
+   const words = name
+      .toUpperCase()
+      .trim()
+      .split(/[^A-Z0-9]+/)
+      .filter(Boolean);
+   const acronym = words.map((word) => word[0]).join('');
+
+   const normalizedAcronym = normalizeProjectKey(acronym);
+
+   if (normalizedAcronym.length >= 3) {
+      return normalizedAcronym;
+   }
+
+   return normalizeProjectKey(name);
+};
 
 export function CreateProjectDialog({ disabled = false }: CreateProjectDialogProps) {
    const router = useRouter();
@@ -41,8 +65,9 @@ export function CreateProjectDialog({ disabled = false }: CreateProjectDialogPro
       type: 'lucide',
       value: 'box',
    });
-   const [statusOptions, setStatusOptions] = useState<ProjectOptionLike[]>([]);
-   const [priorityOptions, setPriorityOptions] = useState<ProjectOptionLike[]>([]);
+   const { data: statusOptions = [] } = useQuery(projectStatusListQuery());
+   const { data: priorityOptions = [] } = useQuery(projectPriorityListQuery());
+   const { createProject: createProjectMutation } = useProjectCommands();
    const formRef = useRef<HTMLFormElement>(null);
 
    const handleOpenChange = (nextOpen: boolean) => {
@@ -52,49 +77,7 @@ export function CreateProjectDialog({ disabled = false }: CreateProjectDialogPro
       }
    };
 
-   const normalizeProjectKey = (value: string) =>
-      value
-         .toUpperCase()
-         .trim()
-         .replace(/[^A-Z0-9]+/g, '')
-         .slice(0, 3);
-
-   const createProjectKeyFromName = (name: string) => {
-      const words = name
-         .toUpperCase()
-         .trim()
-         .split(/[^A-Z0-9]+/)
-         .filter(Boolean);
-      const acronym = words.map((word) => word[0]).join('');
-
-      const normalizedAcronym = normalizeProjectKey(acronym);
-
-      if (normalizedAcronym.length >= 3) {
-         return normalizedAcronym;
-      }
-
-      return normalizeProjectKey(name);
-   };
-
    const projectKeyIsValid = /^[A-Z][A-Z0-9]{1,2}$/.test(projectKey);
-
-   useEffect(() => {
-      let isMounted = true;
-
-      void Promise.all([getProjectStatusList(), getProjectPriorityList()])
-         .then(([statusesResult, prioritiesResult]) => {
-            if (!isMounted) return;
-            setStatusOptions(statusesResult as ProjectOptionLike[]);
-            setPriorityOptions(prioritiesResult as ProjectOptionLike[]);
-         })
-         .catch((loadError) => {
-            console.error('Failed to load project options.', loadError);
-         });
-
-      return () => {
-         isMounted = false;
-      };
-   }, []);
 
    const createProject = async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -105,15 +88,13 @@ export function CreateProjectDialog({ disabled = false }: CreateProjectDialogPro
 
       try {
          await createProjectMutation({
-            data: {
-               name: formData.get('name'),
-               key: projectKey,
-               description: formData.get('description') ?? '',
-               status: formData.get('status'),
-               priority: formData.get('priority') ?? 'no-priority',
-               iconType: iconConfig.type,
-               iconValue: iconConfig.value,
-            },
+            name: String(formData.get('name') ?? ''),
+            key: projectKey,
+            description: String(formData.get('description') ?? ''),
+            status: String(formData.get('status') ?? ''),
+            priority: String(formData.get('priority') ?? 'no-priority'),
+            iconType: iconConfig.type,
+            iconValue: iconConfig.value,
          });
 
          formRef.current?.reset();
@@ -144,8 +125,7 @@ export function CreateProjectDialog({ disabled = false }: CreateProjectDialogPro
             <DialogHeader>
                <DialogTitle>Create project</DialogTitle>
                <DialogDescription>
-                  Add a project to PostgreSQL so the projects view stops depending on the old mock
-                  dataset.
+                  Add a project to Convex so the projects view stays backed by real persisted data.
                </DialogDescription>
             </DialogHeader>
 

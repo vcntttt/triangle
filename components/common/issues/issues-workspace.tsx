@@ -1,20 +1,27 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { IssueListItem } from '@/lib/db/issues';
+import { viewerProfileToUser } from '@/lib/current-user';
 import { toPresentationIssue } from '@/lib/issues-presentation';
 import { type Issue, archivedStatus, sortIssuesByPriority } from '@/lib/ui-catalog';
 import { cn } from '@/lib/utils';
 import { useFilterStore } from '@/store/filter-store';
-import { useIssuesStore } from '@/store/issues-store';
+import {
+   IssuesDataProvider,
+   useIssuesData,
+   type IssuesData,
+} from '@/components/common/issues/issues-data-context';
 import { useSearchStore } from '@/store/search-store';
 import { useViewStore } from '@/store/view-store';
+import { useViewerProfile } from '@/src/data/viewer';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { CustomDragLayer } from './issue-grid';
-import { getIssueListRows, GroupIssues } from './group-issues';
+import { GroupIssues } from './group-issues';
+import { getIssueListRows } from './group-issue-rows';
 import { IssueActionCommand, type IssueActionKind } from './issue-action-command';
 import { IssueDetail } from './issue-detail';
 import { SearchIssues } from './search-issues';
@@ -40,21 +47,6 @@ interface IssuesWorkspaceProps {
       description: string;
    };
 }
-
-const getIssuesHydrationKey = (issues: IssueListItem[]) =>
-   issues
-      .map((issue) =>
-         [
-            issue.id,
-            issue.status,
-            issue.priority,
-            issue.assigneeId ?? '',
-            issue.project?.id ?? '',
-            issue.parentIssueId ?? '',
-            issue.labels.map((label) => label.id).join(','),
-         ].join(':')
-      )
-      .join('|');
 
 function useIssueWorkspaceShortcuts({
    selectedIssue,
@@ -162,6 +154,16 @@ function useIssueWorkspaceShortcuts({
             return;
          }
 
+         if (!event.shiftKey && normalizedKey === 'p') {
+            if (actionTargetIssuesCount === 0) {
+               return;
+            }
+
+            event.preventDefault();
+            onOpenIssueActionPicker('priority');
+            return;
+         }
+
          if (event.shiftKey && normalizedKey === 'p') {
             if (actionTargetIssuesCount === 0) {
                return;
@@ -197,29 +199,46 @@ export function IssuesWorkspace({
    onSelectAdjacentIssue,
    emptyCopy,
 }: IssuesWorkspaceProps) {
-   const { replaceIssues, issues, filterIssues } = useIssuesStore();
+   const viewerProfile = useViewerProfile();
+   const viewer = useMemo(() => viewerProfileToUser(viewerProfile), [viewerProfile]);
+   const hydratedIssues = useMemo(
+      () => initialIssues.map((issue) => toPresentationIssue(issue, initialStatuses, viewer)),
+      [initialIssues, initialStatuses, viewer]
+   );
+
+   return (
+      <IssuesDataProvider issues={hydratedIssues}>
+         <IssuesWorkspaceContent
+            initialStatuses={initialStatuses}
+            databaseError={databaseError}
+            selectedIssueIdentifier={selectedIssueIdentifier}
+            projectFilterId={projectFilterId}
+            onSelectIssue={onSelectIssue}
+            onClearSelectedIssue={onClearSelectedIssue}
+            onSelectAdjacentIssue={onSelectAdjacentIssue}
+            emptyCopy={emptyCopy}
+         />
+      </IssuesDataProvider>
+   );
+}
+
+function IssuesWorkspaceContent({
+   initialStatuses,
+   databaseError,
+   selectedIssueIdentifier,
+   projectFilterId,
+   onSelectIssue,
+   onClearSelectedIssue,
+   onSelectAdjacentIssue,
+   emptyCopy,
+}: Omit<IssuesWorkspaceProps, 'initialIssues'>) {
+   const { issues, filterIssues } = useIssuesData();
    const { isSearchOpen, searchQuery } = useSearchStore();
    const { filters, hasActiveFilters } = useFilterStore();
    const { hideCompletedIssues, showEmptyStatuses, viewType } = useViewStore();
    const navigate = useNavigate();
-   const lastHydrationKeyRef = useRef<string | null>(null);
    const [selectedIssueIds, setSelectedIssueIds] = useState<Set<string>>(() => new Set());
    const [issueAction, setIssueAction] = useState<IssueActionKind | null>(null);
-
-   const hydratedIssues = useMemo(
-      () => initialIssues.map((issue) => toPresentationIssue(issue, initialStatuses)),
-      [initialIssues, initialStatuses]
-   );
-   const hydrationKey = useMemo(() => getIssuesHydrationKey(initialIssues), [initialIssues]);
-
-   useLayoutEffect(() => {
-      if (lastHydrationKeyRef.current === hydrationKey) {
-         return;
-      }
-
-      lastHydrationKeyRef.current = hydrationKey;
-      replaceIssues(hydratedIssues);
-   }, [hydratedIssues, hydrationKey, replaceIssues]);
 
    const selectedIssue = useMemo(
       () => issues.find((issue) => issue.identifier === selectedIssueIdentifier),
@@ -316,7 +335,7 @@ export function IssuesWorkspace({
       );
    }
 
-   if (hydratedIssues.length === 0) {
+   if (issues.length === 0) {
       return (
          <div className="w-full p-6">
             <div className="rounded-lg border bg-container p-6 max-w-2xl">
@@ -495,10 +514,10 @@ function IssuesListPanel({
    onSelectIssue,
    onToggleIssueSelection,
 }: {
-   issues: ReturnType<typeof useIssuesStore.getState>['issues'];
+   issues: IssuesData['issues'];
    showEmptyStatuses: boolean;
    isSearching: boolean;
-   searchIssues: ReturnType<typeof useIssuesStore.getState>['issues'];
+   searchIssues: IssuesData['issues'];
    selectedIssueIdentifier?: string;
    selectedIssueIds: Set<string>;
    onSelectIssue: (issue: Issue) => void;

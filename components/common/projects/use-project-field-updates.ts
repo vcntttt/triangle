@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import type { Project } from '@/lib/models';
 import type { ProjectOptionLike } from '@/lib/projects-presentation';
-import { persistProjectUpdate } from './project-update';
+import { useProjectCommands } from '@/src/data/projects';
 
 export function useProjectFieldUpdates(
    project: Project,
@@ -13,6 +13,7 @@ export function useProjectFieldUpdates(
 ) {
    const [currentStatus, setCurrentStatus] = useState(project.status);
    const [currentPriority, setCurrentPriority] = useState(project.priority);
+   const { updateProject } = useProjectCommands();
 
    useEffect(() => {
       setCurrentStatus(project.status);
@@ -36,7 +37,7 @@ export function useProjectFieldUpdates(
       setCurrentStatus((state) => ({ ...state, id: statusId, name: nextStatus.name }));
 
       try {
-         await persistProjectUpdate(project.id, { status: statusId });
+         await updateProject({ projectId: project.id, status: statusId });
          toast.success('Project status updated');
       } catch (error) {
          console.error('Failed to update project status.', error);
@@ -59,7 +60,7 @@ export function useProjectFieldUpdates(
       setCurrentPriority((state) => ({ ...state, id: priorityId, name: nextPriority.name }));
 
       try {
-         await persistProjectUpdate(project.id, { priority: priorityId });
+         await updateProject({ projectId: project.id, priority: priorityId });
          toast.success('Project priority updated');
       } catch (error) {
          console.error('Failed to update project priority.', error);

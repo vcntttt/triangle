@@ -10,7 +10,7 @@ import {
    CommandList,
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { useIssuesStore } from '@/store/issues-store';
+import { useIssuesData } from '@/components/common/issues/issues-data-context';
 import { type Status } from '@/lib/ui-catalog';
 import { CheckIcon } from 'lucide-react';
 import { useId, useState } from 'react';
@@ -30,7 +30,7 @@ export function StatusSelector({ status, issueId, display = 'icon' }: StatusSele
    const [open, setOpen] = useState<boolean>(false);
    const allStatus = useIssuesStatuses();
 
-   const { updateIssueStatus, filterByStatus } = useIssuesStore();
+   const { updateIssueStatus, filterByStatus } = useIssuesData();
 
    const handleStatusChange = (statusId: string) => {
       setOpen(false);

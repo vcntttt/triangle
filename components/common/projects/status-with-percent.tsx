@@ -1,7 +1,7 @@
 'use client';
 
 import { useId, useState } from 'react';
-import { CheckIcon } from 'lucide-react';
+import { CheckIcon, CircleDashed } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
    Command,
@@ -36,7 +36,8 @@ export function StatusWithPercent({ status, options, onStatusChange }: StatusWit
    };
 
    const selectedOption = options.find((item) => item.id === status.id);
-   const SelectedIcon = statusIconMap[status.id] ?? allStatus[allStatus.length - 1].icon;
+   const SelectedIcon =
+      statusIconMap[status.id] ?? allStatus[allStatus.length - 1]?.icon ?? CircleDashed;
 
    return (
       <Popover open={open} onOpenChange={setOpen}>
@@ -63,7 +64,10 @@ export function StatusWithPercent({ status, options, onStatusChange }: StatusWit
                   <CommandEmpty>No status found.</CommandEmpty>
                   <CommandGroup>
                      {options.map((item) => {
-                        const Icon = statusIconMap[item.id] ?? allStatus[allStatus.length - 1].icon;
+                        const Icon =
+                           statusIconMap[item.id] ??
+                           allStatus[allStatus.length - 1]?.icon ??
+                           CircleDashed;
 
                         return (
                            <CommandItem
