@@ -12,6 +12,7 @@ import { PrioritySelector } from './priority-selector';
 import { StatusWithPercent } from './status-with-percent';
 import { DatePicker } from './date-picker';
 import { CreateProjectUpdateDialog } from './create-project-update-dialog';
+import { DeleteProjectDialog } from './delete-project-dialog';
 import { ProjectIcon } from './project-icon';
 import { useProjectFieldUpdates } from './use-project-field-updates';
 
@@ -32,6 +33,7 @@ export default function ProjectLine({
 }: ProjectLineProps) {
    const navigate = useNavigate();
    const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
+   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
    const { pinnedProjectIds, togglePinnedProject } = usePinnedProjectsStore();
    const { currentStatus, currentPriority, handleStatusChange, handlePriorityChange } =
       useProjectFieldUpdates(project, statusOptions, priorityOptions);
@@ -55,6 +57,7 @@ export default function ProjectLine({
                      <ProjectIcon project={project} />
                   </div>
                   <button
+                     type="button"
                      className="flex flex-col items-start overflow-hidden text-left"
                      onClick={handleOpenIssues}
                   >
@@ -119,6 +122,7 @@ export default function ProjectLine({
             onOpenIssues={handleOpenIssues}
             onNewUpdate={() => setUpdateDialogOpen(true)}
             onTogglePin={() => togglePinnedProject(project.id)}
+            onDelete={() => setDeleteDialogOpen(true)}
             onStatusChange={(statusId) => {
                void handleStatusChange(statusId);
             }}
@@ -131,6 +135,11 @@ export default function ProjectLine({
             open={updateDialogOpen}
             onOpenChange={setUpdateDialogOpen}
             onProjectUpdate={onProjectUpdate}
+         />
+         <DeleteProjectDialog
+            project={project}
+            open={deleteDialogOpen}
+            onOpenChange={setDeleteDialogOpen}
          />
       </ContextMenu>
    );

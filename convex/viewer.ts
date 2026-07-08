@@ -23,6 +23,7 @@ const defaultPreferences = {
          identifier: true,
          labels: true,
          project: true,
+         area: true,
          assignee: true,
          createdAt: true,
       },
@@ -33,6 +34,7 @@ const defaultPreferences = {
       priority: [],
       labels: [],
       project: [],
+      area: [],
    },
    projectView: {
       viewType: 'list' as const,
@@ -64,6 +66,7 @@ const issueViewPatchValidator = v.object({
          identifier: v.optional(v.boolean()),
          labels: v.optional(v.boolean()),
          project: v.optional(v.boolean()),
+         area: v.optional(v.boolean()),
          assignee: v.optional(v.boolean()),
          createdAt: v.optional(v.boolean()),
       })
@@ -76,6 +79,7 @@ const issueFiltersPatchValidator = v.object({
    priority: v.optional(v.array(v.string())),
    labels: v.optional(v.array(v.string())),
    project: v.optional(v.array(v.string())),
+   area: v.optional(v.array(v.string())),
 });
 
 const projectViewPatchValidator = v.object({
@@ -121,8 +125,18 @@ function serializePreferences(preferences: Doc<'viewerPreferences'> | null) {
    }
 
    return {
-      issueView: preferences.issueView,
-      issueFilters: preferences.issueFilters,
+      issueView: {
+         ...defaultPreferences.issueView,
+         ...preferences.issueView,
+         visibleProperties: {
+            ...defaultPreferences.issueView.visibleProperties,
+            ...preferences.issueView.visibleProperties,
+         },
+      },
+      issueFilters: {
+         ...defaultPreferences.issueFilters,
+         ...preferences.issueFilters,
+      },
       projectView: preferences.projectView,
       projectFilters: preferences.projectFilters,
       pinnedProjectIds: preferences.pinnedProjectIds,

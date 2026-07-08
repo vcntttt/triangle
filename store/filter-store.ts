@@ -1,6 +1,6 @@
 import { useViewerCommands, useViewerPreferences } from '@/src/data/viewer';
 
-type IssueFilterType = 'status' | 'assignee' | 'priority' | 'labels' | 'project';
+type IssueFilterType = 'status' | 'assignee' | 'priority' | 'labels' | 'project' | 'area';
 
 const emptyIssueFilters: Record<IssueFilterType, string[]> = {
    status: [],
@@ -8,6 +8,7 @@ const emptyIssueFilters: Record<IssueFilterType, string[]> = {
    priority: [],
    labels: [],
    project: [],
+   area: [],
 };
 
 export function useFilterStore() {

@@ -15,6 +15,7 @@ import { usePinnedProjectsStore } from '@/store/pinned-projects-store';
 import type { ProjectBoardGroupBy, ProjectDisplayProperty } from '@/store/projects-view-store';
 import { ProjectContextMenu } from './project-context-menu';
 import { CreateProjectUpdateDialog } from './create-project-update-dialog';
+import { DeleteProjectDialog } from './delete-project-dialog';
 import { PrioritySelector } from './priority-selector';
 import { StatusWithPercent } from './status-with-percent';
 import { health as allHealth } from '@/lib/ui-catalog';
@@ -56,6 +57,7 @@ export function ProjectBoardCard({
 }: ProjectBoardCardProps) {
    const { pinnedProjectIds, togglePinnedProject } = usePinnedProjectsStore();
    const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
+   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
    const isPinned = pinnedProjectIds.includes(project.id);
    const isReadOnly = groupBy === 'health';
    const startDateLabel = format(new Date(project.startDate), 'MMM dd, yyyy');
@@ -174,6 +176,7 @@ export function ProjectBoardCard({
             onOpenIssues={() => onOpenIssues(project)}
             onNewUpdate={() => setUpdateDialogOpen(true)}
             onTogglePin={() => togglePinnedProject(project.id)}
+            onDelete={() => setDeleteDialogOpen(true)}
             onStatusChange={(statusId) => onStatusChange(project.id, statusId)}
             onPriorityChange={(priorityId) => onPriorityChange(project.id, priorityId)}
          />
@@ -182,6 +185,11 @@ export function ProjectBoardCard({
             open={updateDialogOpen}
             onOpenChange={setUpdateDialogOpen}
             onProjectUpdate={onProjectUpdate}
+         />
+         <DeleteProjectDialog
+            project={project}
+            open={deleteDialogOpen}
+            onOpenChange={setDeleteDialogOpen}
          />
       </ContextMenu>
    );

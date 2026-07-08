@@ -13,6 +13,14 @@ export interface LabelInterface {
    color: string;
 }
 
+export interface ProjectArea {
+   id: string;
+   projectId: string;
+   name: string;
+   color: string;
+   position: number;
+}
+
 export interface User {
    id: string;
    name: string;
@@ -89,6 +97,7 @@ export interface Issue {
    createdAt: string;
    cycleId: string;
    project?: Project;
+   area?: ProjectArea | null;
    parentIssueId?: string | null;
    parent?: {
       id: string;

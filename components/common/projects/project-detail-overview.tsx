@@ -9,11 +9,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { CreateProjectUpdateDialog } from '@/components/common/projects/create-project-update-dialog';
 import { ProjectIcon } from '@/components/common/projects/project-icon';
 import { ProjectIconPicker } from '@/components/common/projects/project-icon-picker';
+import { ProjectAreasSection } from '@/components/common/projects/project-areas-section';
 import { ProjectIssuesTab } from '@/components/common/projects/project-issues-tab';
 import { PrioritySelector } from '@/components/common/projects/priority-selector';
 import { StatusWithPercent } from '@/components/common/projects/status-with-percent';
 import { viewerProfileToUser } from '@/lib/current-user';
-import type { Issue, ProjectIconConfig, ProjectUpdate } from '@/lib/models';
+import type { Issue, ProjectArea, ProjectIconConfig, ProjectUpdate } from '@/lib/models';
 import {
    type ProjectLike,
    type ProjectOptionLike,
@@ -93,6 +94,7 @@ export function ProjectOverview({
    initialProject,
    statusOptions,
    priorityOptions,
+   areas,
    issues,
    activeTab,
    selectedIssueIdentifier,
@@ -101,6 +103,7 @@ export function ProjectOverview({
    initialProject: ProjectLike;
    statusOptions: ProjectOptionLike[];
    priorityOptions: ProjectOptionLike[];
+   areas: ProjectArea[];
    issues: IssueListItem[];
    activeTab: 'overview' | 'issues';
    selectedIssueIdentifier?: string;
@@ -394,6 +397,8 @@ export function ProjectOverview({
                      onProjectUpdate={handleProjectUpdate}
                   />
                </div>
+
+               <ProjectAreasSection projectId={project.id} initialAreas={areas} />
 
                <section className="mt-8 border-t pt-5">
                   <button

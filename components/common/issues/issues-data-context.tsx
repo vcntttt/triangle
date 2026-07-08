@@ -11,6 +11,7 @@ interface FilterOptions {
    priority?: string[];
    labels?: string[];
    project?: string[];
+   area?: string[];
 }
 
 interface IssuesDataContextValue {
@@ -25,6 +26,7 @@ interface IssuesDataContextValue {
    filterByAssignee: (userId: string | null) => Issue[];
    filterByLabel: (labelId: string) => Issue[];
    filterByProject: (projectId: string) => Issue[];
+   filterByArea: (areaId: string) => Issue[];
    searchIssues: (query: string) => Issue[];
    filterIssues: (filters: FilterOptions) => Issue[];
    updateIssueContent: (
@@ -37,6 +39,7 @@ interface IssuesDataContextValue {
    addIssueLabel: (issueId: string, label: LabelInterface) => void;
    removeIssueLabel: (issueId: string, labelId: string) => void;
    updateIssueProject: (issueId: string, newProject: Project | undefined) => void;
+   updateIssueArea: (issueId: string, areaId: string | null) => void;
    updateIssueDueDate: (issueId: string, dueDate: string | undefined) => void;
    updateIssueEstimatedHours: (issueId: string, estimatedHours: number | undefined) => void;
    updateIssueParent: (issueId: string, parent: NonNullable<Issue['parent']> | null) => void;
@@ -88,6 +91,7 @@ export function IssuesDataProvider({ issues, children }: { issues: Issue[]; chil
             issues.filter((issue) => issue.labels.some((label) => label.id === labelId)),
          filterByProject: (projectId: string) =>
             issues.filter((issue) => issue.project?.id === projectId),
+         filterByArea: (areaId: string) => issues.filter((issue) => issue.area?.id === areaId),
          searchIssues: (query: string) => {
             const normalizedQuery = query.toLowerCase();
             return issues.filter(
@@ -101,36 +105,46 @@ export function IssuesDataProvider({ issues, children }: { issues: Issue[]; chil
             let filteredIssues = issues.filter((issue) => !isArchivedIssue(issue));
 
             if (filters.status && filters.status.length > 0) {
-               filteredIssues = filteredIssues.filter((issue) =>
-                  filters.status!.includes(issue.status.id)
-               );
+               const statusFilter = new Set(filters.status);
+               filteredIssues = filteredIssues.filter((issue) => statusFilter.has(issue.status.id));
             }
 
             if (filters.assignee && filters.assignee.length > 0) {
+               const assigneeFilter = new Set(filters.assignee);
                filteredIssues = filteredIssues.filter((issue) => {
-                  if (filters.assignee!.includes('unassigned') && issue.assignee === null) {
+                  if (assigneeFilter.has('unassigned') && issue.assignee === null) {
                      return true;
                   }
 
-                  return issue.assignee ? filters.assignee!.includes(issue.assignee.id) : false;
+                  return issue.assignee ? assigneeFilter.has(issue.assignee.id) : false;
                });
             }
 
             if (filters.priority && filters.priority.length > 0) {
+               const priorityFilter = new Set(filters.priority);
                filteredIssues = filteredIssues.filter((issue) =>
-                  filters.priority!.includes(issue.priority.id)
+                  priorityFilter.has(issue.priority.id)
                );
             }
 
             if (filters.labels && filters.labels.length > 0) {
+               const labelFilter = new Set(filters.labels);
                filteredIssues = filteredIssues.filter((issue) =>
-                  issue.labels.some((label) => filters.labels!.includes(label.id))
+                  issue.labels.some((label) => labelFilter.has(label.id))
                );
             }
 
             if (filters.project && filters.project.length > 0) {
+               const projectFilter = new Set(filters.project);
                filteredIssues = filteredIssues.filter(
-                  (issue) => issue.project && filters.project!.includes(issue.project.id)
+                  (issue) => issue.project && projectFilter.has(issue.project.id)
+               );
+            }
+
+            if (filters.area && filters.area.length > 0) {
+               const areaFilter = new Set(filters.area);
+               filteredIssues = filteredIssues.filter(
+                  (issue) => issue.area && areaFilter.has(issue.area.id)
                );
             }
 
@@ -200,14 +214,22 @@ export function IssuesDataProvider({ issues, children }: { issues: Issue[]; chil
                return;
             }
 
+            const labelIds = [];
+            for (const label of issue.labels) {
+               if (label.id !== labelId) {
+                  labelIds.push(label.id);
+               }
+            }
+
             persistIssuePatch(issueId, {
-               labelIds: issue.labels
-                  .filter((label) => label.id !== labelId)
-                  .map((label) => label.id),
+               labelIds,
             });
          },
          updateIssueProject: (issueId, newProject) => {
             persistIssuePatch(issueId, { projectId: newProject?.id ?? null });
+         },
+         updateIssueArea: (issueId, areaId) => {
+            persistIssuePatch(issueId, { areaId });
          },
          updateIssueDueDate: (issueId, dueDate) => {
             persistIssuePatch(issueId, { dueDate: dueDate ?? null });

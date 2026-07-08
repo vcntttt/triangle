@@ -48,6 +48,16 @@ function serializeProject(project: Doc<'projects'>) {
    };
 }
 
+function serializeProjectArea(area: Doc<'projectAreas'>) {
+   return {
+      id: area._id,
+      projectId: area.projectId,
+      name: area.name,
+      color: area.color,
+      position: area.position,
+   };
+}
+
 async function findProjectByName(ctx: QueryCtx | MutationCtx, name: string | null | undefined) {
    if (!name) return null;
    const projects = await ctx.db.query('projects').collect();
@@ -72,8 +82,22 @@ async function findLabelsByIds(ctx: QueryCtx | MutationCtx, ids: string[]) {
    return labels.filter((label) => label !== null);
 }
 
+async function findProjectAreaById(
+   ctx: QueryCtx | MutationCtx,
+   id: string | null | undefined,
+   projectId: Id<'projects'> | undefined
+) {
+   if (!id || !projectId) return null;
+   const area = await ctx.db.get(id as Id<'projectAreas'>);
+   if (!area) return null;
+   if (area.projectId !== projectId) {
+      throw new Error('Area does not belong to the selected project.');
+   }
+   return area;
+}
+
 async function listIssues(ctx: QueryCtx | MutationCtx, projectId?: Id<'projects'>) {
-   const [issues, projects, labels] = await Promise.all([
+   const [issues, projects, labels, areas] = await Promise.all([
       projectId
          ? ctx.db
               .query('issues')
@@ -82,10 +106,12 @@ async function listIssues(ctx: QueryCtx | MutationCtx, projectId?: Id<'projects'
          : ctx.db.query('issues').withIndex('by_rank').collect(),
       ctx.db.query('projects').collect(),
       ctx.db.query('labels').collect(),
+      ctx.db.query('projectAreas').collect(),
    ]);
 
    const projectLookup = new Map(projects.map((project) => [project._id, project]));
    const labelLookup = new Map(labels.map((label) => [label._id, label]));
+   const areaLookup = new Map(areas.map((area) => [area._id, area]));
    const issuesMap = new Map<
       Id<'issues'>,
       ReturnType<typeof serializeIssueBase> & {
@@ -107,7 +133,7 @@ async function listIssues(ctx: QueryCtx | MutationCtx, projectId?: Id<'projects'
       return rankCompare === 0 ? left.createdAt - right.createdAt : rankCompare;
    })) {
       issuesMap.set(issue._id, {
-         ...serializeIssueBase(issue, projectLookup.get(issue.projectId!), labelLookup),
+         ...serializeIssueBase(issue, projectLookup.get(issue.projectId!), labelLookup, areaLookup),
          parentIssue: null,
          subissues: [],
       });
@@ -151,8 +177,11 @@ async function listIssues(ctx: QueryCtx | MutationCtx, projectId?: Id<'projects'
 function serializeIssueBase(
    issue: Doc<'issues'>,
    project: Doc<'projects'> | undefined,
-   labelLookup: Map<Id<'labels'>, Doc<'labels'>>
+   labelLookup: Map<Id<'labels'>, Doc<'labels'>>,
+   areaLookup: Map<Id<'projectAreas'>, Doc<'projectAreas'>>
 ) {
+   const area = issue.areaId ? areaLookup.get(issue.areaId) : undefined;
+
    return {
       id: issue._id,
       identifier: issue.identifier,
@@ -168,6 +197,7 @@ function serializeIssueBase(
       updatedAt: nowIso(issue.updatedAt),
       parentIssueId: toNullable(issue.parentIssueId),
       project: project ? serializeProject(project) : null,
+      area: area ? serializeProjectArea(area) : null,
       labels: issue.labelIds.flatMap((labelId) => {
          const label = labelLookup.get(labelId);
          return label
@@ -296,6 +326,7 @@ export const create = mutation({
       dueDate: v.optional(v.union(v.string(), v.null())),
       parentIssueId: v.optional(v.union(v.string(), v.null())),
       projectId: v.optional(v.union(v.string(), v.null())),
+      areaId: v.optional(v.union(v.string(), v.null())),
       labelIds: v.optional(v.array(v.string())),
       projectName: v.optional(v.union(v.string(), v.null())),
       labelNames: v.optional(v.array(v.string())),
@@ -304,6 +335,7 @@ export const create = mutation({
       const project = input.projectId
          ? await findProjectById(ctx, input.projectId)
          : await findProjectByName(ctx, input.projectName);
+      const area = await findProjectAreaById(ctx, input.areaId, project?._id);
       const matchedLabels =
          input.labelIds !== undefined
             ? await findLabelsByIds(ctx, input.labelIds)
@@ -328,6 +360,7 @@ export const create = mutation({
                : input.estimatedHours.toString(),
          dueDate: input.dueDate ? new Date(input.dueDate).getTime() : undefined,
          projectId: project?._id,
+         areaId: area?._id,
          parentIssueId: input.parentIssueId ? (input.parentIssueId as Id<'issues'>) : undefined,
          labelIds: matchedLabels.map((label) => label._id),
          createdAt: now,
@@ -358,11 +391,13 @@ export const createWithSubissues = mutation({
       dueDate: v.optional(v.union(v.string(), v.null())),
       parentIssueId: v.optional(v.union(v.string(), v.null())),
       projectId: v.optional(v.union(v.string(), v.null())),
+      areaId: v.optional(v.union(v.string(), v.null())),
       labelIds: v.optional(v.array(v.string())),
       subissues: v.array(v.object({ title: v.string() })),
    },
    handler: async (ctx, input) => {
       const project = await findProjectById(ctx, input.projectId);
+      const area = await findProjectAreaById(ctx, input.areaId, project?._id);
       const matchedLabels = await findLabelsByIds(ctx, input.labelIds ?? []);
       const { identifier, projectIssueNumber } = await createIssueIdentifier(
          ctx,
@@ -384,6 +419,7 @@ export const createWithSubissues = mutation({
                : input.estimatedHours.toString(),
          dueDate: input.dueDate ? new Date(input.dueDate).getTime() : undefined,
          projectId: project?._id,
+         areaId: area?._id,
          parentIssueId: input.parentIssueId ? (input.parentIssueId as Id<'issues'>) : undefined,
          labelIds: matchedLabels.map((label) => label._id),
          createdAt: now,
@@ -413,6 +449,7 @@ export const createWithSubissues = mutation({
             estimatedHours: undefined,
             dueDate: undefined,
             projectId: project?._id,
+            areaId: area?._id,
             parentIssueId: issueId,
             labelIds: [],
             createdAt: Date.now(),
@@ -441,6 +478,7 @@ export const update = mutation({
       dueDate: v.optional(v.union(v.string(), v.null())),
       parentIssueId: v.optional(v.union(v.string(), v.null())),
       projectId: v.optional(v.union(v.string(), v.null())),
+      areaId: v.optional(v.union(v.string(), v.null())),
       labelIds: v.optional(v.array(v.string())),
       projectName: v.optional(v.union(v.string(), v.null())),
       labelNames: v.optional(v.array(v.string())),
@@ -462,6 +500,17 @@ export const update = mutation({
             : input.labelNames !== undefined
               ? await findLabelsByNames(ctx, input.labelNames)
               : undefined;
+      const nextProjectId =
+         input.projectId !== undefined || input.projectName !== undefined
+            ? project?._id
+            : issue.projectId;
+      const area =
+         input.areaId !== undefined
+            ? await findProjectAreaById(ctx, input.areaId, nextProjectId)
+            : undefined;
+      const shouldClearAreaForProjectChange =
+         (input.projectId !== undefined || input.projectName !== undefined) &&
+         issue.projectId !== nextProjectId;
 
       if (input.parentIssueId !== undefined) {
          await validateParentAssignment(
@@ -496,6 +545,11 @@ export const update = mutation({
          ...(input.projectId !== undefined || input.projectName !== undefined
             ? { projectId: project?._id }
             : {}),
+         ...(input.areaId !== undefined
+            ? { areaId: area?._id }
+            : shouldClearAreaForProjectChange
+              ? { areaId: undefined }
+              : {}),
          ...(labels !== undefined ? { labelIds: labels.map((label) => label._id) } : {}),
          updatedAt: Date.now(),
       });

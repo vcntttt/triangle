@@ -7,6 +7,7 @@ import { AssigneeUser } from './assignee-user';
 import { LabelBadge } from './label-badge';
 import { PrioritySelector } from './priority-selector';
 import { ProjectBadge } from './project-badge';
+import { ProjectAreaBadge } from '@/components/common/projects/project-area-badge';
 import { StatusSelector } from './status-selector';
 import { LazyMotion, domAnimation } from 'motion/react';
 import * as m from 'motion/react-m';
@@ -115,11 +116,16 @@ export function IssueLine({
                   </div>
                   <div className="flex items-center justify-end gap-2 ml-auto sm:w-fit">
                      <div className="w-3 shrink-0"></div>
-                     {(visibleProperties.labels || visibleProperties.project) && (
+                     {(visibleProperties.labels ||
+                        visibleProperties.project ||
+                        visibleProperties.area) && (
                         <div className="hidden items-center justify-end gap-1 sm:flex">
                            {visibleProperties.labels && <LabelBadge label={issue.labels} />}
                            {visibleProperties.project && issue.project && (
                               <ProjectBadge project={issue.project} />
+                           )}
+                           {visibleProperties.area && issue.area && (
+                              <ProjectAreaBadge area={issue.area} />
                            )}
                         </div>
                      )}

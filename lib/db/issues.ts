@@ -1,4 +1,5 @@
 import type { ProjectStatusOption } from './projects';
+import type { ProjectArea } from './projects';
 
 export interface IssueSummary {
    id: string;
@@ -41,6 +42,7 @@ export interface IssueListItem {
       createdAt: string;
       updatedAt: string;
    } | null;
+   area: ProjectArea | null;
    labels: Array<{
       id: string;
       name: string;
@@ -65,6 +67,7 @@ export interface CreateIssueInput {
    estimatedHours?: number | null;
    dueDate?: string | null;
    parentIssueId?: string | null;
+   areaId?: string | null;
    projectName?: string | null;
    labelNames?: string[];
 }
@@ -78,6 +81,7 @@ export interface UpdateIssueInput {
    estimatedHours?: number | null;
    dueDate?: string | null;
    parentIssueId?: string | null;
+   areaId?: string | null;
    projectName?: string | null;
    labelNames?: string[];
 }

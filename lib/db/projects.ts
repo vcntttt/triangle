@@ -46,6 +46,16 @@ export interface ProjectPriorityOption {
    position: number;
 }
 
+export interface ProjectArea {
+   id: string;
+   projectId: string;
+   name: string;
+   color: string;
+   position: number;
+   createdAt?: string;
+   updatedAt?: string;
+}
+
 export interface ProjectsPageData {
    projects: ProjectListItem[];
    statusOptions: ProjectStatusOption[];
@@ -87,6 +97,12 @@ export interface CreateProjectUpdateInput {
    projectId: string;
    health: ProjectHealth;
    body: string;
+}
+
+export interface SaveProjectAreaInput {
+   projectId: string;
+   name: string;
+   color: string;
 }
 
 export interface SaveProjectOptionInput {

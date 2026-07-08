@@ -104,6 +104,18 @@ function serializeProjectUpdate(update: Doc<'projectUpdates'>) {
    };
 }
 
+function serializeProjectArea(area: Doc<'projectAreas'>) {
+   return {
+      id: area._id,
+      projectId: area.projectId,
+      name: area.name,
+      color: area.color,
+      position: area.position,
+      createdAt: nowIso(area.createdAt),
+      updatedAt: nowIso(area.updatedAt),
+   };
+}
+
 function serializeProjectForIssue(project: Doc<'projects'>) {
    return {
       id: project._id,
@@ -122,8 +134,11 @@ function serializeProjectForIssue(project: Doc<'projects'>) {
 function serializeIssueBase(
    issue: Doc<'issues'>,
    project: Doc<'projects'> | undefined,
-   labelLookup: Map<Id<'labels'>, Doc<'labels'>>
+   labelLookup: Map<Id<'labels'>, Doc<'labels'>>,
+   areaLookup: Map<Id<'projectAreas'>, Doc<'projectAreas'>>
 ) {
+   const area = issue.areaId ? areaLookup.get(issue.areaId) : undefined;
+
    return {
       id: issue._id,
       identifier: issue.identifier,
@@ -139,6 +154,7 @@ function serializeIssueBase(
       updatedAt: nowIso(issue.updatedAt),
       parentIssueId: toNullable(issue.parentIssueId),
       project: project ? serializeProjectForIssue(project) : null,
+      area: area ? serializeProjectArea(area) : null,
       labels: issue.labelIds.flatMap((labelId) => {
          const label = labelLookup.get(labelId);
          return label
@@ -155,16 +171,21 @@ function serializeIssueBase(
 }
 
 async function listProjectIssues(ctx: QueryCtx, projectId: Id<'projects'>) {
-   const [issues, projects, labels] = await Promise.all([
+   const [issues, projects, labels, areas] = await Promise.all([
       ctx.db
          .query('issues')
          .withIndex('by_project', (q) => q.eq('projectId', projectId))
          .collect(),
       ctx.db.query('projects').collect(),
       ctx.db.query('labels').collect(),
+      ctx.db
+         .query('projectAreas')
+         .withIndex('by_project_position', (q) => q.eq('projectId', projectId))
+         .collect(),
    ]);
    const projectLookup = new Map(projects.map((project) => [project._id, project]));
    const labelLookup = new Map(labels.map((label) => [label._id, label]));
+   const areaLookup = new Map(areas.map((area) => [area._id, area]));
    const issuesMap = new Map<
       Id<'issues'>,
       ReturnType<typeof serializeIssueBase> & {
@@ -186,7 +207,7 @@ async function listProjectIssues(ctx: QueryCtx, projectId: Id<'projects'>) {
       return rankCompare === 0 ? left.createdAt - right.createdAt : rankCompare;
    })) {
       issuesMap.set(issue._id, {
-         ...serializeIssueBase(issue, projectLookup.get(issue.projectId!), labelLookup),
+         ...serializeIssueBase(issue, projectLookup.get(issue.projectId!), labelLookup, areaLookup),
          parentIssue: null,
          subissues: [],
       });
@@ -273,6 +294,19 @@ async function listProjects(ctx: QueryCtx | MutationCtx) {
          serializeProject(project, await getLatestProjectUpdate(ctx, project._id))
       )
    );
+}
+
+async function listProjectAreas(ctx: QueryCtx | MutationCtx, projectId: Id<'projects'>) {
+   const areas = await ctx.db
+      .query('projectAreas')
+      .withIndex('by_project_position', (q) => q.eq('projectId', projectId))
+      .collect();
+
+   return areas
+      .map(serializeProjectArea)
+      .toSorted(
+         (left, right) => left.position - right.position || left.name.localeCompare(right.name)
+      );
 }
 
 async function getProjectById(ctx: QueryCtx | MutationCtx, projectId: Id<'projects'>) {
@@ -457,10 +491,18 @@ export const detail = query({
             : null,
          statusOptions,
          priorityOptions,
+         areas: project ? await listProjectAreas(ctx, project._id) : [],
          issues: project ? await listProjectIssues(ctx, project._id) : [],
          databaseError: null,
          isConnected: true,
       };
+   },
+});
+
+export const areas = query({
+   args: { projectId: v.string() },
+   handler: async (ctx, { projectId }) => {
+      return listProjectAreas(ctx, projectId as Id<'projects'>);
    },
 });
 
@@ -692,6 +734,111 @@ export const createUpdate = mutation({
    },
 });
 
+export const createArea = mutation({
+   args: { projectId: v.string(), name: v.string(), color: v.string() },
+   handler: async (ctx, input) => {
+      const projectId = input.projectId as Id<'projects'>;
+      const project = await ctx.db.get(projectId);
+      if (!project) {
+         throw new Error('Project does not exist.');
+      }
+
+      const name = input.name.trim();
+      if (!name) {
+         throw new Error('Area name is required.');
+      }
+
+      const existingAreas = await ctx.db
+         .query('projectAreas')
+         .withIndex('by_project_position', (q) => q.eq('projectId', projectId))
+         .collect();
+      const now = Date.now();
+      const areaId = await ctx.db.insert('projectAreas', {
+         projectId,
+         name,
+         color: input.color,
+         position: existingAreas.length,
+         createdAt: now,
+         updatedAt: now,
+      });
+
+      await ctx.db.patch(projectId, { updatedAt: now });
+      return serializeProjectArea((await ctx.db.get(areaId))!);
+   },
+});
+
+export const updateArea = mutation({
+   args: { areaId: v.string(), name: v.string(), color: v.string() },
+   handler: async (ctx, input) => {
+      const areaId = input.areaId as Id<'projectAreas'>;
+      const area = await ctx.db.get(areaId);
+      if (!area) {
+         throw new Error('Area not found.');
+      }
+
+      const name = input.name.trim();
+      if (!name) {
+         throw new Error('Area name is required.');
+      }
+
+      const now = Date.now();
+      await ctx.db.patch(areaId, { name, color: input.color, updatedAt: now });
+      await ctx.db.patch(area.projectId, { updatedAt: now });
+      return serializeProjectArea((await ctx.db.get(areaId))!);
+   },
+});
+
+export const deleteArea = mutation({
+   args: { areaId: v.string() },
+   handler: async (ctx, { areaId }) => {
+      const id = areaId as Id<'projectAreas'>;
+      const area = await ctx.db.get(id);
+      if (!area) {
+         return { ok: true };
+      }
+
+      const issues = await ctx.db
+         .query('issues')
+         .withIndex('by_project', (q) => q.eq('projectId', area.projectId))
+         .collect();
+      const now = Date.now();
+
+      await Promise.all(
+         issues
+            .filter((issue) => issue.areaId === id)
+            .map((issue) => ctx.db.patch(issue._id, { areaId: undefined, updatedAt: now }))
+      );
+      await ctx.db.delete(id);
+      await ctx.db.patch(area.projectId, { updatedAt: now });
+
+      return { ok: true };
+   },
+});
+
+export const reorderAreas = mutation({
+   args: { projectId: v.string(), areaIds: v.array(v.string()) },
+   handler: async (ctx, { projectId, areaIds }) => {
+      const id = projectId as Id<'projects'>;
+      const project = await ctx.db.get(id);
+      if (!project) {
+         throw new Error('Project not found.');
+      }
+
+      const now = Date.now();
+      await Promise.all(
+         areaIds.map(async (areaId, position) => {
+            const area = await ctx.db.get(areaId as Id<'projectAreas'>);
+            if (area?.projectId === id) {
+               await ctx.db.patch(area._id, { position, updatedAt: now });
+            }
+         })
+      );
+      await ctx.db.patch(id, { updatedAt: now });
+
+      return { ok: true };
+   },
+});
+
 export const createStatus = mutation({
    args: { name: v.string(), color: v.string() },
    handler: async (ctx, input) => saveOption(ctx, 'projectStatuses', input),
@@ -740,6 +887,51 @@ export const deletePriority = mutation({
    args: { id: v.string() },
    handler: async (ctx, { id }) => {
       await deleteOption(ctx, 'projectPriorities', id);
+      return { ok: true };
+   },
+});
+
+export const deleteProject = mutation({
+   args: {
+      projectId: v.string(),
+      mode: v.union(v.literal('unlink'), v.literal('withIssues')),
+   },
+   handler: async (ctx, { projectId, mode }) => {
+      const id = projectId as Id<'projects'>;
+      const project = await ctx.db.get(id);
+      if (!project) {
+         throw new Error('Project not found.');
+      }
+
+      const [issues, updates, areas] = await Promise.all([
+         ctx.db
+            .query('issues')
+            .withIndex('by_project', (q) => q.eq('projectId', id))
+            .collect(),
+         ctx.db
+            .query('projectUpdates')
+            .withIndex('by_project_createdAt', (q) => q.eq('projectId', id))
+            .collect(),
+         ctx.db
+            .query('projectAreas')
+            .withIndex('by_project', (q) => q.eq('projectId', id))
+            .collect(),
+      ]);
+
+      if (mode === 'unlink') {
+         await Promise.all(
+            issues.map((issue) =>
+               ctx.db.patch(issue._id, { projectId: undefined, areaId: undefined })
+            )
+         );
+      } else {
+         await Promise.all(issues.map((issue) => ctx.db.delete(issue._id)));
+      }
+
+      await Promise.all(updates.map((update) => ctx.db.delete(update._id)));
+      await Promise.all(areas.map((area) => ctx.db.delete(area._id)));
+      await ctx.db.delete(id);
+
       return { ok: true };
    },
 });

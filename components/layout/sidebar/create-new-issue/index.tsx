@@ -42,6 +42,7 @@ import { StatusSelector } from './status-selector';
 import { PrioritySelector } from './priority-selector';
 import { AssigneeSelector } from './assignee-selector';
 import { ProjectSelector } from './project-selector';
+import { AreaSelector } from './area-selector';
 import { LabelSelector } from './label-selector';
 import { EstimatedHoursSelector } from './estimated-hours-selector';
 import { InlineTokenSuggestions } from './inline-token-suggestions';
@@ -179,13 +180,21 @@ export function CreateNewIssue() {
    const [createMore, setCreateMore] = useState<boolean>(false);
    const [draftSubIssues, setDraftSubIssues] = useState<DraftSubIssue[]>([]);
    const [projectSelectorOpen, setProjectSelectorOpen] = useState(false);
+   const [areaSelectorOpen, setAreaSelectorOpen] = useState(false);
    const [labelSelectorOpen, setLabelSelectorOpen] = useState(false);
    const [titleFocused, setTitleFocused] = useState(false);
    const [titleCaretPosition, setTitleCaretPosition] = useState(0);
    const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
    const titleInputRef = useRef<HTMLTextAreaElement | null>(null);
-   const { isOpen, defaultStatus, defaultProject, defaultParentIssue, openModal, closeModal } =
-      useCreateIssueStore();
+   const {
+      isOpen,
+      defaultStatus,
+      defaultProject,
+      defaultArea,
+      defaultParentIssue,
+      openModal,
+      closeModal,
+   } = useCreateIssueStore();
    const { createIssueWithSubissues } = useIssueCommands();
    const projectOptions = useProjectOptions();
    const labelOptions = useLabelOptions();
@@ -205,12 +214,13 @@ export function CreateNewIssue() {
          createdAt: new Date().toISOString(),
          cycleId: '',
          project: defaultProject ?? undefined,
+         area: defaultArea,
          parentIssueId: defaultParentIssue?.id ?? null,
          parent: defaultParentIssue ?? null,
          subissues: [],
          rank: Date.now().toString(36),
       };
-   }, [currentUser, defaultParentIssue, defaultProject, defaultStatus]);
+   }, [currentUser, defaultArea, defaultParentIssue, defaultProject, defaultStatus]);
 
    const [addIssueForm, setAddIssueForm] = useState<Issue>(() => createDefaultData());
 
@@ -411,6 +421,7 @@ export function CreateNewIssue() {
    const createIssue = useCallback(async () => {
       const finalTitle = inlineDraft.title || addIssueForm.title.trim();
       const finalProject = inlineDraft.project ?? addIssueForm.project;
+      const finalArea = finalProject?.id === addIssueForm.project?.id ? addIssueForm.area : null;
       const finalLabels = [...addIssueForm.labels, ...inlineDraft.labels].filter(
          (label, index, currentLabels) =>
             currentLabels.findIndex((item) => item.id === label.id) === index
@@ -439,6 +450,7 @@ export function CreateNewIssue() {
             dueDate: addIssueForm.dueDate ?? null,
             parentIssueId: addIssueForm.parent?.id ?? null,
             projectId: finalProject?.id ?? null,
+            areaId: finalArea?.id ?? null,
             labelIds: finalLabels.map((label) => label.id),
             subissues: subIssueTitles.map((title) => ({ title })),
          });
@@ -456,6 +468,7 @@ export function CreateNewIssue() {
          setAddIssueForm(createDefaultData());
          setDraftSubIssues([]);
          setProjectSelectorOpen(false);
+         setAreaSelectorOpen(false);
          setLabelSelectorOpen(false);
       } catch (error) {
          console.error('Failed to create issue.', error);
@@ -656,10 +669,26 @@ export function CreateNewIssue() {
                   <ProjectSelector
                      project={addIssueForm.project}
                      onChange={(newProject) =>
-                        setAddIssueForm((current) => ({ ...current, project: newProject }))
+                        setAddIssueForm((current) => ({
+                           ...current,
+                           project: newProject,
+                           area:
+                              current.area && current.area.projectId === newProject?.id
+                                 ? current.area
+                                 : null,
+                        }))
                      }
                      open={projectSelectorOpen}
                      onOpenChange={setProjectSelectorOpen}
+                  />
+                  <AreaSelector
+                     project={addIssueForm.project}
+                     area={addIssueForm.area}
+                     onChange={(newArea) =>
+                        setAddIssueForm((current) => ({ ...current, area: newArea }))
+                     }
+                     open={areaSelectorOpen}
+                     onOpenChange={setAreaSelectorOpen}
                   />
                   <LabelSelector
                      selectedLabels={addIssueForm.labels}

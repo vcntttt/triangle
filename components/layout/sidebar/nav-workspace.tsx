@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { FolderOpen, PinOff, Radio } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { FolderOpen, PinOff, Radio, Trash2 } from 'lucide-react';
 import {
    ContextMenu,
    ContextMenuContent,
@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { CreateProjectUpdateDialog } from '@/components/common/projects/create-project-update-dialog';
+import { DeleteProjectDialog } from '@/components/common/projects/delete-project-dialog';
 import { ProjectIconGlyph } from '@/components/common/projects/project-icon';
 import { workspaceItems } from '@/lib/ui-catalog';
 import type { Project } from '@/lib/projects-presentation';
@@ -26,8 +27,9 @@ import { usePinnedProjectsStore } from '@/store/pinned-projects-store';
 export function NavWorkspace() {
    const projects = useProjectOptions();
    const { pinnedProjectIds } = usePinnedProjectsStore();
+   const pinnedProjectIdSet = useMemo(() => new Set(pinnedProjectIds), [pinnedProjectIds]);
 
-   const pinnedProjects = projects.filter((project) => pinnedProjectIds.includes(project.id));
+   const pinnedProjects = projects.filter((project) => pinnedProjectIdSet.has(project.id));
 
    return (
       <SidebarGroup className="group-data-[collapsible=icon]:hidden">
@@ -72,6 +74,7 @@ export function NavWorkspace() {
 function PinnedProjectMenuItem({ project }: { project: Project }) {
    const navigate = useNavigate();
    const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
+   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
    const { togglePinnedProject } = usePinnedProjectsStore();
 
    const handleOpenProject = () => {
@@ -110,12 +113,21 @@ function PinnedProjectMenuItem({ project }: { project: Project }) {
                   <PinOff className="size-4" />
                   Unpin project
                </ContextMenuItem>
+               <ContextMenuItem onSelect={() => setDeleteDialogOpen(true)} variant="destructive">
+                  <Trash2 className="size-4" />
+                  Eliminar proyecto…
+               </ContextMenuItem>
             </ContextMenuContent>
          </ContextMenu>
          <CreateProjectUpdateDialog
             project={project}
             open={updateDialogOpen}
             onOpenChange={setUpdateDialogOpen}
+         />
+         <DeleteProjectDialog
+            project={project}
+            open={deleteDialogOpen}
+            onOpenChange={setDeleteDialogOpen}
          />
       </>
    );

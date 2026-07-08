@@ -26,15 +26,19 @@ import {
    BarChart3,
    Tag,
    Folder,
+   Layers2,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useIssuesStatuses } from '@/components/common/issues/issues-status-context';
 import { ProjectIconGlyph } from '@/components/common/projects/project-icon';
 import { issuesPageQuery } from '@/src/data/issues';
+import type { IssueListItem } from '@/lib/db/issues';
+
+const emptyIssues: IssueListItem[] = [];
 
 // Define filter types
-type FilterType = 'status' | 'assignee' | 'priority' | 'labels' | 'project';
+type FilterType = 'status' | 'assignee' | 'priority' | 'labels' | 'project' | 'area';
 
 export function Filter() {
    const [open, setOpen] = useState<boolean>(false);
@@ -47,7 +51,34 @@ export function Filter() {
    const personalAssigneeOptions = [currentUser];
 
    const { filters, toggleFilter, clearFilters, getActiveFiltersCount } = useFilterStore();
-   const issues = data?.issues ?? [];
+   const issues = data?.issues ?? emptyIssues;
+   const projectFilterSet = useMemo(() => new Set(filters.project), [filters.project]);
+   const statusFilterSet = useMemo(() => new Set(filters.status), [filters.status]);
+   const assigneeFilterSet = useMemo(() => new Set(filters.assignee), [filters.assignee]);
+   const priorityFilterSet = useMemo(() => new Set(filters.priority), [filters.priority]);
+   const labelFilterSet = useMemo(() => new Set(filters.labels), [filters.labels]);
+   const areaFilterSet = useMemo(() => new Set(filters.area), [filters.area]);
+   const areas = useMemo(() => {
+      const areaMap = new Map<
+         string,
+         NonNullable<(typeof issues)[number]['area']> & { projectName: string | null }
+      >();
+
+      for (const issue of issues) {
+         if (!issue.area) continue;
+         if (projectFilterSet.size > 0 && !projectFilterSet.has(issue.area.projectId)) {
+            continue;
+         }
+         areaMap.set(issue.area.id, {
+            ...issue.area,
+            projectName: issue.project?.name ?? null,
+         });
+      }
+
+      return Array.from(areaMap.values()).toSorted((left, right) =>
+         left.name.localeCompare(right.name)
+      );
+   }, [issues, projectFilterSet]);
 
    return (
       <Popover open={open} onOpenChange={setOpen}>
@@ -152,6 +183,23 @@ export function Filter() {
                               <ChevronRight className="size-4" />
                            </div>
                         </CommandItem>
+                        <CommandItem
+                           onSelect={() => setActiveFilter('area')}
+                           className="flex items-center justify-between cursor-pointer"
+                        >
+                           <span className="flex items-center gap-2">
+                              <Layers2 className="size-4 text-muted-foreground" />
+                              Area
+                           </span>
+                           <div className="flex items-center">
+                              {filters.area.length > 0 && (
+                                 <span className="text-xs text-muted-foreground mr-1">
+                                    {filters.area.length}
+                                 </span>
+                              )}
+                              <ChevronRight className="size-4" />
+                           </div>
+                        </CommandItem>
                      </CommandGroup>
                      {getActiveFiltersCount() > 0 && (
                         <>
@@ -196,7 +244,7 @@ export function Filter() {
                                  <item.icon />
                                  {item.name}
                               </div>
-                              {filters.status.includes(item.id) && (
+                              {statusFilterSet.has(item.id) && (
                                  <CheckIcon size={16} className="ml-auto" />
                               )}
                               <span className="text-muted-foreground text-xs">
@@ -233,7 +281,7 @@ export function Filter() {
                               <User className="size-5" />
                               Unassigned
                            </div>
-                           {filters.assignee.includes('unassigned') && (
+                           {assigneeFilterSet.has('unassigned') && (
                               <CheckIcon size={16} className="ml-auto" />
                            )}
                            <span className="text-muted-foreground text-xs">
@@ -254,7 +302,7 @@ export function Filter() {
                                  </Avatar>
                                  {user.name}
                               </div>
-                              {filters.assignee.includes(user.id) && (
+                              {assigneeFilterSet.has(user.id) && (
                                  <CheckIcon size={16} className="ml-auto" />
                               )}
                               <span className="text-muted-foreground text-xs">
@@ -302,7 +350,7 @@ export function Filter() {
                                  <item.icon className="text-muted-foreground size-4" />
                                  {item.name}
                               </div>
-                              {filters.priority.includes(item.id) && (
+                              {priorityFilterSet.has(item.id) && (
                                  <CheckIcon size={16} className="ml-auto" />
                               )}
                               <span className="text-muted-foreground text-xs">
@@ -344,7 +392,7 @@ export function Filter() {
                                  ></span>
                                  {label.name}
                               </div>
-                              {filters.labels.includes(label.id) && (
+                              {labelFilterSet.has(label.id) && (
                                  <CheckIcon size={16} className="ml-auto" />
                               )}
                               <span className="text-muted-foreground text-xs">
@@ -387,11 +435,58 @@ export function Filter() {
                                  <ProjectIconGlyph icon={project.iconConfig} className="size-4" />
                                  {project.name}
                               </div>
-                              {filters.project.includes(project.id) && (
+                              {projectFilterSet.has(project.id) && (
                                  <CheckIcon size={16} className="ml-auto" />
                               )}
                               <span className="text-muted-foreground text-xs">
                                  {issues.filter((issue) => issue.project?.id === project.id).length}
+                              </span>
+                           </CommandItem>
+                        ))}
+                     </CommandGroup>
+                  </CommandList>
+               </Command>
+            ) : activeFilter === 'area' ? (
+               <Command>
+                  <div className="flex items-center border-b p-2">
+                     <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-6"
+                        onClick={() => setActiveFilter(null)}
+                     >
+                        <ChevronRight className="size-4 rotate-180" />
+                     </Button>
+                     <span className="ml-2 font-medium">Area</span>
+                  </div>
+                  <CommandInput placeholder="Search areas..." />
+                  <CommandList>
+                     <CommandEmpty>No areas found.</CommandEmpty>
+                     <CommandGroup>
+                        {areas.map((area) => (
+                           <CommandItem
+                              key={area.id}
+                              value={`${area.name} ${area.projectName ?? ''} ${area.id}`}
+                              onSelect={() => toggleFilter('area', area.id)}
+                              className="flex items-center justify-between"
+                           >
+                              <div className="flex min-w-0 items-center gap-2">
+                                 <span
+                                    className="size-3 shrink-0 rounded-full"
+                                    style={{ backgroundColor: area.color }}
+                                 />
+                                 <span className="truncate">{area.name}</span>
+                                 {filters.project.length === 0 && area.projectName && (
+                                    <span className="truncate text-xs text-muted-foreground">
+                                       {area.projectName}
+                                    </span>
+                                 )}
+                              </div>
+                              {areaFilterSet.has(area.id) && (
+                                 <CheckIcon size={16} className="ml-auto" />
+                              )}
+                              <span className="text-muted-foreground text-xs">
+                                 {issues.filter((issue) => issue.area?.id === area.id).length}
                               </span>
                            </CommandItem>
                         ))}

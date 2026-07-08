@@ -18,6 +18,7 @@ const propertyLabels: Record<IssueDisplayProperty, string> = {
    identifier: 'ID',
    labels: 'Tags',
    project: 'Project',
+   area: 'Area',
    assignee: 'Assignee',
    createdAt: 'Created',
 };

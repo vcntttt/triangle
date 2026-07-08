@@ -17,6 +17,7 @@ import { useIssuesData } from '@/components/common/issues/issues-data-context';
 import { toast } from 'sonner';
 import type { Issue } from '@/lib/models';
 import { ProjectSelector } from '@/components/layout/sidebar/create-new-issue/project-selector';
+import { AreaSelector } from '@/components/layout/sidebar/create-new-issue/area-selector';
 import { ParentIssueSelector } from './parent-issue-selector';
 import { cn } from '@/lib/utils';
 import { priorities, status as statusOptions } from '@/lib/ui-catalog';
@@ -49,6 +50,7 @@ export function IssueDetail({
       deleteIssue,
       archiveIssue,
       updateIssueProject,
+      updateIssueArea,
       updateIssueParent,
       addIssueLabel,
    } = useIssuesData();
@@ -211,6 +213,8 @@ export function IssueDetail({
       const inlineDraft = parseIssueInlineTokens(newSubissueTitle, projectOptions, labelOptions);
       const finalTitle = inlineDraft.title || newSubissueTitle.trim();
       const finalProject = inlineDraft.project ?? presentationIssue.project;
+      const finalArea =
+         finalProject?.id === presentationIssue.project?.id ? presentationIssue.area : null;
 
       if (!finalTitle) {
          toast.error('Subissue title is required');
@@ -228,6 +232,7 @@ export function IssueDetail({
             assigneeId: currentUser.id,
             parentIssueId: presentationIssue.id,
             projectId: finalProject?.id ?? null,
+            areaId: finalArea?.id ?? null,
             labelIds: inlineDraft.labels.map((label) => label.id),
          });
          setNewSubissueTitle('');
@@ -339,8 +344,21 @@ export function IssueDetail({
                   <AssigneeUser user={presentationIssue.assignee} issueId={presentationIssue.id} />
                   <ProjectSelector
                      project={presentationIssue.project}
-                     onChange={(project) => updateIssueProject(presentationIssue.id, project)}
+                     onChange={(project) => {
+                        updateIssueProject(presentationIssue.id, project);
+                        if (presentationIssue.area?.projectId !== project?.id) {
+                           updateIssueArea(presentationIssue.id, null);
+                        }
+                     }}
                      showShortcut={false}
+                     triggerClassName={issueChipClassName}
+                     variant="ghost"
+                     size="sm"
+                  />
+                  <AreaSelector
+                     project={presentationIssue.project}
+                     area={presentationIssue.area}
+                     onChange={(area) => updateIssueArea(presentationIssue.id, area?.id ?? null)}
                      triggerClassName={issueChipClassName}
                      variant="ghost"
                      size="sm"

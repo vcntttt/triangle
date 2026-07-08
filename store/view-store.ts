@@ -1,7 +1,13 @@
 import { useViewerCommands, useViewerPreferences } from '@/src/data/viewer';
 
 export type ViewType = 'list' | 'grid';
-export type IssueDisplayProperty = 'identifier' | 'labels' | 'project' | 'assignee' | 'createdAt';
+export type IssueDisplayProperty =
+   | 'identifier'
+   | 'labels'
+   | 'project'
+   | 'area'
+   | 'assignee'
+   | 'createdAt';
 
 const defaultIssueView = {
    viewType: 'list' as ViewType,
@@ -11,6 +17,7 @@ const defaultIssueView = {
       identifier: true,
       labels: true,
       project: true,
+      area: true,
       assignee: true,
       createdAt: true,
    },

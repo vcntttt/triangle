@@ -48,6 +48,16 @@ export default defineSchema({
    })
       .index('by_project_createdAt', ['projectId', 'createdAt'])
       .index('by_createdAt', ['createdAt']),
+   projectAreas: defineTable({
+      projectId: v.id('projects'),
+      name: v.string(),
+      color: v.string(),
+      position: v.number(),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+   })
+      .index('by_project', ['projectId'])
+      .index('by_project_position', ['projectId', 'position']),
    labels: defineTable({
       name: v.string(),
       color: v.string(),
@@ -74,6 +84,7 @@ export default defineSchema({
             identifier: v.boolean(),
             labels: v.boolean(),
             project: v.boolean(),
+            area: v.optional(v.boolean()),
             assignee: v.boolean(),
             createdAt: v.boolean(),
          }),
@@ -84,6 +95,7 @@ export default defineSchema({
          priority: v.array(v.string()),
          labels: v.array(v.string()),
          project: v.array(v.string()),
+         area: v.optional(v.array(v.string())),
       }),
       projectView: v.object({
          viewType: v.union(v.literal('list'), v.literal('board')),
@@ -111,6 +123,7 @@ export default defineSchema({
       identifier: v.string(),
       projectIssueNumber: v.optional(v.number()),
       projectId: v.optional(v.id('projects')),
+      areaId: v.optional(v.id('projectAreas')),
       parentIssueId: v.optional(v.id('issues')),
       title: v.string(),
       description: v.optional(v.string()),

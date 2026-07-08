@@ -11,6 +11,7 @@ import { AssigneeUser } from './assignee-user';
 import { LabelBadge } from './label-badge';
 import { PrioritySelector } from './priority-selector';
 import { ProjectBadge } from './project-badge';
+import { ProjectAreaBadge } from '@/components/common/projects/project-area-badge';
 import { StatusSelector } from './status-selector';
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { IssueContextMenu } from './issue-context-menu';
@@ -47,6 +48,7 @@ function IssueDragPreview({ issue }: { issue: Issue }) {
          <div className="flex flex-wrap gap-1.5 mb-3 min-h-[1.5rem]">
             <LabelBadge label={issue.labels} />
             {issue.project && <ProjectBadge project={issue.project} />}
+            {issue.area && <ProjectAreaBadge area={issue.area} />}
          </div>
 
          <div className="flex items-center justify-between mt-auto pt-2">
@@ -172,11 +174,16 @@ export function IssueGrid({
                      )}
                      <h3 className="text-sm font-semibold line-clamp-2">{issue.title}</h3>
                   </div>
-                  {(visibleProperties.labels || visibleProperties.project) && (
+                  {(visibleProperties.labels ||
+                     visibleProperties.project ||
+                     visibleProperties.area) && (
                      <div className="flex flex-wrap gap-1.5 mb-3 min-h-[1.5rem]">
                         {visibleProperties.labels && <LabelBadge label={issue.labels} />}
                         {visibleProperties.project && issue.project && (
                            <ProjectBadge project={issue.project} />
+                        )}
+                        {visibleProperties.area && issue.area && (
+                           <ProjectAreaBadge area={issue.area} />
                         )}
                      </div>
                   )}

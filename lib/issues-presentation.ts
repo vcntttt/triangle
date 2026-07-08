@@ -38,6 +38,7 @@ export const toPresentationIssue = (
       project: issue.project
          ? toPresentationProject(issue.project, undefined, undefined, viewer)
          : undefined,
+      area: issue.area,
       parentIssueId: issue.parentIssueId,
       parent: issue.parentIssue,
       subissues: issue.subissues.map((subissue) => ({

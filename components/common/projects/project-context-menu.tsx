@@ -6,7 +6,7 @@ import {
    ContextMenuSubContent,
    ContextMenuSubTrigger,
 } from '@/components/ui/context-menu';
-import { Check, FolderOpen, Pin, PinOff, Radio } from 'lucide-react';
+import { Check, FolderOpen, Pin, PinOff, Radio, Trash2 } from 'lucide-react';
 import type { ProjectOptionLike } from '@/lib/projects-presentation';
 import { priorities, status } from '@/lib/ui-catalog';
 
@@ -19,6 +19,7 @@ interface ProjectContextMenuProps {
    onOpenIssues: () => void;
    onNewUpdate: () => void;
    onTogglePin: () => void;
+   onDelete: () => void;
    onStatusChange: (statusId: string) => void;
    onPriorityChange: (priorityId: string) => void;
 }
@@ -35,6 +36,7 @@ export function ProjectContextMenu({
    onOpenIssues,
    onNewUpdate,
    onTogglePin,
+   onDelete,
    onStatusChange,
    onPriorityChange,
 }: ProjectContextMenuProps) {
@@ -88,6 +90,12 @@ export function ProjectContextMenu({
                })}
             </ContextMenuSubContent>
          </ContextMenuSub>
+
+         <ContextMenuSeparator />
+
+         <ContextMenuItem onSelect={onDelete} variant="destructive">
+            <Trash2 className="size-4" /> Eliminar proyecto…
+         </ContextMenuItem>
       </ContextMenuContent>
    );
 }

@@ -36,6 +36,7 @@ import {
    GitBranchPlus,
    Link2Off,
    CheckIcon,
+   Layers2,
 } from 'lucide-react';
 import React, { useState } from 'react';
 import { useIssuesData } from '@/components/common/issues/issues-data-context';
@@ -48,6 +49,8 @@ import { usePinnedProjectsStore } from '@/store/pinned-projects-store';
 import { toast } from 'sonner';
 import { useIssuesStatuses } from './issues-status-context';
 import { ProjectIconGlyph } from '@/components/common/projects/project-icon';
+import { projectAreasQuery } from '@/src/data/projects';
+import { useQuery } from '@tanstack/react-query';
 
 function notifyLinkAdded() {
    toast.success('Link added');
@@ -95,6 +98,7 @@ export function IssueContextMenu({ issueId }: IssueContextMenuProps) {
       addIssueLabel,
       removeIssueLabel,
       updateIssueProject,
+      updateIssueArea,
       updateIssueDueDate,
       archiveIssue,
       deleteIssue,
@@ -105,6 +109,11 @@ export function IssueContextMenu({ issueId }: IssueContextMenuProps) {
       getSubissues,
       updateIssueEstimatedHours,
    } = useIssuesData();
+   const issue = issueId ? getIssueById(issueId) : undefined;
+   const { data: areas = [] } = useQuery({
+      ...projectAreasQuery(issue?.project?.id ?? ''),
+      enabled: Boolean(issue?.project?.id),
+   });
 
    const handleStatusChange = (statusId: string) => {
       if (!issueId) return;
@@ -155,7 +164,18 @@ export function IssueContextMenu({ issueId }: IssueContextMenuProps) {
       if (!issueId) return;
       const newProject = projectId ? projects.find((p) => p.id === projectId) : undefined;
       updateIssueProject(issueId, newProject);
+      const issue = getIssueById(issueId);
+      if (issue?.area?.projectId !== newProject?.id) {
+         updateIssueArea(issueId, null);
+      }
       toast.success(newProject ? `Project set to ${newProject.name}` : 'Project removed');
+   };
+
+   const handleAreaChange = (areaId: string | null) => {
+      if (!issueId) return;
+      const area = areaId ? areas.find((item) => item.id === areaId) : null;
+      updateIssueArea(issueId, area?.id ?? null);
+      toast.success(area ? `Area set to ${area.name}` : 'Area removed');
    };
 
    const handleToggleProjectPin = () => {
@@ -222,11 +242,16 @@ export function IssueContextMenu({ issueId }: IssueContextMenuProps) {
       const issue = getIssueById(issueId);
       if (!issue) return;
 
-      openModal(undefined, issue.project, {
-         id: issue.id,
-         identifier: issue.identifier,
-         title: issue.title,
-      });
+      openModal(
+         undefined,
+         issue.project,
+         {
+            id: issue.id,
+            identifier: issue.identifier,
+            title: issue.title,
+         },
+         issue.area ?? null
+      );
    };
 
    const handleSetParent = (parentId: string | null) => {
@@ -375,6 +400,29 @@ export function IssueContextMenu({ issueId }: IssueContextMenuProps) {
                   <ContextMenuItem onClick={handleToggleProjectPin}>
                      <Star className="size-4" /> Pin/unpin current project
                   </ContextMenuItem>
+               </ContextMenuSubContent>
+            </ContextMenuSub>
+
+            <ContextMenuSub>
+               <ContextMenuSubTrigger disabled={!issue?.project}>
+                  <Layers2 className="mr-2 size-4" /> Area
+               </ContextMenuSubTrigger>
+               <ContextMenuSubContent className="w-56">
+                  <ContextMenuItem onClick={() => handleAreaChange(null)}>
+                     <Layers2 className="size-4" /> No area
+                     {!issue?.area && <CheckIcon className="ml-auto size-4" />}
+                  </ContextMenuItem>
+                  {areas.map((area) => (
+                     <ContextMenuItem key={area.id} onClick={() => handleAreaChange(area.id)}>
+                        <span
+                           className="size-3 rounded-full"
+                           style={{ backgroundColor: area.color }}
+                           aria-hidden="true"
+                        />
+                        {area.name}
+                        {issue?.area?.id === area.id && <CheckIcon className="ml-auto size-4" />}
+                     </ContextMenuItem>
+                  ))}
                </ContextMenuSubContent>
             </ContextMenuSub>
 
