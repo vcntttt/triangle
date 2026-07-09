@@ -23,14 +23,15 @@ const isEmptyHeader = (header: React.ReactNode | undefined): boolean => {
    return false;
 };
 
+const height = {
+   1: 'h-[calc(100svh-40px)] md:h-[calc(100svh-56px)]',
+   2: 'h-[calc(100svh-80px)] md:h-[calc(100svh-96px)]',
+};
+
 export default function MainLayout({ children, header, headersNumber = 2 }: MainLayoutProps) {
-   const height = {
-      1: 'h-[calc(100svh-40px)] lg:h-[calc(100svh-56px)]',
-      2: 'h-[calc(100svh-80px)] lg:h-[calc(100svh-96px)]',
-   };
    return (
-      <div className="h-svh overflow-hidden lg:p-2 w-full">
-         <div className="lg:border lg:rounded-md overflow-hidden flex flex-col items-center justify-start bg-container h-full w-full">
+      <div className="h-svh overflow-hidden md:p-2 w-full">
+         <div className="md:border md:rounded-md overflow-hidden flex flex-col items-center justify-start bg-container h-full w-full">
             {header}
             <div
                className={cn(

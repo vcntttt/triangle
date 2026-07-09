@@ -25,6 +25,7 @@ import type { IssueListItem } from '@/lib/db/issues';
 import { useProjectCommands } from '@/src/data/projects';
 import { useViewerProfile } from '@/src/data/viewer';
 import { useCreateIssueStore } from '@/store/create-issue-store';
+import { DisplayMenu } from '@/components/layout/headers/issues/header-options';
 
 const updateDateFormatter = new Intl.DateTimeFormat('en-US');
 
@@ -38,6 +39,7 @@ export function ProjectToolbar({
    activeTab?: 'overview' | 'issues';
 }) {
    const showTabs = project && activeTab;
+   const showIssueDisplay = activeTab === 'issues';
 
    return (
       <div className="flex min-h-10 w-full flex-wrap items-center justify-between gap-2 border-b px-4 py-1.5">
@@ -53,6 +55,7 @@ export function ProjectToolbar({
             {project ? <span className="text-xs text-muted-foreground">{project.key}</span> : null}
          </div>
          <div className="flex items-center gap-2">
+            {showIssueDisplay ? <DisplayMenu /> : null}
             {showTabs ? (
                <div className="flex items-center gap-1">
                   <Button

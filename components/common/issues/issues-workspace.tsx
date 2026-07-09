@@ -364,7 +364,7 @@ function IssuesWorkspaceContent({
                }}
             />
             <div className="h-full w-full">
-               <div className={cn('h-full lg:hidden', selectedIssue ? 'hidden' : 'block')}>
+               <div className={cn('h-full md:hidden', selectedIssue ? 'hidden' : 'block')}>
                   <IssuesListPanel
                      issues={filteredIssues}
                      showEmptyStatuses={showEmptyStatuses}
@@ -377,7 +377,7 @@ function IssuesWorkspaceContent({
                   />
                </div>
 
-               <div className={cn('h-full lg:hidden', selectedIssue ? 'block' : 'hidden')}>
+               <div className={cn('h-full md:hidden', selectedIssue ? 'block' : 'hidden')}>
                   {selectedIssue ? (
                      <IssueDetail
                         issueId={selectedIssue.id}
@@ -390,7 +390,7 @@ function IssuesWorkspaceContent({
                   ) : null}
                </div>
 
-               <ResizablePanelGroup direction="horizontal" className="hidden lg:flex h-full w-full">
+               <ResizablePanelGroup direction="horizontal" className="hidden md:flex h-full w-full">
                   <ResizablePanel defaultSize={60} minSize={32}>
                      <IssuesListPanel
                         issues={filteredIssues}

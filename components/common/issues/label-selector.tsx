@@ -18,10 +18,11 @@ import { IssueChip, issueChipDotClassName } from './issue-chip';
 export function LabelSelector({ issueId }: { issueId: string }) {
    const [open, setOpen] = useState(false);
    const allLabels = useLabelOptions();
-   const currentLabels = useIssuesData(
-      (state) => state.issues.find((issue) => issue.id === issueId)?.labels ?? []
+   const { issues, addIssueLabel, removeIssueLabel } = useIssuesData();
+   const currentLabels = useMemo(
+      () => issues.find((issue) => issue.id === issueId)?.labels ?? [],
+      [issues, issueId]
    );
-   const { addIssueLabel, removeIssueLabel } = useIssuesData();
 
    const selectedIds = useMemo(
       () => new Set(currentLabels.map((label) => label.id)),
