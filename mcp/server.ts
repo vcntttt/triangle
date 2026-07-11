@@ -50,11 +50,12 @@ export function createTriangleMcpServer(
       },
       () =>
          run(async () => {
-            const [projects, labels, updates, issueStatuses] = await Promise.all([
+            const [projects, labels, updates, issueStatuses, viewer] = await Promise.all([
                convex.query(api.projects.page, {}),
                convex.query(api.labels.options, {}),
                convex.query(api.projects.updatesPage, {}),
                convex.query(api.issueStatuses.list, {}),
+               convex.query(api.viewer.profile, {}),
             ]);
             const areas = (
                await Promise.all(
@@ -72,6 +73,7 @@ export function createTriangleMcpServer(
                labels,
                areas,
                recentProjectUpdates: updates.updates,
+               assignableUsers: [viewer],
             };
          })
    );
