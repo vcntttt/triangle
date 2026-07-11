@@ -8,7 +8,10 @@ Before a mutation, call `triangle_workspace` or the relevant list/get tool to ob
 
 ## Capabilities
 
-- Issues: list, read, create, update, change status, archive, and organize as subissues.
+- Issues: filter by label, status, age, and activity; read, create, update, assign, claim,
+  close with a durable resolution, archive, and organize as subissues.
+- Collaboration: add comments or typed triage notes, detect activity after a triage note,
+  and link research, prototype, document, or other artifacts.
 - Blocking relations: inspect `blockedBy` and `blocks`, add blockers, and remove blockers. Relations cannot form cycles. A blocked issue cannot enter `in-progress`, `technical-review`, or `completed` until every blocker is `completed`.
 - Subissues: create with `parentIssueId` or update the parent. Hierarchy and blocking order are independent.
 - Projects: list, read, create, update, and publish health updates.

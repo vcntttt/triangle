@@ -5,7 +5,10 @@ Triangle includes a remote MCP server at `https://triangle.tailf8b14c.ts.net/mcp
 ## Available tools
 
 - `triangle_workspace`: statuses, priorities, projects, areas, labels, and recent updates.
-- Issues and subissues: list, fetch, create, update, change status, and archive.
+- Issues and subissues: filter by project, label, status, age, or activity; fetch, create,
+  update, assign, claim, change status, close with a durable resolution, and archive.
+- Issue collaboration: add comments and typed triage notes, detect activity after a triage
+  note, and link research or prototype artifacts.
 - Blocking relations: add and remove strict blockers.
 - Labels and issue statuses: create, update, and delete.
 - Projects and areas: list, fetch, create, update, delete areas, and publish updates.
