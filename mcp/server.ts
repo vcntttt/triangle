@@ -80,11 +80,20 @@ export function createTriangleMcpServer(
       'triangle_list_issues',
       {
          title: 'List Triangle issues',
-         description: 'List all issues, optionally limited to one project ID.',
-         inputSchema: { projectId: z.string().optional() },
+         description:
+            'Search issues with combinable project, label, status, age, and activity filters. Date boundaries are ISO 8601 timestamps.',
+         inputSchema: {
+            projectId: z.string().optional(),
+            labelIds: z.array(z.string()).optional(),
+            statuses: z.array(z.string()).optional(),
+            createdBefore: z.string().datetime().optional(),
+            createdAfter: z.string().datetime().optional(),
+            updatedBefore: z.string().datetime().optional(),
+            updatedAfter: z.string().datetime().optional(),
+         },
          annotations: { readOnlyHint: true },
       },
-      ({ projectId }) => run(() => convex.query(api.issues.page, { projectId: projectId ?? null }))
+      (input) => run(() => convex.query(api.issues.search, input))
    );
 
    server.registerTool(
@@ -176,6 +185,84 @@ export function createTriangleMcpServer(
          annotations: { destructiveHint: true },
       },
       ({ issueId }) => run(() => convex.mutation(api.issues.archive, { issueId }))
+   );
+
+   server.registerTool(
+      'triangle_close_issue',
+      {
+         title: 'Close Triangle issue with resolution',
+         description:
+            'Mark an issue completed and persist its resolution. Reopening the issue later does not erase the resolution.',
+         inputSchema: { issueId: z.string().min(1), resolution: z.string().min(1) },
+      },
+      (input) => run(() => convex.mutation(api.issues.close, input))
+   );
+
+   server.registerTool(
+      'triangle_assign_issue',
+      {
+         title: 'Assign Triangle issue',
+         description: 'Assign an issue to an assignee ID, or pass null to unassign it.',
+         inputSchema: { issueId: z.string().min(1), assigneeId: z.string().nullable() },
+      },
+      (input) => run(() => convex.mutation(api.issues.assign, input))
+   );
+
+   server.registerTool(
+      'triangle_claim_issue',
+      {
+         title: 'Claim Triangle issue',
+         description: 'Assign an issue to the current local Triangle user.',
+         inputSchema: { issueId: z.string().min(1) },
+      },
+      (input) => run(() => convex.mutation(api.issues.claim, input))
+   );
+
+   server.registerTool(
+      'triangle_add_issue_comment',
+      {
+         title: 'Add issue comment',
+         description:
+            'Add a normal comment or a durable triage note. Keep the returned comment ID to detect later activity.',
+         inputSchema: {
+            issueId: z.string().min(1),
+            body: z.string().min(1),
+            kind: z.enum(['comment', 'triage-note']).optional(),
+         },
+      },
+      (input) => run(() => convex.mutation(api.issues.addComment, input))
+   );
+
+   server.registerTool(
+      'triangle_activity_after_triage',
+      {
+         title: 'Detect activity after triage',
+         description:
+            'Report issue changes, comments, and artifacts created after a specific triage note.',
+         inputSchema: {
+            issueId: z.string().min(1),
+            triageNoteId: z.string().min(1),
+         },
+         annotations: { readOnlyHint: true },
+      },
+      (input) => run(() => convex.query(api.issues.activityAfterTriage, input))
+   );
+
+   server.registerTool(
+      'triangle_attach_issue_artifact',
+      {
+         title: 'Attach issue artifact',
+         description:
+            'Link a research result, prototype, document, or other HTTP(S) artifact to an issue.',
+         inputSchema: {
+            issueId: z.string().min(1),
+            title: z.string().min(1),
+            url: z.string().url(),
+            kind: z.enum(['research', 'prototype', 'document', 'other']),
+            description: z.string().optional(),
+         },
+      },
+      (input) => run(() => convex.mutation(api.issues.addArtifact, input))
    );
 
    server.registerTool(
