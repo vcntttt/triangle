@@ -37,6 +37,13 @@
 - `inbox` and much of `settings` are low-priority placeholder surfaces; avoid polishing them unless the task requires it.
 - The current user model is intentionally single-user and lives in `lib/current-user.ts`.
 
+## Agent skills
+
+### Issue tracker
+
+- Circle is the personal issue tracker for this repository. Use the local `circle` MCP server for issues, projects, labels, and project updates.
+- Read `docs/agents/issue-tracker.md` before publishing planning work or changing issue state.
+
 ## Data Reality
 
 - Projects, issues, labels, project statuses, priorities, project updates, viewer profile, and viewer preferences are backed by Convex.
