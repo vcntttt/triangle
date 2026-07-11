@@ -20,14 +20,20 @@ const slug = (value: string) =>
 async function ensureDefaults(ctx: MutationCtx) {
    const existing = new Set((await ctx.db.query('issueStatuses').collect()).map((row) => row.id));
    const now = Date.now();
-   for (const [position, item] of defaults.entries())
-      if (!existing.has(item.id))
-         await ctx.db.insert('issueStatuses', {
-            ...item,
-            position,
-            createdAt: now,
-            updatedAt: now,
-         });
+   await Promise.all(
+      defaults.flatMap((item, position) =>
+         existing.has(item.id)
+            ? []
+            : [
+                 ctx.db.insert('issueStatuses', {
+                    ...item,
+                    position,
+                    createdAt: now,
+                    updatedAt: now,
+                 }),
+              ]
+      )
+   );
 }
 
 export const seedDefaults = mutation({

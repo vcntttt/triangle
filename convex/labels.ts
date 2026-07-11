@@ -54,16 +54,19 @@ export const remove = mutation({
       const id = labelId as Id<'labels'>;
       if (!(await ctx.db.get(id))) return { ok: true };
       const issues = await ctx.db.query('issues').collect();
-      await Promise.all(
-         issues
-            .filter((issue) => issue.labelIds.includes(id))
-            .map((issue) =>
+      const updatedAt = Date.now();
+      const issueUpdates = [];
+      for (const issue of issues) {
+         if (issue.labelIds.includes(id)) {
+            issueUpdates.push(
                ctx.db.patch(issue._id, {
                   labelIds: issue.labelIds.filter((value) => value !== id),
-                  updatedAt: Date.now(),
+                  updatedAt,
                })
-            )
-      );
+            );
+         }
+      }
+      await Promise.all(issueUpdates);
       await ctx.db.delete(id);
       return { ok: true };
    },
