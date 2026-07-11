@@ -223,6 +223,12 @@ async function assertCanEnterStatus(ctx: MutationCtx, issueId: Id<'issues'>, sta
       .unique();
    const option = stored ?? defaultProjectStatuses.find((item) => item.id === status);
    if (!option) throw new Error(`Unknown issue status: ${status}.`);
+   if (option.type === 'completed') {
+      const issue = await ctx.db.get(issueId);
+      if (!issue?.resolution) {
+         throw new Error('Use close with a resolution before completing this issue.');
+      }
+   }
    if (option.type === 'unstarted') return;
    const relations = await ctx.db
       .query('issueRelations')
@@ -760,8 +766,9 @@ export const close = mutation({
       if (!issue) throw new Error('Issue not found.');
       const normalizedResolution = resolution.trim();
       if (!normalizedResolution) throw new Error('Resolution is required.');
-      await assertCanEnterStatus(ctx, id, 'completed');
       const now = Date.now();
+      await ctx.db.patch(id, { resolution: normalizedResolution });
+      await assertCanEnterStatus(ctx, id, 'completed');
       await ctx.db.patch(id, {
          status: 'completed',
          resolution: normalizedResolution,
@@ -777,6 +784,9 @@ export const assign = mutation({
    handler: async (ctx, { issueId, assigneeId }) => {
       const id = issueId as Id<'issues'>;
       if (!(await ctx.db.get(id))) throw new Error('Issue not found.');
+      if (assigneeId !== null && assigneeId !== 'me') {
+         throw new Error('Triangle is personal; the only assignable user ID is me.');
+      }
       await ctx.db.patch(id, { assigneeId: assigneeId ?? undefined, updatedAt: Date.now() });
       return (await listIssues(ctx)).find((item) => item.id === id) ?? null;
    },
@@ -846,10 +856,15 @@ export const activityAfterTriage = query({
          ctx.db.get(id),
       ]);
       if (!issue) throw new Error('Issue not found.');
-      const laterComments = comments.filter((comment) => comment._id !== note._id);
+      const laterComments = comments.filter(
+         (comment) => comment._creationTime > note._creationTime
+      );
+      const laterArtifacts = artifacts.filter(
+         (artifact) => artifact._creationTime > note._creationTime
+      );
       const issueChanged = issue.updatedAt > note.createdAt;
       return {
-         hasActivity: issueChanged || laterComments.length > 0 || artifacts.length > 0,
+         hasActivity: issueChanged || laterComments.length > 0 || laterArtifacts.length > 0,
          triageNoteId: note._id,
          since: nowIso(note.createdAt),
          issueUpdatedAt: nowIso(issue.updatedAt),
@@ -859,7 +874,7 @@ export const activityAfterTriage = query({
             body: comment.body,
             createdAt: nowIso(comment.createdAt),
          })),
-         artifacts: artifacts.map((artifact) => ({
+         artifacts: laterArtifacts.map((artifact) => ({
             id: artifact._id,
             kind: artifact.kind,
             title: artifact.title,

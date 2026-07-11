@@ -154,9 +154,6 @@ export default defineSchema({
       .index('by_identifier', ['identifier'])
       .index('by_project', ['projectId'])
       .index('by_parent_issue', ['parentIssueId'])
-      .index('by_status_updatedAt', ['status', 'updatedAt'])
-      .index('by_createdAt', ['createdAt'])
-      .index('by_updatedAt', ['updatedAt'])
       .index('by_rank', ['rank']),
    issueComments: defineTable({
       issueId: v.id('issues'),
