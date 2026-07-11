@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as issueStatuses from '../issueStatuses.js';
 import type * as issues from '../issues.js';
 import type * as labels from '../labels.js';
 import type * as projects from '../projects.js';
@@ -16,6 +17,7 @@ import type * as viewer from '../viewer.js';
 import type { ApiFromModules, FilterApi, FunctionReference } from 'convex/server';
 
 declare const fullApi: ApiFromModules<{
+   issueStatuses: typeof issueStatuses;
    issues: typeof issues;
    labels: typeof labels;
    projects: typeof projects;

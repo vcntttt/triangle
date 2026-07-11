@@ -13,6 +13,17 @@ export default defineSchema({
       .index('by_option_id', ['id'])
       .index('by_name', ['name'])
       .index('by_position', ['position']),
+   issueStatuses: defineTable({
+      id: v.string(),
+      name: v.string(),
+      color: v.string(),
+      position: v.number(),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+   })
+      .index('by_option_id', ['id'])
+      .index('by_name', ['name'])
+      .index('by_position', ['position']),
    projectPriorities: defineTable({
       id: v.string(),
       name: v.string(),
@@ -141,4 +152,12 @@ export default defineSchema({
       .index('by_project', ['projectId'])
       .index('by_parent_issue', ['parentIssueId'])
       .index('by_rank', ['rank']),
+   issueRelations: defineTable({
+      blockerIssueId: v.id('issues'),
+      blockedIssueId: v.id('issues'),
+      createdAt: v.number(),
+   })
+      .index('by_blocker', ['blockerIssueId'])
+      .index('by_blocked', ['blockedIssueId'])
+      .index('by_pair', ['blockerIssueId', 'blockedIssueId']),
 });
