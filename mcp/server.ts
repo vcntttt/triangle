@@ -12,7 +12,7 @@ function result(value: unknown) {
 }
 
 function toolError(error: unknown) {
-   const message = error instanceof Error ? error.message : 'Unexpected Circle MCP error.';
+   const message = error instanceof Error ? error.message : 'Unexpected Triangle MCP error.';
    return {
       content: [{ type: 'text' as const, text: message }],
       isError: true,
@@ -27,7 +27,7 @@ async function run<T>(operation: () => Promise<T>) {
    }
 }
 
-export function createCircleMcpServer(
+export function createTriangleMcpServer(
    convexUrl = process.env.CONVEX_SELF_HOSTED_URL ?? process.env.VITE_CONVEX_URL
 ) {
    if (!convexUrl) {
@@ -38,40 +38,48 @@ export function createCircleMcpServer(
       logger: false,
       skipConvexDeploymentUrlCheck: true,
    });
-   const server = new McpServer({ name: 'circle', version: '0.1.0' });
+   const server = new McpServer({ name: 'triangle', version: '0.2.0' });
 
    server.registerTool(
-      'circle_workspace',
+      'triangle_workspace',
       {
-         title: 'Circle workspace',
+         title: 'Triangle workspace',
          description:
             'Return issue statuses, project statuses and priorities, projects, labels, and recent project updates. Use this before creating or changing records when you need valid option IDs.',
          annotations: { readOnlyHint: true },
       },
       () =>
          run(async () => {
-            const [issues, projects, labels, updates] = await Promise.all([
-               convex.query(api.issues.page, {}),
+            const [projects, labels, updates, issueStatuses] = await Promise.all([
                convex.query(api.projects.page, {}),
                convex.query(api.labels.options, {}),
                convex.query(api.projects.updatesPage, {}),
+               convex.query(api.issueStatuses.list, {}),
             ]);
+            const areas = (
+               await Promise.all(
+                  projects.projects.map((project) =>
+                     convex.query(api.projects.areas, { projectId: project.id })
+                  )
+               )
+            ).flat();
 
             return {
-               issueStatuses: issues.statusOptions,
+               issueStatuses,
                projectStatuses: projects.statusOptions,
                projectPriorities: projects.priorityOptions,
                projects: projects.projects,
                labels,
+               areas,
                recentProjectUpdates: updates.updates,
             };
          })
    );
 
    server.registerTool(
-      'circle_list_issues',
+      'triangle_list_issues',
       {
-         title: 'List Circle issues',
+         title: 'List Triangle issues',
          description: 'List all issues, optionally limited to one project ID.',
          inputSchema: { projectId: z.string().optional() },
          annotations: { readOnlyHint: true },
@@ -80,9 +88,9 @@ export function createCircleMcpServer(
    );
 
    server.registerTool(
-      'circle_get_issue',
+      'triangle_get_issue',
       {
-         title: 'Get a Circle issue',
+         title: 'Get a Triangle issue',
          description: 'Get an issue by its human-readable identifier, such as CIRC-12 or APP-3.',
          inputSchema: { identifier: z.string().min(1) },
          annotations: { readOnlyHint: true },
@@ -92,9 +100,9 @@ export function createCircleMcpServer(
    );
 
    server.registerTool(
-      'circle_create_issue',
+      'triangle_create_issue',
       {
-         title: 'Create a Circle issue',
+         title: 'Create a Triangle issue',
          description:
             'Create an issue. Use projectName and labelNames when possible; use workspace data first to choose valid status and priority IDs.',
          inputSchema: {
@@ -117,9 +125,9 @@ export function createCircleMcpServer(
    );
 
    server.registerTool(
-      'circle_update_issue',
+      'triangle_update_issue',
       {
-         title: 'Update a Circle issue',
+         title: 'Update a Triangle issue',
          description:
             'Update an issue by its internal ID. Omit fields that should remain unchanged. Passing null clears description, due date, parent, project, or assignee.',
          inputSchema: {
@@ -143,9 +151,9 @@ export function createCircleMcpServer(
    );
 
    server.registerTool(
-      'circle_set_issue_status',
+      'triangle_set_issue_status',
       {
-         title: 'Set Circle issue status',
+         title: 'Set Triangle issue status',
          description:
             'Change an issue status, with optional child cascading and parent advancement.',
          inputSchema: {
@@ -159,9 +167,9 @@ export function createCircleMcpServer(
    );
 
    server.registerTool(
-      'circle_archive_issue',
+      'triangle_archive_issue',
       {
-         title: 'Archive a Circle issue',
+         title: 'Archive a Triangle issue',
          description:
             'Archive an issue. This changes its status to archived and is reversible through circle_set_issue_status.',
          inputSchema: { issueId: z.string().min(1) },
@@ -171,9 +179,9 @@ export function createCircleMcpServer(
    );
 
    server.registerTool(
-      'circle_list_projects',
+      'triangle_list_projects',
       {
-         title: 'List Circle projects',
+         title: 'List Triangle projects',
          description:
             'List projects with their latest update and valid project status and priority options.',
          annotations: { readOnlyHint: true },
@@ -182,9 +190,9 @@ export function createCircleMcpServer(
    );
 
    server.registerTool(
-      'circle_get_project',
+      'triangle_get_project',
       {
-         title: 'Get a Circle project',
+         title: 'Get a Triangle project',
          description:
             'Get a project, its areas, issues, updates context, and valid options by project slug or internal ID.',
          inputSchema: { projectSlug: z.string().min(1) },
@@ -194,9 +202,9 @@ export function createCircleMcpServer(
    );
 
    server.registerTool(
-      'circle_create_project',
+      'triangle_create_project',
       {
-         title: 'Create a Circle project',
+         title: 'Create a Triangle project',
          description:
             'Create a project. Use circle_list_projects first to choose valid status and priority IDs.',
          inputSchema: {
@@ -213,9 +221,9 @@ export function createCircleMcpServer(
    );
 
    server.registerTool(
-      'circle_update_project',
+      'triangle_update_project',
       {
-         title: 'Update a Circle project',
+         title: 'Update a Triangle project',
          description:
             'Update a project status, priority, or its details. Passing null clears its description.',
          inputSchema: {
@@ -264,9 +272,9 @@ export function createCircleMcpServer(
    );
 
    server.registerTool(
-      'circle_create_project_update',
+      'triangle_create_project_update',
       {
-         title: 'Create a Circle project update',
+         title: 'Create a Triangle project update',
          description:
             'Publish a dated project update with a health value: no-update, off-track, on-track, or at-risk.',
          inputSchema: {
@@ -278,10 +286,89 @@ export function createCircleMcpServer(
       (input) => run(() => convex.mutation(api.projects.createUpdate, input))
    );
 
+   server.registerTool(
+      'triangle_add_issue_blocker',
+      {
+         title: 'Add issue blocker',
+         description: 'Require blockerIssueId to be completed before blockedIssueId can start.',
+         inputSchema: { blockedIssueId: z.string(), blockerIssueId: z.string() },
+      },
+      (input) => run(() => convex.mutation(api.issues.addBlocker, input))
+   );
+   server.registerTool(
+      'triangle_remove_issue_blocker',
+      {
+         title: 'Remove issue blocker',
+         inputSchema: { blockedIssueId: z.string(), blockerIssueId: z.string() },
+      },
+      (input) => run(() => convex.mutation(api.issues.removeBlocker, input))
+   );
+   server.registerTool(
+      'triangle_create_label',
+      { title: 'Create label', inputSchema: { name: z.string().min(1), color: z.string().min(1) } },
+      (input) => run(() => convex.mutation(api.labels.create, input))
+   );
+   server.registerTool(
+      'triangle_update_label',
+      {
+         title: 'Update label',
+         inputSchema: {
+            labelId: z.string(),
+            name: z.string().optional(),
+            color: z.string().optional(),
+         },
+      },
+      (input) => run(() => convex.mutation(api.labels.update, input))
+   );
+   server.registerTool(
+      'triangle_delete_label',
+      { title: 'Delete label', inputSchema: { labelId: z.string() } },
+      (input) => run(() => convex.mutation(api.labels.remove, input))
+   );
+   server.registerTool(
+      'triangle_create_issue_status',
+      { title: 'Create issue status', inputSchema: { name: z.string(), color: z.string() } },
+      (input) => run(() => convex.mutation(api.issueStatuses.create, input))
+   );
+   server.registerTool(
+      'triangle_update_issue_status',
+      {
+         title: 'Update issue status',
+         inputSchema: { id: z.string(), name: z.string().optional(), color: z.string().optional() },
+      },
+      (input) => run(() => convex.mutation(api.issueStatuses.update, input))
+   );
+   server.registerTool(
+      'triangle_delete_issue_status',
+      { title: 'Delete issue status', inputSchema: { id: z.string() } },
+      (input) => run(() => convex.mutation(api.issueStatuses.remove, input))
+   );
+   server.registerTool(
+      'triangle_create_area',
+      {
+         title: 'Create project area',
+         inputSchema: { projectId: z.string(), name: z.string(), color: z.string() },
+      },
+      (input) => run(() => convex.mutation(api.projects.createArea, input))
+   );
+   server.registerTool(
+      'triangle_update_area',
+      {
+         title: 'Update project area',
+         inputSchema: { areaId: z.string(), name: z.string(), color: z.string() },
+      },
+      (input) => run(() => convex.mutation(api.projects.updateArea, input))
+   );
+   server.registerTool(
+      'triangle_delete_area',
+      { title: 'Delete project area', inputSchema: { areaId: z.string() } },
+      (input) => run(() => convex.mutation(api.projects.deleteArea, input))
+   );
+
    return server;
 }
 
 if (process.argv[1]?.endsWith('/mcp/server.ts')) {
-   const server = createCircleMcpServer();
+   const server = createTriangleMcpServer();
    await server.connect(new StdioServerTransport());
 }

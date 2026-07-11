@@ -1,14 +1,14 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 
-import { createCircleMcpServer } from '../../mcp/server';
+import { createTriangleMcpServer } from '../../mcp/server';
 
 async function handleMcpRequest(request: Request) {
    const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,
    });
-   const server = createCircleMcpServer();
+   const server = createTriangleMcpServer();
 
    await server.connect(transport);
    return transport.handleRequest(request);
