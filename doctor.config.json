@@ -44,6 +44,48 @@
          {
             "files": ["src/routes/__root.tsx"],
             "rules": ["react-doctor/no-multi-comp"]
+         },
+         {
+            "files": [
+               ".output/**",
+               "convex/_generated/server.js",
+               "convex/issueStatuses.ts",
+               "convex/issues.ts",
+               "convex/labels.ts",
+               "convex/projects.ts",
+               "convex/viewer.ts",
+               "lib/db/labels.ts",
+               "components/ui/alert.tsx",
+               "components/ui/breadcrumb.tsx",
+               "components/ui/card.tsx",
+               "components/ui/checkbox.tsx",
+               "components/ui/collapsible.tsx",
+               "components/ui/form.tsx",
+               "components/ui/progress.tsx",
+               "components/ui/table.tsx",
+               "components/ui/toggle.tsx"
+            ],
+            "rules": ["deslop/unused-file"]
+         },
+         {
+            "files": [".output/**", "convex/_generated/api.js"],
+            "rules": [
+               "react-doctor/mcp-tool-capability-risk",
+               "react-doctor/request-body-mass-assignment",
+               "deslop/unused-export"
+            ]
+         },
+         {
+            "files": ["lib/ui-catalog.tsx"],
+            "rules": ["react-doctor/only-export-components"]
+         },
+         {
+            "files": ["convex/issues.ts"],
+            "rules": ["react-doctor/async-await-in-loop"]
+         },
+         {
+            "files": ["components/common/projects/project-detail-overview.tsx"],
+            "rules": ["react-doctor/no-giant-component"]
          }
       ]
    }

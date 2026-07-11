@@ -12,6 +12,93 @@ cleanup.
 
 ## Exceptions
 
+### Generated and framework-owned surfaces
+
+Files:
+
+- `.output/**`
+- `convex/_generated/server.js`
+- `convex/_generated/api.js`
+- `convex/issueStatuses.ts`
+- `convex/issues.ts`
+- `convex/labels.ts`
+- `convex/projects.ts`
+- `convex/viewer.ts`
+- `lib/db/labels.ts`
+- `components/ui/alert.tsx`
+- `components/ui/breadcrumb.tsx`
+- `components/ui/card.tsx`
+- `components/ui/checkbox.tsx`
+- `components/ui/collapsible.tsx`
+- `components/ui/form.tsx`
+- `components/ui/progress.tsx`
+- `components/ui/table.tsx`
+- `components/ui/toggle.tsx`
+
+Rules:
+
+- `deslop/unused-file`
+- `deslop/unused-export`
+- `react-doctor/mcp-tool-capability-risk`
+- `react-doctor/request-body-mass-assignment`
+
+Reason:
+
+The build output and Convex generated modules are not source entrypoints that
+React Doctor can resolve statically. Convex discovers backend functions through
+the generated `api` surface, while the UI component files are an intentionally
+kept local shadcn component library and compatibility type surface. MCP's
+capabilities are intentional and live in generated server output; the source
+route is reviewed separately as an application boundary.
+
+Accepted risk:
+
+These are excluded from dead-code and generated-output heuristics only. Runtime
+security and behavior diagnostics in application source remain enabled.
+
+### Sequential subissue allocation
+
+File:
+
+- `convex/issues.ts`
+
+Rule:
+
+- `react-doctor/async-await-in-loop`
+
+Reason:
+
+Creating subissues currently allocates the next human-readable identifier and
+rank by reading the records created so far. Keeping that loop sequential avoids
+duplicate identifiers or ranks. Making it parallel requires a transactional
+allocator rather than replacing the loop with `Promise.all`.
+
+Accepted risk:
+
+Creating many subissues pays one allocation read per child. This is a known
+backend optimization boundary, not an independent-await bug.
+
+### Project overview composition
+
+File:
+
+- `components/common/projects/project-detail-overview.tsx`
+
+Rule:
+
+- `react-doctor/no-giant-component`
+
+Reason:
+
+The component owns the project draft, optimistic field updates, icon updates,
+issue navigation, project areas, and update timeline in one route surface.
+Splitting it safely needs behavior-level review across those workflows.
+
+Accepted risk:
+
+The component remains harder to maintain, but this is a scoped structural task;
+the runtime and correctness findings in the component are still checked.
+
 ### `react-doctor/no-giant-component`
 
 Files:
