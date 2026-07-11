@@ -142,6 +142,8 @@ export default defineSchema({
       status: v.string(),
       priority: v.string(),
       assigneeId: v.optional(v.string()),
+      resolution: v.optional(v.string()),
+      resolvedAt: v.optional(v.number()),
       rank: v.string(),
       estimatedHours: v.optional(v.string()),
       dueDate: v.optional(v.number()),
@@ -152,7 +154,34 @@ export default defineSchema({
       .index('by_identifier', ['identifier'])
       .index('by_project', ['projectId'])
       .index('by_parent_issue', ['parentIssueId'])
+      .index('by_status_updatedAt', ['status', 'updatedAt'])
+      .index('by_createdAt', ['createdAt'])
+      .index('by_updatedAt', ['updatedAt'])
       .index('by_rank', ['rank']),
+   issueComments: defineTable({
+      issueId: v.id('issues'),
+      body: v.string(),
+      kind: v.union(v.literal('comment'), v.literal('triage-note')),
+      authorId: v.string(),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+   })
+      .index('by_issue_createdAt', ['issueId', 'createdAt'])
+      .index('by_issue_kind_createdAt', ['issueId', 'kind', 'createdAt']),
+   issueArtifacts: defineTable({
+      issueId: v.id('issues'),
+      title: v.string(),
+      url: v.string(),
+      kind: v.union(
+         v.literal('research'),
+         v.literal('prototype'),
+         v.literal('document'),
+         v.literal('other')
+      ),
+      description: v.optional(v.string()),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+   }).index('by_issue_createdAt', ['issueId', 'createdAt']),
    issueRelations: defineTable({
       blockerIssueId: v.id('issues'),
       blockedIssueId: v.id('issues'),

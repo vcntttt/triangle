@@ -255,6 +255,8 @@ function serializeIssueBase(
       status: issue.status,
       priority: issue.priority,
       assigneeId: toNullable(issue.assigneeId),
+      resolution: toNullable(issue.resolution),
+      resolvedAt: issue.resolvedAt ? nowIso(issue.resolvedAt) : null,
       rank: issue.rank,
       estimatedHours: toNullable(issue.estimatedHours),
       dueDate: issue.dueDate ? nowIso(issue.dueDate) : null,
@@ -375,7 +377,86 @@ export const detail = query({
    args: { issueIdentifier: v.string() },
    handler: async (ctx, { issueIdentifier }) => {
       const issues = await listIssues(ctx);
-      return issues.find((issue) => issue.identifier === issueIdentifier) ?? null;
+      const issue = issues.find((item) => item.identifier === issueIdentifier) ?? null;
+      if (!issue) return null;
+      const issueId = issue.id as Id<'issues'>;
+      const [comments, artifacts] = await Promise.all([
+         ctx.db
+            .query('issueComments')
+            .withIndex('by_issue_createdAt', (q) => q.eq('issueId', issueId))
+            .collect(),
+         ctx.db
+            .query('issueArtifacts')
+            .withIndex('by_issue_createdAt', (q) => q.eq('issueId', issueId))
+            .collect(),
+      ]);
+      return {
+         ...issue,
+         comments: comments.map((comment) => ({
+            id: comment._id,
+            body: comment.body,
+            kind: comment.kind,
+            authorId: comment.authorId,
+            createdAt: nowIso(comment.createdAt),
+            updatedAt: nowIso(comment.updatedAt),
+         })),
+         artifacts: artifacts.map((artifact) => ({
+            id: artifact._id,
+            title: artifact.title,
+            url: artifact.url,
+            kind: artifact.kind,
+            description: toNullable(artifact.description),
+            createdAt: nowIso(artifact.createdAt),
+            updatedAt: nowIso(artifact.updatedAt),
+         })),
+      };
+   },
+});
+
+export const search = query({
+   args: {
+      projectId: v.optional(v.string()),
+      labelIds: v.optional(v.array(v.string())),
+      statuses: v.optional(v.array(v.string())),
+      createdBefore: v.optional(v.string()),
+      createdAfter: v.optional(v.string()),
+      updatedBefore: v.optional(v.string()),
+      updatedAfter: v.optional(v.string()),
+   },
+   handler: async (ctx, input) => {
+      const issues = await listIssues(
+         ctx,
+         input.projectId ? (input.projectId as Id<'projects'>) : undefined
+      );
+      const labelIds = new Set(input.labelIds ?? []);
+      const statuses = new Set(input.statuses ?? []);
+      const parseBoundary = (value: string | undefined) =>
+         value === undefined ? undefined : new Date(value).getTime();
+      const createdBefore = parseBoundary(input.createdBefore);
+      const createdAfter = parseBoundary(input.createdAfter);
+      const updatedBefore = parseBoundary(input.updatedBefore);
+      const updatedAfter = parseBoundary(input.updatedAfter);
+      for (const [name, value] of Object.entries({
+         createdBefore,
+         createdAfter,
+         updatedBefore,
+         updatedAfter,
+      })) {
+         if (value !== undefined && Number.isNaN(value))
+            throw new Error(`${name} must be ISO 8601.`);
+      }
+      return issues.filter((issue) => {
+         const createdAt = new Date(issue.createdAt).getTime();
+         const updatedAt = new Date(issue.updatedAt).getTime();
+         return (
+            (statuses.size === 0 || statuses.has(issue.status)) &&
+            (labelIds.size === 0 || issue.labels.some((label) => labelIds.has(label.id))) &&
+            (createdBefore === undefined || createdAt < createdBefore) &&
+            (createdAfter === undefined || createdAt > createdAfter) &&
+            (updatedBefore === undefined || updatedAt < updatedBefore) &&
+            (updatedAfter === undefined || updatedAt > updatedAfter)
+         );
+      });
    },
 });
 
@@ -671,6 +752,166 @@ export const setStatus = mutation({
    },
 });
 
+export const close = mutation({
+   args: { issueId: v.string(), resolution: v.string() },
+   handler: async (ctx, { issueId, resolution }) => {
+      const id = issueId as Id<'issues'>;
+      const issue = await ctx.db.get(id);
+      if (!issue) throw new Error('Issue not found.');
+      const normalizedResolution = resolution.trim();
+      if (!normalizedResolution) throw new Error('Resolution is required.');
+      await assertCanEnterStatus(ctx, id, 'completed');
+      const now = Date.now();
+      await ctx.db.patch(id, {
+         status: 'completed',
+         resolution: normalizedResolution,
+         resolvedAt: now,
+         updatedAt: now,
+      });
+      return (await listIssues(ctx)).find((item) => item.id === id) ?? null;
+   },
+});
+
+export const assign = mutation({
+   args: { issueId: v.string(), assigneeId: v.union(v.string(), v.null()) },
+   handler: async (ctx, { issueId, assigneeId }) => {
+      const id = issueId as Id<'issues'>;
+      if (!(await ctx.db.get(id))) throw new Error('Issue not found.');
+      await ctx.db.patch(id, { assigneeId: assigneeId ?? undefined, updatedAt: Date.now() });
+      return (await listIssues(ctx)).find((item) => item.id === id) ?? null;
+   },
+});
+
+export const claim = mutation({
+   args: { issueId: v.string() },
+   handler: async (ctx, { issueId }) => {
+      const id = issueId as Id<'issues'>;
+      if (!(await ctx.db.get(id))) throw new Error('Issue not found.');
+      const profile = await ctx.db
+         .query('viewerProfiles')
+         .withIndex('by_singletonKey', (q) => q.eq('singletonKey', 'me'))
+         .unique();
+      const assigneeId = profile?.singletonKey ?? 'me';
+      await ctx.db.patch(id, { assigneeId, updatedAt: Date.now() });
+      return (await listIssues(ctx)).find((item) => item.id === id) ?? null;
+   },
+});
+
+export const addComment = mutation({
+   args: {
+      issueId: v.string(),
+      body: v.string(),
+      kind: v.optional(v.union(v.literal('comment'), v.literal('triage-note'))),
+   },
+   handler: async (ctx, { issueId, body, kind }) => {
+      const id = issueId as Id<'issues'>;
+      if (!(await ctx.db.get(id))) throw new Error('Issue not found.');
+      const normalizedBody = body.trim();
+      if (!normalizedBody) throw new Error('Comment body is required.');
+      const now = Date.now();
+      const commentId = await ctx.db.insert('issueComments', {
+         issueId: id,
+         body: normalizedBody,
+         kind: kind ?? 'comment',
+         authorId: 'me',
+         createdAt: now,
+         updatedAt: now,
+      });
+      await ctx.db.patch(id, { updatedAt: now });
+      return commentId;
+   },
+});
+
+export const activityAfterTriage = query({
+   args: { issueId: v.string(), triageNoteId: v.string() },
+   handler: async (ctx, { issueId, triageNoteId }) => {
+      const id = issueId as Id<'issues'>;
+      const note = await ctx.db.get(triageNoteId as Id<'issueComments'>);
+      if (!note || note.issueId !== id || note.kind !== 'triage-note') {
+         throw new Error('Triage note not found for this issue.');
+      }
+      const [comments, artifacts, issue] = await Promise.all([
+         ctx.db
+            .query('issueComments')
+            .withIndex('by_issue_createdAt', (q) =>
+               q.eq('issueId', id).gte('createdAt', note.createdAt)
+            )
+            .collect(),
+         ctx.db
+            .query('issueArtifacts')
+            .withIndex('by_issue_createdAt', (q) =>
+               q.eq('issueId', id).gte('createdAt', note.createdAt)
+            )
+            .collect(),
+         ctx.db.get(id),
+      ]);
+      if (!issue) throw new Error('Issue not found.');
+      const laterComments = comments.filter((comment) => comment._id !== note._id);
+      const issueChanged = issue.updatedAt > note.createdAt;
+      return {
+         hasActivity: issueChanged || laterComments.length > 0 || artifacts.length > 0,
+         triageNoteId: note._id,
+         since: nowIso(note.createdAt),
+         issueUpdatedAt: nowIso(issue.updatedAt),
+         comments: laterComments.map((comment) => ({
+            id: comment._id,
+            kind: comment.kind,
+            body: comment.body,
+            createdAt: nowIso(comment.createdAt),
+         })),
+         artifacts: artifacts.map((artifact) => ({
+            id: artifact._id,
+            kind: artifact.kind,
+            title: artifact.title,
+            url: artifact.url,
+            createdAt: nowIso(artifact.createdAt),
+         })),
+      };
+   },
+});
+
+export const addArtifact = mutation({
+   args: {
+      issueId: v.string(),
+      title: v.string(),
+      url: v.string(),
+      kind: v.union(
+         v.literal('research'),
+         v.literal('prototype'),
+         v.literal('document'),
+         v.literal('other')
+      ),
+      description: v.optional(v.string()),
+   },
+   handler: async (ctx, input) => {
+      const issueId = input.issueId as Id<'issues'>;
+      if (!(await ctx.db.get(issueId))) throw new Error('Issue not found.');
+      const title = input.title.trim();
+      if (!title) throw new Error('Artifact title is required.');
+      let url: URL;
+      try {
+         url = new URL(input.url);
+      } catch {
+         throw new Error('Artifact URL must be absolute.');
+      }
+      if (!['http:', 'https:'].includes(url.protocol)) {
+         throw new Error('Artifact URL must use http or https.');
+      }
+      const now = Date.now();
+      const artifactId = await ctx.db.insert('issueArtifacts', {
+         issueId,
+         title,
+         url: url.toString(),
+         kind: input.kind,
+         description: input.description?.trim() || undefined,
+         createdAt: now,
+         updatedAt: now,
+      });
+      await ctx.db.patch(issueId, { updatedAt: now });
+      return artifactId;
+   },
+});
+
 export const addBlocker = mutation({
    args: { blockedIssueId: v.string(), blockerIssueId: v.string() },
    handler: async (ctx, input) => {
@@ -800,6 +1041,20 @@ export const remove = mutation({
       await Promise.all(
          [...outgoingRelations, ...incomingRelations].map((relation) => ctx.db.delete(relation._id))
       );
+      const [comments, artifacts] = await Promise.all([
+         ctx.db
+            .query('issueComments')
+            .withIndex('by_issue_createdAt', (q) => q.eq('issueId', id))
+            .collect(),
+         ctx.db
+            .query('issueArtifacts')
+            .withIndex('by_issue_createdAt', (q) => q.eq('issueId', id))
+            .collect(),
+      ]);
+      await Promise.all([
+         ...comments.map((comment) => ctx.db.delete(comment._id)),
+         ...artifacts.map((artifact) => ctx.db.delete(artifact._id)),
+      ]);
       await ctx.db.delete(id);
 
       return true;
