@@ -494,6 +494,19 @@ export function IssueDetail({
                            >
                               {relation.identifier} · {relation.title}
                            </Link>
+                           <Button
+                              className="ml-auto size-6"
+                              size="icon"
+                              variant="ghost"
+                              onClick={() =>
+                                 void removeIssueBlocker({
+                                    blockedIssueId: relation.id,
+                                    blockerIssueId: presentationIssue.id,
+                                 })
+                              }
+                           >
+                              <X className="size-3" />
+                           </Button>
                         </div>
                      ))}
                   </div>
