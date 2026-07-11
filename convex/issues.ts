@@ -15,7 +15,7 @@ const nowIso = (value: number) => new Date(value).toISOString();
 const toNullable = <T>(value: T | undefined): T | null => value ?? null;
 
 async function listStatusOptions(ctx: QueryCtx) {
-   const rows = await ctx.db.query('projectStatuses').withIndex('by_position').collect();
+   const rows = await ctx.db.query('issueStatuses').withIndex('by_position').collect();
 
    if (rows.length === 0) {
       return defaultProjectStatuses;
@@ -97,7 +97,7 @@ async function findProjectAreaById(
 }
 
 async function listIssues(ctx: QueryCtx | MutationCtx, projectId?: Id<'projects'>) {
-   const [issues, projects, labels, areas] = await Promise.all([
+   const [issues, projects, labels, areas, relations] = await Promise.all([
       projectId
          ? ctx.db
               .query('issues')
@@ -107,6 +107,7 @@ async function listIssues(ctx: QueryCtx | MutationCtx, projectId?: Id<'projects'
       ctx.db.query('projects').collect(),
       ctx.db.query('labels').collect(),
       ctx.db.query('projectAreas').collect(),
+      ctx.db.query('issueRelations').collect(),
    ]);
 
    const projectLookup = new Map(projects.map((project) => [project._id, project]));
@@ -125,6 +126,8 @@ async function listIssues(ctx: QueryCtx | MutationCtx, projectId?: Id<'projects'
             assigneeId: string | null;
             rank: string;
          }>;
+         blockedBy: Array<{ id: string; identifier: string; title: string; status: string }>;
+         blocks: Array<{ id: string; identifier: string; title: string; status: string }>;
       }
    >();
 
@@ -136,6 +139,26 @@ async function listIssues(ctx: QueryCtx | MutationCtx, projectId?: Id<'projects'
          ...serializeIssueBase(issue, projectLookup.get(issue.projectId!), labelLookup, areaLookup),
          parentIssue: null,
          subissues: [],
+         blockedBy: [],
+         blocks: [],
+      });
+   }
+
+   for (const relation of relations) {
+      const blocker = issuesMap.get(relation.blockerIssueId);
+      const blocked = issuesMap.get(relation.blockedIssueId);
+      if (!blocker || !blocked) continue;
+      blocked.blockedBy.push({
+         id: blocker.id,
+         identifier: blocker.identifier,
+         title: blocker.title,
+         status: blocker.status,
+      });
+      blocker.blocks.push({
+         id: blocked.id,
+         identifier: blocked.identifier,
+         title: blocked.title,
+         status: blocked.status,
       });
    }
 
@@ -172,6 +195,23 @@ async function listIssues(ctx: QueryCtx | MutationCtx, projectId?: Id<'projects'
    }
 
    return Array.from(issuesMap.values());
+}
+
+async function assertCanEnterStatus(ctx: MutationCtx, issueId: Id<'issues'>, status: string) {
+   if (!['in-progress', 'technical-review', 'completed'].includes(status)) return;
+   const relations = await ctx.db
+      .query('issueRelations')
+      .withIndex('by_blocked', (q) => q.eq('blockedIssueId', issueId))
+      .collect();
+   const blockers = await Promise.all(
+      relations.map((relation) => ctx.db.get(relation.blockerIssueId))
+   );
+   const pending = blockers.filter((issue) => issue && issue.status !== 'completed');
+   if (pending.length > 0) {
+      throw new Error(
+         `Issue is blocked by: ${pending.map((issue) => issue!.identifier).join(', ')}. Complete every blocker before starting this issue.`
+      );
+   }
 }
 
 function serializeIssueBase(
@@ -487,6 +527,7 @@ export const update = mutation({
       const id = issueId as Id<'issues'>;
       const issue = await ctx.db.get(id);
       if (!issue) return null;
+      if (input.status !== undefined) await assertCanEnterStatus(ctx, id, input.status);
 
       const project =
          input.projectId !== undefined
@@ -569,6 +610,7 @@ export const setStatus = mutation({
       const id = issueId as Id<'issues'>;
       const issue = await ctx.db.get(id);
       if (!issue) return null;
+      await assertCanEnterStatus(ctx, id, status);
 
       const now = Date.now();
       await ctx.db.patch(id, { status, updatedAt: now });
@@ -600,6 +642,62 @@ export const setStatus = mutation({
       }
 
       return (await listIssues(ctx)).find((item) => item.id === id) ?? null;
+   },
+});
+
+export const addBlocker = mutation({
+   args: { blockedIssueId: v.string(), blockerIssueId: v.string() },
+   handler: async (ctx, input) => {
+      const blockedIssueId = input.blockedIssueId as Id<'issues'>;
+      const blockerIssueId = input.blockerIssueId as Id<'issues'>;
+      if (blockedIssueId === blockerIssueId) throw new Error('An issue cannot block itself.');
+      const [blocked, blocker, existing] = await Promise.all([
+         ctx.db.get(blockedIssueId),
+         ctx.db.get(blockerIssueId),
+         ctx.db
+            .query('issueRelations')
+            .withIndex('by_pair', (q) =>
+               q.eq('blockerIssueId', blockerIssueId).eq('blockedIssueId', blockedIssueId)
+            )
+            .unique(),
+      ]);
+      if (!blocked || !blocker) throw new Error('Issue not found.');
+      if (existing) return existing._id;
+      const visited = new Set<string>();
+      const stack = [blockedIssueId];
+      while (stack.length) {
+         const current = stack.pop()!;
+         if (current === blockerIssueId)
+            throw new Error('This blocking relation would create a cycle.');
+         if (visited.has(current)) continue;
+         visited.add(current);
+         const outgoing = await ctx.db
+            .query('issueRelations')
+            .withIndex('by_blocker', (q) => q.eq('blockerIssueId', current))
+            .collect();
+         stack.push(...outgoing.map((relation) => relation.blockedIssueId));
+      }
+      return ctx.db.insert('issueRelations', {
+         blockerIssueId,
+         blockedIssueId,
+         createdAt: Date.now(),
+      });
+   },
+});
+
+export const removeBlocker = mutation({
+   args: { blockedIssueId: v.string(), blockerIssueId: v.string() },
+   handler: async (ctx, input) => {
+      const relation = await ctx.db
+         .query('issueRelations')
+         .withIndex('by_pair', (q) =>
+            q
+               .eq('blockerIssueId', input.blockerIssueId as Id<'issues'>)
+               .eq('blockedIssueId', input.blockedIssueId as Id<'issues'>)
+         )
+         .unique();
+      if (relation) await ctx.db.delete(relation._id);
+      return relation !== null;
    },
 });
 
@@ -657,6 +755,19 @@ export const remove = mutation({
          children.map((child) =>
             ctx.db.patch(child._id, { parentIssueId: undefined, updatedAt: Date.now() })
          )
+      );
+      const [outgoingRelations, incomingRelations] = await Promise.all([
+         ctx.db
+            .query('issueRelations')
+            .withIndex('by_blocker', (q) => q.eq('blockerIssueId', id))
+            .collect(),
+         ctx.db
+            .query('issueRelations')
+            .withIndex('by_blocked', (q) => q.eq('blockedIssueId', id))
+            .collect(),
+      ]);
+      await Promise.all(
+         [...outgoingRelations, ...incomingRelations].map((relation) => ctx.db.delete(relation._id))
       );
       await ctx.db.delete(id);
 
