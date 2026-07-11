@@ -30,6 +30,14 @@ async function ensureDefaults(ctx: MutationCtx) {
          });
 }
 
+export const seedDefaults = mutation({
+   args: {},
+   handler: async (ctx) => {
+      await ensureDefaults(ctx);
+      return { ok: true };
+   },
+});
+
 export const list = query({
    args: {},
    handler: async (ctx) => {
