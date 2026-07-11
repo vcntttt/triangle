@@ -18,6 +18,7 @@ export default defineSchema({
       name: v.string(),
       color: v.string(),
       position: v.number(),
+      type: v.union(v.literal('unstarted'), v.literal('started'), v.literal('completed')),
       createdAt: v.number(),
       updatedAt: v.number(),
    })

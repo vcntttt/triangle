@@ -3,12 +3,30 @@ import type { Doc, Id } from './_generated/dataModel';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 
 const defaultProjectStatuses = [
-   { id: 'backlog', name: 'Backlog', color: '#ec4899', position: 0 },
-   { id: 'to-do', name: 'Todo', color: '#f97316', position: 1 },
-   { id: 'in-progress', name: 'In Progress', color: '#facc15', position: 2 },
-   { id: 'technical-review', name: 'Technical Review', color: '#22c55e', position: 3 },
-   { id: 'paused', name: 'Paused', color: '#0ea5e9', position: 4 },
-   { id: 'completed', name: 'Completed', color: '#8b5cf6', position: 5 },
+   { id: 'backlog', name: 'Backlog', color: '#ec4899', position: 0, type: 'unstarted' as const },
+   { id: 'to-do', name: 'Todo', color: '#f97316', position: 1, type: 'unstarted' as const },
+   {
+      id: 'in-progress',
+      name: 'In Progress',
+      color: '#facc15',
+      position: 2,
+      type: 'started' as const,
+   },
+   {
+      id: 'technical-review',
+      name: 'Technical Review',
+      color: '#22c55e',
+      position: 3,
+      type: 'started' as const,
+   },
+   { id: 'paused', name: 'Paused', color: '#0ea5e9', position: 4, type: 'unstarted' as const },
+   {
+      id: 'completed',
+      name: 'Completed',
+      color: '#8b5cf6',
+      position: 5,
+      type: 'completed' as const,
+   },
 ];
 
 const nowIso = (value: number) => new Date(value).toISOString();
@@ -27,6 +45,7 @@ async function listStatusOptions(ctx: QueryCtx) {
          name: row.name,
          color: row.color,
          position: row.position,
+         type: row.type,
       }))
       .toSorted(
          (left, right) => left.position - right.position || left.name.localeCompare(right.name)
@@ -198,7 +217,13 @@ async function listIssues(ctx: QueryCtx | MutationCtx, projectId?: Id<'projects'
 }
 
 async function assertCanEnterStatus(ctx: MutationCtx, issueId: Id<'issues'>, status: string) {
-   if (!['in-progress', 'technical-review', 'completed'].includes(status)) return;
+   const stored = await ctx.db
+      .query('issueStatuses')
+      .withIndex('by_option_id', (q) => q.eq('id', status))
+      .unique();
+   const option = stored ?? defaultProjectStatuses.find((item) => item.id === status);
+   if (!option) throw new Error(`Unknown issue status: ${status}.`);
+   if (option.type === 'unstarted') return;
    const relations = await ctx.db
       .query('issueRelations')
       .withIndex('by_blocked', (q) => q.eq('blockedIssueId', issueId))
@@ -382,7 +407,7 @@ export const create = mutation({
             : await findLabelsByNames(ctx, input.labelNames ?? []);
       const { identifier, projectIssueNumber } = await createIssueIdentifier(
          ctx,
-         project?.key ?? 'CIRC'
+         project?.key ?? 'TRI'
       );
       const now = Date.now();
       const issueId = await ctx.db.insert('issues', {
@@ -441,7 +466,7 @@ export const createWithSubissues = mutation({
       const matchedLabels = await findLabelsByIds(ctx, input.labelIds ?? []);
       const { identifier, projectIssueNumber } = await createIssueIdentifier(
          ctx,
-         project?.key ?? 'CIRC'
+         project?.key ?? 'TRI'
       );
       const now = Date.now();
       const issueId = await ctx.db.insert('issues', {
@@ -476,7 +501,7 @@ export const createWithSubissues = mutation({
             continue;
          }
 
-         const childIdentifier = await createIssueIdentifier(ctx, project?.key ?? 'CIRC');
+         const childIdentifier = await createIssueIdentifier(ctx, project?.key ?? 'TRI');
          await ctx.db.insert('issues', {
             identifier: childIdentifier.identifier,
             projectIssueNumber: childIdentifier.projectIssueNumber,
@@ -622,11 +647,11 @@ export const setStatus = mutation({
             .collect();
 
          await Promise.all(
-            children.map((child) =>
-               child.status === 'completed' || child.status === 'archived'
-                  ? Promise.resolve()
-                  : ctx.db.patch(child._id, { status, updatedAt: now })
-            )
+            children.map(async (child) => {
+               if (child.status === 'completed' || child.status === 'archived') return;
+               await assertCanEnterStatus(ctx, child._id, status);
+               await ctx.db.patch(child._id, { status, updatedAt: now });
+            })
          );
       }
 
@@ -637,6 +662,7 @@ export const setStatus = mutation({
       ) {
          const parent = await ctx.db.get(issue.parentIssueId);
          if (parent?.status === 'to-do') {
+            await assertCanEnterStatus(ctx, parent._id, 'in-progress');
             await ctx.db.patch(parent._id, { status: 'in-progress', updatedAt: now });
          }
       }
@@ -662,6 +688,11 @@ export const addBlocker = mutation({
             .unique(),
       ]);
       if (!blocked || !blocker) throw new Error('Issue not found.');
+      if (
+         blocker.status !== 'completed' &&
+         ['in-progress', 'technical-review', 'completed'].includes(blocked.status)
+      )
+         throw new Error('Cannot add an incomplete blocker to an issue that has already started.');
       if (existing) return existing._id;
       const visited = new Set<string>();
       const stack = [blockedIssueId];
