@@ -171,7 +171,7 @@ export function createTriangleMcpServer(
       {
          title: 'Archive a Triangle issue',
          description:
-            'Archive an issue. This changes its status to archived and is reversible through circle_set_issue_status.',
+            'Archive an issue. This changes its status to archived and is reversible through triangle_set_issue_status.',
          inputSchema: { issueId: z.string().min(1) },
          annotations: { destructiveHint: true },
       },
@@ -206,7 +206,7 @@ export function createTriangleMcpServer(
       {
          title: 'Create a Triangle project',
          description:
-            'Create a project. Use circle_list_projects first to choose valid status and priority IDs.',
+            'Create a project. Use triangle_list_projects first to choose valid status and priority IDs.',
          inputSchema: {
             name: z.string().min(1),
             status: z.string().min(1),
@@ -327,14 +327,26 @@ export function createTriangleMcpServer(
    );
    server.registerTool(
       'triangle_create_issue_status',
-      { title: 'Create issue status', inputSchema: { name: z.string(), color: z.string() } },
+      {
+         title: 'Create issue status',
+         inputSchema: {
+            name: z.string(),
+            color: z.string(),
+            type: z.enum(['unstarted', 'started', 'completed']),
+         },
+      },
       (input) => run(() => convex.mutation(api.issueStatuses.create, input))
    );
    server.registerTool(
       'triangle_update_issue_status',
       {
          title: 'Update issue status',
-         inputSchema: { id: z.string(), name: z.string().optional(), color: z.string().optional() },
+         inputSchema: {
+            id: z.string(),
+            name: z.string().optional(),
+            color: z.string().optional(),
+            type: z.enum(['unstarted', 'started', 'completed']).optional(),
+         },
       },
       (input) => run(() => convex.mutation(api.issueStatuses.update, input))
    );
