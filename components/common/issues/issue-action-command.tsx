@@ -20,10 +20,10 @@ import {
 import { useLabelOptions } from '@/hooks/use-label-options';
 import { useProjectOptions } from '@/hooks/use-project-options';
 import type { Issue } from '@/lib/models';
-import { priorities } from '@/lib/ui-catalog';
 import { useIssuesData } from '@/components/common/issues/issues-data-context';
 import { ProjectIconGlyph } from '@/components/common/projects/project-icon';
 import { useIssuesStatuses } from './issues-status-context';
+import { useIssuesPriorities } from './issues-priority-context';
 
 export type IssueActionKind = 'status' | 'label' | 'priority' | 'project';
 
@@ -148,6 +148,8 @@ export function IssueActionCommand({
       close();
       showUpdatedToast(targetIssues, `Project set to ${nextProject.name}`);
    };
+
+   const priorities = useIssuesPriorities();
 
    const handlePrioritySelect = (priorityId: string) => {
       const nextPriority = priorities.find((priority) => priority.id === priorityId);

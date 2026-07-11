@@ -43,6 +43,7 @@ export interface Priority {
    id: string;
    name: string;
    icon: FC<SVGProps<SVGSVGElement>>;
+   position?: number;
 }
 
 export interface Health {

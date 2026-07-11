@@ -298,6 +298,7 @@ export function ProjectOverview({
                   project={presentationProject}
                   initialIssues={issues}
                   initialStatuses={statusOptions}
+                  initialPriorities={priorityOptions}
                   selectedIssueIdentifier={selectedIssueIdentifier}
                   onSelectIssue={handleSelectIssue}
                   onClearSelectedIssue={handleClearSelectedIssue}

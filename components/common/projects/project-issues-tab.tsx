@@ -10,6 +10,7 @@ interface ProjectIssuesTabProps {
    project: Project;
    initialIssues: IssueListItem[];
    initialStatuses: ProjectOptionLike[];
+   initialPriorities: ProjectOptionLike[];
    selectedIssueIdentifier?: string;
    onSelectIssue: (issue: Issue) => void;
    onClearSelectedIssue: () => void;
@@ -20,6 +21,7 @@ export function ProjectIssuesTab({
    project,
    initialIssues,
    initialStatuses,
+   initialPriorities,
    selectedIssueIdentifier,
    onSelectIssue,
    onClearSelectedIssue,
@@ -41,6 +43,7 @@ export function ProjectIssuesTab({
       <IssuesWorkspace
          initialIssues={initialIssues}
          initialStatuses={initialStatuses}
+         initialPriorities={initialPriorities}
          databaseError={null}
          selectedIssueIdentifier={selectedIssueIdentifier}
          projectFilterId={project.id}

@@ -26,6 +26,7 @@ import { IssueActionCommand, type IssueActionKind } from './issue-action-command
 import { IssueDetail } from './issue-detail';
 import { SearchIssues } from './search-issues';
 import { IssuesStatusProvider, useIssuesStatuses } from './issues-status-context';
+import { IssuesPriorityProvider } from './issues-priority-context';
 import type { ProjectOptionLike } from '@/lib/projects-presentation';
 import { groupIssuesForDisplayByStatus } from '@/lib/issue-status-groups';
 import {
@@ -36,6 +37,7 @@ import {
 interface IssuesWorkspaceProps {
    initialIssues: IssueListItem[];
    initialStatuses: ProjectOptionLike[];
+   initialPriorities: ProjectOptionLike[];
    databaseError: string | null;
    selectedIssueIdentifier?: string;
    projectFilterId?: string;
@@ -191,6 +193,7 @@ function useIssueWorkspaceShortcuts({
 export function IssuesWorkspace({
    initialIssues,
    initialStatuses,
+   initialPriorities,
    databaseError,
    selectedIssueIdentifier,
    projectFilterId,
@@ -202,22 +205,27 @@ export function IssuesWorkspace({
    const viewerProfile = useViewerProfile();
    const viewer = useMemo(() => viewerProfileToUser(viewerProfile), [viewerProfile]);
    const hydratedIssues = useMemo(
-      () => initialIssues.map((issue) => toPresentationIssue(issue, initialStatuses, viewer)),
-      [initialIssues, initialStatuses, viewer]
+      () =>
+         initialIssues.map((issue) =>
+            toPresentationIssue(issue, initialStatuses, viewer, initialPriorities)
+         ),
+      [initialIssues, initialStatuses, initialPriorities, viewer]
    );
 
    return (
       <IssuesDataProvider issues={hydratedIssues}>
-         <IssuesWorkspaceContent
-            initialStatuses={initialStatuses}
-            databaseError={databaseError}
-            selectedIssueIdentifier={selectedIssueIdentifier}
-            projectFilterId={projectFilterId}
-            onSelectIssue={onSelectIssue}
-            onClearSelectedIssue={onClearSelectedIssue}
-            onSelectAdjacentIssue={onSelectAdjacentIssue}
-            emptyCopy={emptyCopy}
-         />
+         <IssuesPriorityProvider priorities={initialPriorities}>
+            <IssuesWorkspaceContent
+               initialStatuses={initialStatuses}
+               databaseError={databaseError}
+               selectedIssueIdentifier={selectedIssueIdentifier}
+               projectFilterId={projectFilterId}
+               onSelectIssue={onSelectIssue}
+               onClearSelectedIssue={onClearSelectedIssue}
+               onSelectAdjacentIssue={onSelectAdjacentIssue}
+               emptyCopy={emptyCopy}
+            />
+         </IssuesPriorityProvider>
       </IssuesDataProvider>
    );
 }

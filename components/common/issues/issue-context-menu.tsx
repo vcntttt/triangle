@@ -44,10 +44,11 @@ import { useCreateIssueStore } from '@/store/create-issue-store';
 import { useLabelOptions } from '@/hooks/use-label-options';
 import { useProjectOptions } from '@/hooks/use-project-options';
 import { useViewerUser } from '@/hooks/use-viewer-user';
-import { archivedStatus, priorities } from '@/lib/ui-catalog';
+import { archivedStatus } from '@/lib/ui-catalog';
 import { usePinnedProjectsStore } from '@/store/pinned-projects-store';
 import { toast } from 'sonner';
 import { useIssuesStatuses } from './issues-status-context';
+import { useIssuesPriorities } from './issues-priority-context';
 import { ProjectIconGlyph } from '@/components/common/projects/project-icon';
 import { projectAreasQuery } from '@/src/data/projects';
 import { useQuery } from '@tanstack/react-query';
@@ -86,6 +87,7 @@ export function IssueContextMenu({ issueId }: IssueContextMenuProps) {
    const labels = useLabelOptions();
    const projects = useProjectOptions();
    const issueStatusOptions = useIssuesStatuses();
+   const issuePriorityOptions = useIssuesPriorities();
    const { isPinned, togglePinnedProject } = usePinnedProjectsStore();
    const { openModal } = useCreateIssueStore();
    const currentUser = useViewerUser();
@@ -126,7 +128,7 @@ export function IssueContextMenu({ issueId }: IssueContextMenuProps) {
 
    const handlePriorityChange = (priorityId: string) => {
       if (!issueId) return;
-      const newPriority = priorities.find((p) => p.id === priorityId);
+      const newPriority = issuePriorityOptions.find((p) => p.id === priorityId);
       if (newPriority) {
          updateIssuePriority(issueId, newPriority);
          toast.success(`Priority updated to ${newPriority.name}`);
@@ -350,7 +352,7 @@ export function IssueContextMenu({ issueId }: IssueContextMenuProps) {
                   <BarChart3 className="mr-2 size-4" /> Priority
                </ContextMenuSubTrigger>
                <ContextMenuSubContent className="w-48">
-                  {priorities.map((priority) => (
+                  {issuePriorityOptions.map((priority) => (
                      <ContextMenuItem
                         key={priority.id}
                         onClick={() => handlePriorityChange(priority.id)}

@@ -24,17 +24,11 @@ export const Route = createFileRoute('/settings')({
 });
 
 function SettingsPage() {
-   const { data: projectStatuses } = useSuspenseQuery(projectStatusListQuery());
-   const { data: projectPriorities } = useSuspenseQuery(projectPriorityListQuery());
    const { data: labels } = useSuspenseQuery(labelOptionsQuery());
 
    return (
       <MainLayout header={<Header />} headersNumber={1}>
-         <Settings
-            initialProjectStatuses={projectStatuses}
-            initialProjectPriorities={projectPriorities}
-            initialLabels={labels}
-         />
+         <Settings initialLabels={labels} />
       </MainLayout>
    );
 }

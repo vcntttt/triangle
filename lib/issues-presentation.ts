@@ -1,7 +1,11 @@
 import type { IssueListItem } from '@/lib/db/issues';
 import { resolveCurrentAssignee } from '@/lib/current-user';
 import type { User } from '@/lib/models';
-import { priorities, type Issue, status as fallbackStatuses } from '@/lib/ui-catalog';
+import {
+   priorities as fallbackPriorities,
+   type Issue,
+   status as fallbackStatuses,
+} from '@/lib/ui-catalog';
 import { toPresentationProject } from './projects-presentation';
 import type { ProjectOptionLike } from './projects-presentation';
 
@@ -17,12 +21,18 @@ const parseEstimatedHours = (estimatedHours: string | null): number | undefined 
 export const toPresentationIssue = (
    issue: IssueListItem,
    statusOptions?: ProjectOptionLike[],
-   viewer?: User
+   viewer?: User,
+   priorityOptions?: ProjectOptionLike[]
 ): Issue => {
    const resolveStatus = (statusId: string) =>
       statusOptions?.find((item) => item.id === statusId) ??
       fallbackStatuses.find((item) => item.id === statusId) ??
       fallbackStatuses[fallbackStatuses.length - 1];
+
+   const resolvePriority = (priorityId: string) =>
+      priorityOptions?.find((item) => item.id === priorityId) ??
+      fallbackPriorities.find((item) => item.id === priorityId) ??
+      fallbackPriorities[0];
 
    return {
       id: issue.id,
@@ -31,7 +41,7 @@ export const toPresentationIssue = (
       description: issue.description ?? '',
       status: resolveStatus(issue.status),
       assignee: resolveCurrentAssignee(issue.assigneeId, viewer),
-      priority: priorities.find((item) => item.id === issue.priority) ?? priorities[0],
+      priority: resolvePriority(issue.priority),
       labels: issue.labels,
       createdAt: issue.createdAt,
       cycleId: '',
@@ -46,7 +56,7 @@ export const toPresentationIssue = (
          identifier: subissue.identifier,
          title: subissue.title,
          status: resolveStatus(subissue.status),
-         priority: priorities.find((item) => item.id === subissue.priority) ?? priorities[0],
+         priority: resolvePriority(subissue.priority),
          assignee: resolveCurrentAssignee(subissue.assigneeId, viewer),
          parentIssueId: issue.id,
       })),

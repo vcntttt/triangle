@@ -47,6 +47,7 @@ export function useProjectCommands() {
    const createProjectPriority = useMutation(api.projects.createPriority);
    const updateProjectPriority = useMutation(api.projects.updatePriority);
    const deleteProjectPriority = useMutation(api.projects.deletePriority);
+   const reorderProjectPriorities = useMutation(api.projects.reorderPriorities);
 
    return {
       createProject,
@@ -65,5 +66,6 @@ export function useProjectCommands() {
       createProjectPriority,
       updateProjectPriority,
       deleteProjectPriority,
+      reorderProjectPriorities,
    };
 }

@@ -16,7 +16,6 @@ import { useProjectOptions } from '@/hooks/use-project-options';
 import { useViewerUser } from '@/hooks/use-viewer-user';
 import { useQuery } from '@tanstack/react-query';
 import { useFilterStore } from '@/store/filter-store';
-import { priorities } from '@/lib/ui-catalog';
 import {
    CheckIcon,
    ChevronRight,
@@ -31,6 +30,7 @@ import {
 import { useMemo, useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useIssuesStatuses } from '@/components/common/issues/issues-status-context';
+import { useIssuesPriorities } from '@/components/common/issues/issues-priority-context';
 import { ProjectIconGlyph } from '@/components/common/projects/project-icon';
 import { issuesPageQuery } from '@/src/data/issues';
 import type { IssueListItem } from '@/lib/db/issues';
@@ -46,6 +46,7 @@ export function Filter() {
    const labels = useLabelOptions();
    const projects = useProjectOptions();
    const allStatus = useIssuesStatuses();
+   const allPriorities = useIssuesPriorities();
    const { data } = useQuery(issuesPageQuery());
    const currentUser = useViewerUser();
    const personalAssigneeOptions = [currentUser];
@@ -339,7 +340,7 @@ export function Filter() {
                   <CommandList>
                      <CommandEmpty>No priorities found.</CommandEmpty>
                      <CommandGroup>
-                        {priorities.map((item) => (
+                        {allPriorities.map((item) => (
                            <CommandItem
                               key={item.id}
                               value={item.id}

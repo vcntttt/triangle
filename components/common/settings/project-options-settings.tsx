@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { GripVertical, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -21,7 +22,11 @@ import {
    SheetTitle,
 } from '@/components/ui/sheet';
 import type { ProjectOptionLike } from '@/lib/projects-presentation';
-import { useProjectCommands } from '@/src/data/projects';
+import {
+   projectPriorityListQuery,
+   projectStatusListQuery,
+   useProjectCommands,
+} from '@/src/data/projects';
 
 const defaultColors = [
    '#ef4444',
@@ -35,11 +40,6 @@ const defaultColors = [
 ];
 
 type OptionType = 'status' | 'priority';
-
-interface ProjectOptionsSettingsProps {
-   initialStatuses: ProjectOptionLike[];
-   initialPriorities: ProjectOptionLike[];
-}
 
 interface SheetState {
    open: boolean;
@@ -59,14 +59,12 @@ const initialSheetState: SheetState = {
    color: defaultColors[7],
 };
 
-export function ProjectOptionsSettings({
-   initialStatuses,
-   initialPriorities,
-}: ProjectOptionsSettingsProps) {
-   const [statuses, setStatuses] = useState(() => initialStatuses);
-   const [priorities, setPriorities] = useState(() => initialPriorities);
+export function ProjectOptionsSettings() {
+   const { data: liveStatuses } = useQuery(projectStatusListQuery());
+   const { data: livePriorities } = useQuery(projectPriorityListQuery());
    const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
    const [draggedStatusId, setDraggedStatusId] = useState<string | null>(null);
+   const [draggedPriorityId, setDraggedPriorityId] = useState<string | null>(null);
    const [isSaving, setIsSaving] = useState(false);
    const [sheetState, setSheetState] = useState<SheetState>(initialSheetState);
    const {
@@ -74,15 +72,22 @@ export function ProjectOptionsSettings({
       createProjectStatus,
       deleteProjectPriority,
       deleteProjectStatus,
+      reorderProjectPriorities,
       reorderProjectStatuses,
       updateProjectPriority,
       updateProjectStatus,
    } = useProjectCommands();
 
+   const statuses = liveStatuses ?? [];
+   const priorities = livePriorities ?? [];
    const currentItems = sheetState.type === 'status' ? statuses : priorities;
    const orderedStatuses = useMemo(
-      () => statuses.toSorted((a, b) => (a.position ?? 0) - (b.position ?? 0)),
-      [statuses]
+      () => [...(liveStatuses ?? [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0)),
+      [liveStatuses]
+   );
+   const orderedPriorities = useMemo(
+      () => [...(livePriorities ?? [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0)),
+      [livePriorities]
    );
 
    const openCreateSheet = (type: OptionType) => {
@@ -117,11 +122,9 @@ export function ProjectOptionsSettings({
       try {
          if (type === 'status') {
             await deleteProjectStatus({ id });
-            setStatuses((previous) => previous.filter((item) => item.id !== id));
             toast.success('Status deleted');
          } else {
             await deleteProjectPriority({ id });
-            setPriorities((previous) => previous.filter((item) => item.id !== id));
             toast.success('Priority deleted');
          }
       } catch (error) {
@@ -137,31 +140,51 @@ export function ProjectOptionsSettings({
          return;
       }
 
-      const previousStatuses = statuses;
-      const activeIndex = previousStatuses.findIndex((item) => item.id === activeId);
-      const overIndex = previousStatuses.findIndex((item) => item.id === overId);
+      const activeIndex = orderedStatuses.findIndex((item) => item.id === activeId);
+      const overIndex = orderedStatuses.findIndex((item) => item.id === overId);
 
       if (activeIndex < 0 || overIndex < 0) {
          return;
       }
 
-      const nextStatuses = [...previousStatuses];
+      const nextStatuses = [...orderedStatuses];
       const [moved] = nextStatuses.splice(activeIndex, 1);
       nextStatuses.splice(overIndex, 0, moved);
-      const normalizedStatuses = nextStatuses.map((item, index) => ({
-         ...item,
-         position: index,
-      }));
-
-      setStatuses(normalizedStatuses);
+      const orderedIds = nextStatuses.map((item) => item.id);
 
       try {
-         await reorderProjectStatuses({ ids: normalizedStatuses.map((item) => item.id) });
+         await reorderProjectStatuses({ ids: orderedIds });
          toast.success('Statuses reordered');
       } catch (error) {
-         setStatuses(previousStatuses);
          const message =
             error instanceof Error ? error.message : 'Statuses could not be reordered.';
+         toast.error(message);
+      }
+   };
+
+   const handlePriorityReorder = async (activeId: string, overId: string) => {
+      if (activeId === overId) {
+         return;
+      }
+
+      const activeIndex = orderedPriorities.findIndex((item) => item.id === activeId);
+      const overIndex = orderedPriorities.findIndex((item) => item.id === overId);
+
+      if (activeIndex < 0 || overIndex < 0) {
+         return;
+      }
+
+      const nextPriorities = [...orderedPriorities];
+      const [moved] = nextPriorities.splice(activeIndex, 1);
+      nextPriorities.splice(overIndex, 0, moved);
+      const orderedIds = nextPriorities.map((item) => item.id);
+
+      try {
+         await reorderProjectPriorities({ ids: orderedIds });
+         toast.success('Priorities reordered');
+      } catch (error) {
+         const message =
+            error instanceof Error ? error.message : 'Priorities could not be reordered.';
          toast.error(message);
       }
    };
@@ -179,39 +202,31 @@ export function ProjectOptionsSettings({
       try {
          if (sheetState.type === 'status') {
             if (sheetState.mode === 'create') {
-               const created = (await createProjectStatus({
+               await createProjectStatus({
                   name: sheetState.name,
                   color: sheetState.color,
-               })) as ProjectOptionLike;
-               setStatuses((previous) => [...previous, created]);
+               });
                toast.success('Status created');
             } else if (sheetState.optionId) {
-               const updated = (await updateProjectStatus({
+               await updateProjectStatus({
                   id: sheetState.optionId,
                   name: sheetState.name,
                   color: sheetState.color,
-               })) as ProjectOptionLike;
-               setStatuses((previous) =>
-                  previous.map((item) => (item.id === updated.id ? updated : item))
-               );
+               });
                toast.success('Status updated');
             }
          } else if (sheetState.mode === 'create') {
-            const created = (await createProjectPriority({
+            await createProjectPriority({
                name: sheetState.name,
                color: sheetState.color,
-            })) as ProjectOptionLike;
-            setPriorities((previous) => [...previous, created]);
+            });
             toast.success('Priority created');
          } else if (sheetState.optionId) {
-            const updated = (await updateProjectPriority({
+            await updateProjectPriority({
                id: sheetState.optionId,
                name: sheetState.name,
                color: sheetState.color,
-            })) as ProjectOptionLike;
-            setPriorities((previous) =>
-               previous.map((item) => (item.id === updated.id ? updated : item))
-            );
+            });
             toast.success('Priority updated');
          }
 
@@ -247,11 +262,18 @@ export function ProjectOptionsSettings({
             <OptionListCard
                title="Project priorities"
                description="Priorities used in list view and filtering."
-               items={priorities}
+               items={orderedPriorities}
                onCreate={() => openCreateSheet('priority')}
                onEdit={(option) => openEditSheet('priority', option)}
                onDelete={(id) => void handleDelete('priority', id)}
                pendingDeleteId={pendingDeleteId}
+               draggable
+               draggedId={draggedPriorityId}
+               onDragStart={(id) => setDraggedPriorityId(id)}
+               onDragEnd={(activeId, overId) => {
+                  setDraggedPriorityId(null);
+                  void handlePriorityReorder(activeId, overId);
+               }}
             />
          </div>
 

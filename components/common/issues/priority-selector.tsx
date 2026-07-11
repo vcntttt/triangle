@@ -11,7 +11,8 @@ import {
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useIssuesData } from '@/components/common/issues/issues-data-context';
-import { priorities, type Priority } from '@/lib/ui-catalog';
+import { useIssuesPriorities } from '@/components/common/issues/issues-priority-context';
+import type { Priority } from '@/lib/models';
 import { CheckIcon } from 'lucide-react';
 import { useId, useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -29,6 +30,7 @@ export function PrioritySelector({ priority, issueId, display = 'icon' }: Priori
    const [open, setOpen] = useState<boolean>(false);
 
    const { filterByPriority, updateIssuePriority } = useIssuesData();
+   const priorities = useIssuesPriorities();
 
    const handlePriorityChange = (priorityId: string) => {
       setOpen(false);

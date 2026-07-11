@@ -8,7 +8,7 @@ export const Route = createFileRoute('/issues/')({
 
 function IssuesIndexPage() {
    const {
-      pageData: { issues, statusOptions, databaseError },
+      pageData: { issues, statusOptions, priorityOptions, databaseError },
       projectId,
    } = useIssuesPageData();
    const filteredIssues = projectId
@@ -19,6 +19,7 @@ function IssuesIndexPage() {
       <IssuesWorkspace
          initialIssues={filteredIssues}
          initialStatuses={statusOptions}
+         initialPriorities={priorityOptions}
          databaseError={databaseError}
          projectFilterId={projectId}
       />

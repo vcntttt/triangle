@@ -1,55 +1,13 @@
 import { v } from 'convex/values';
 import type { Doc, Id } from './_generated/dataModel';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
-
-const defaultProjectStatuses = [
-   { id: 'backlog', name: 'Backlog', color: '#ec4899', position: 0, type: 'unstarted' as const },
-   { id: 'to-do', name: 'Todo', color: '#f97316', position: 1, type: 'unstarted' as const },
-   {
-      id: 'in-progress',
-      name: 'In Progress',
-      color: '#facc15',
-      position: 2,
-      type: 'started' as const,
-   },
-   {
-      id: 'technical-review',
-      name: 'Technical Review',
-      color: '#22c55e',
-      position: 3,
-      type: 'started' as const,
-   },
-   { id: 'paused', name: 'Paused', color: '#0ea5e9', position: 4, type: 'unstarted' as const },
-   {
-      id: 'completed',
-      name: 'Completed',
-      color: '#8b5cf6',
-      position: 5,
-      type: 'completed' as const,
-   },
-];
+import { listOptions } from './projects';
 
 const nowIso = (value: number) => new Date(value).toISOString();
 const toNullable = <T>(value: T | undefined): T | null => value ?? null;
 
 async function listStatusOptions(ctx: QueryCtx) {
-   const rows = await ctx.db.query('issueStatuses').withIndex('by_position').collect();
-
-   if (rows.length === 0) {
-      return defaultProjectStatuses;
-   }
-
-   return rows
-      .map((row) => ({
-         id: row.id,
-         name: row.name,
-         color: row.color,
-         position: row.position,
-         type: row.type,
-      }))
-      .toSorted(
-         (left, right) => left.position - right.position || left.name.localeCompare(right.name)
-      );
+   return listOptions(ctx, 'projectStatuses');
 }
 
 function serializeProject(project: Doc<'projects'>) {
@@ -357,14 +315,16 @@ async function validateParentAssignment(
 export const page = query({
    args: { projectId: v.optional(v.union(v.string(), v.null())) },
    handler: async (ctx, { projectId }) => {
-      const [issues, statusOptions] = await Promise.all([
+      const [issues, statusOptions, priorityOptions] = await Promise.all([
          listIssues(ctx, projectId ? (projectId as Id<'projects'>) : undefined),
          listStatusOptions(ctx),
+         listOptions(ctx, 'projectPriorities'),
       ]);
 
       return {
          issues,
          statusOptions,
+         priorityOptions,
          databaseError: null,
          isConnected: true,
       };

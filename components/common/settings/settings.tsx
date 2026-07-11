@@ -1,21 +1,14 @@
 'use client';
 
 import type { LabelInterface } from '@/lib/models';
-import type { ProjectOptionLike } from '@/lib/projects-presentation';
 import { LabelsSettings } from './labels-settings';
 import { ProjectOptionsSettings } from './project-options-settings';
 
 interface SettingsProps {
-   initialProjectStatuses: ProjectOptionLike[];
-   initialProjectPriorities: ProjectOptionLike[];
    initialLabels: LabelInterface[];
 }
 
-export default function Settings({
-   initialProjectStatuses,
-   initialProjectPriorities,
-   initialLabels,
-}: SettingsProps) {
+export default function Settings({ initialLabels }: SettingsProps) {
    return (
       <div className="w-full max-w-5xl mx-auto p-8">
          <div className="mb-10">
@@ -29,10 +22,7 @@ export default function Settings({
                   Statuses and priorities available across projects.
                </p>
             </div>
-            <ProjectOptionsSettings
-               initialStatuses={initialProjectStatuses}
-               initialPriorities={initialProjectPriorities}
-            />
+            <ProjectOptionsSettings />
          </section>
 
          <LabelsSettings initialLabels={initialLabels} />

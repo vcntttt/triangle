@@ -257,19 +257,18 @@ function serializeOption(option: Doc<'projectStatuses'> | Doc<'projectPriorities
    };
 }
 
-async function listOptions(ctx: QueryCtx, table: ProjectOptionTable) {
+export async function listOptions(ctx: QueryCtx, table: ProjectOptionTable) {
    const rows = await ctx.db.query(table).withIndex('by_position').collect();
    const defaults = table === 'projectStatuses' ? defaultProjectStatuses : defaultProjectPriorities;
 
-   if (rows.length === 0) {
-      return defaults;
+   const values = new Map(defaults.map((item) => [item.id, { ...item }]));
+   for (const row of rows) {
+      values.set(row.id, serializeOption(row));
    }
 
-   return rows
-      .map(serializeOption)
-      .toSorted(
-         (left, right) => left.position - right.position || left.name.localeCompare(right.name)
-      );
+   return Array.from(values.values()).toSorted(
+      (left, right) => left.position - right.position || left.name.localeCompare(right.name)
+   );
 }
 
 async function getLatestProjectUpdate(ctx: QueryCtx | MutationCtx, projectId: Id<'projects'>) {
@@ -896,6 +895,22 @@ export const deletePriority = mutation({
    args: { id: v.string() },
    handler: async (ctx, { id }) => {
       await deleteOption(ctx, 'projectPriorities', id);
+      return { ok: true };
+   },
+});
+
+export const reorderPriorities = mutation({
+   args: { ids: v.array(v.string()) },
+   handler: async (ctx, { ids }) => {
+      const now = Date.now();
+      await Promise.all(
+         ids.map(async (id, position) => {
+            const existing = await findOptionById(ctx, 'projectPriorities', id);
+            if (existing) {
+               await ctx.db.patch(existing._id, { position, updatedAt: now });
+            }
+         })
+      );
       return { ok: true };
    },
 });
