@@ -41,7 +41,7 @@
 
 ### Issue tracker
 
-- Circle is the personal issue tracker for this repository. Use the local `circle` MCP server for issues, projects, labels, and project updates.
+- Triangle is the personal issue tracker for this repository. Use the local `triangle` MCP server for issues, projects, areas, labels, statuses, blocking relations, and project updates.
 - Read `docs/agents/issue-tracker.md` before publishing planning work or changing issue state.
 
 ## Data Reality
@@ -54,7 +54,7 @@
 
 ## Styling And UI
 
-- Preserve the existing Circle visual language; do not invent a new design direction unless asked.
+- Preserve the existing Triangle visual language; do not invent a new design direction unless asked.
 - If a refactor weakens the UI, use `/home/vrivera/git-packages/circle` as the visual reference.
 - Shadcn aliases are rooted at `@/`, but `components.json` still points at the old CSS path. The real global stylesheet is `src/styles/globals.css`.
 

@@ -2,22 +2,25 @@
 
 ## Provider
 
-Use the connected `circle` MCP server. It controls the same personal Circle instance shown by this repository's UI.
+Use the connected `triangle` MCP server. It controls the same personal Triangle instance shown by this repository's UI.
 
-Before a mutating action, call `circle_workspace` or the relevant list/get tool to obtain current IDs and valid status or priority values. Prefer human-readable project names and issue identifiers when reading; mutations require the internal record IDs returned by those tools.
+Before a mutation, call `triangle_workspace` or the relevant list/get tool to obtain current internal IDs and valid option values. Human-readable identifiers are for reading; mutations use record IDs returned by the tools.
 
 ## Capabilities
 
-- Issues: list, read, create, update, change status, and archive.
+- Issues: list, read, create, update, change status, archive, and organize as subissues.
+- Blocking relations: inspect `blockedBy` and `blocks`, add blockers, and remove blockers. Relations cannot form cycles. A blocked issue cannot enter `in-progress`, `technical-review`, or `completed` until every blocker is `completed`.
+- Subissues: create with `parentIssueId` or update the parent. Hierarchy and blocking order are independent.
 - Projects: list, read, create, update, and publish health updates.
-- Workspace context: labels plus issue/project status and priority options.
+- Areas: list, create, update, delete, and assign to issues. An area belongs to one project.
+- Labels: list, create, update, delete, and assign to issues.
+- Issue statuses: list, create, update, and delete when unused. `completed` is required by blocking semantics.
+- Workspace context: projects, areas, labels, issue/project statuses, priorities, and recent updates.
 
-Circle is intentionally a personal tracker. It has no teams, initiatives, members, native blocking relations, or external pull-request triage. Do not invent those concepts in issues or expect the MCP to manage them.
+Triangle is intentionally a personal tracker. It has no teams, initiatives, members, or external pull-request triage.
 
 ## Planning workflow
 
-Use Circle as the record of planned work and `docs/` as the record of long-lived context and decisions.
+Use Triangle as the record of planned work and `docs/` as the record of long-lived context and decisions. Publish specs as detailed issues, associate the relevant project and area, and create durable taxonomy through `triangle_create_label`. Represent execution order with blocking relations instead of prose-only dependency notes.
 
-When a workflow skill publishes a spec or ticket, create it as an issue with a detailed Markdown description, associate it with the relevant project when one exists, and use only labels already present in Circle. If a desired triage label does not exist, do not fabricate it; record the readiness in the issue description instead.
-
-Use status IDs from `circle_workspace`. A typical lifecycle is `backlog` → `to-do` → `in-progress` → `technical-review` → `completed`; use `paused` for work that cannot currently advance. Archive only work that should leave normal views.
+Use status IDs from `triangle_workspace`. A typical lifecycle is `backlog` → `to-do` → `in-progress` → `technical-review` → `completed`; use `paused` when work cannot advance. Archive only work that should leave normal views.
