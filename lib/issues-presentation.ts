@@ -50,6 +50,8 @@ export const toPresentationIssue = (
          assignee: resolveCurrentAssignee(subissue.assigneeId, viewer),
          parentIssueId: issue.id,
       })),
+      blockedBy: issue.blockedBy,
+      blocks: issue.blocks,
       rank: issue.rank,
       dueDate: issue.dueDate ?? undefined,
       estimatedHours: parseEstimatedHours(issue.estimatedHours),

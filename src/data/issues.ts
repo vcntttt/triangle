@@ -25,6 +25,8 @@ export function useIssueCommands() {
    const archiveIssue = useMutation(api.issues.archive);
    const deleteIssue = useMutation(api.issues.remove);
    const setIssueParent = useMutation(api.issues.setParent);
+   const addIssueBlocker = useMutation(api.issues.addBlocker);
+   const removeIssueBlocker = useMutation(api.issues.removeBlocker);
 
    return {
       createIssue,
@@ -34,5 +36,7 @@ export function useIssueCommands() {
       archiveIssue,
       deleteIssue,
       setIssueParent,
+      addIssueBlocker,
+      removeIssueBlocker,
    };
 }

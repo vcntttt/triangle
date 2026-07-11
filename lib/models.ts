@@ -113,6 +113,8 @@ export interface Issue {
       assignee: User | null;
       parentIssueId?: string | null;
    }>;
+   blockedBy: Array<{ id: string; identifier: string; title: string; status: string }>;
+   blocks: Array<{ id: string; identifier: string; title: string; status: string }>;
    rank: string;
    dueDate?: string;
    estimatedHours?: number;
