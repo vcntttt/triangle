@@ -869,11 +869,23 @@ export const reorderStatuses = mutation({
    args: { ids: v.array(v.string()) },
    handler: async (ctx, { ids }) => {
       const now = Date.now();
+      const defaults = new Map(defaultProjectStatuses.map((option) => [option.id, option]));
       await Promise.all(
          ids.map(async (id, position) => {
             const existing = await findOptionById(ctx, 'projectStatuses', id);
             if (existing) {
                await ctx.db.patch(existing._id, { position, updatedAt: now });
+               return;
+            }
+
+            const defaultOption = defaults.get(id);
+            if (defaultOption) {
+               await ctx.db.insert('projectStatuses', {
+                  ...defaultOption,
+                  position,
+                  createdAt: now,
+                  updatedAt: now,
+               });
             }
          })
       );
@@ -903,11 +915,23 @@ export const reorderPriorities = mutation({
    args: { ids: v.array(v.string()) },
    handler: async (ctx, { ids }) => {
       const now = Date.now();
+      const defaults = new Map(defaultProjectPriorities.map((option) => [option.id, option]));
       await Promise.all(
          ids.map(async (id, position) => {
             const existing = await findOptionById(ctx, 'projectPriorities', id);
             if (existing) {
                await ctx.db.patch(existing._id, { position, updatedAt: now });
+               return;
+            }
+
+            const defaultOption = defaults.get(id);
+            if (defaultOption) {
+               await ctx.db.insert('projectPriorities', {
+                  ...defaultOption,
+                  position,
+                  createdAt: now,
+                  updatedAt: now,
+               });
             }
          })
       );

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
+import { useQuery } from '@tanstack/react-query';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { IssueListItem } from '@/lib/db/issues';
@@ -18,6 +19,7 @@ import {
 import { useSearchStore } from '@/store/search-store';
 import { useViewStore } from '@/store/view-store';
 import { useViewerProfile } from '@/src/data/viewer';
+import { projectStatusListQuery } from '@/src/data/projects';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { CustomDragLayer } from './issue-grid';
 import { GroupIssues } from './group-issues';
@@ -202,21 +204,23 @@ export function IssuesWorkspace({
    onSelectAdjacentIssue,
    emptyCopy,
 }: IssuesWorkspaceProps) {
+   const { data: liveStatuses } = useQuery(projectStatusListQuery());
+   const statuses = liveStatuses ?? initialStatuses;
    const viewerProfile = useViewerProfile();
    const viewer = useMemo(() => viewerProfileToUser(viewerProfile), [viewerProfile]);
    const hydratedIssues = useMemo(
       () =>
          initialIssues.map((issue) =>
-            toPresentationIssue(issue, initialStatuses, viewer, initialPriorities)
+            toPresentationIssue(issue, statuses, viewer, initialPriorities)
          ),
-      [initialIssues, initialStatuses, initialPriorities, viewer]
+      [initialIssues, initialPriorities, statuses, viewer]
    );
 
    return (
       <IssuesDataProvider issues={hydratedIssues}>
          <IssuesPriorityProvider priorities={initialPriorities}>
             <IssuesWorkspaceContent
-               initialStatuses={initialStatuses}
+               initialStatuses={statuses}
                databaseError={databaseError}
                selectedIssueIdentifier={selectedIssueIdentifier}
                projectFilterId={projectFilterId}

@@ -410,7 +410,15 @@ function OptionListCard({
                         event.preventDefault();
                      }
                   }}
-                  onDrop={() => {
+                  onDragEnter={(event) => {
+                     if (draggable) {
+                        event.preventDefault();
+                     }
+                  }}
+                  onDrop={(event) => {
+                     event.preventDefault();
+                     event.stopPropagation();
+
                      if (draggable && draggedId) {
                         onDragEnd?.(draggedId, item.id);
                      }
