@@ -1,9 +1,15 @@
 'use client';
 
 import { FormEvent, useMemo, useState } from 'react';
-import { GripVertical, Plus, Pencil, Trash2 } from 'lucide-react';
+import { GripVertical, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import {
+   DropdownMenu,
+   DropdownMenuContent,
+   DropdownMenuItem,
+   DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -16,6 +22,17 @@ import {
 } from '@/components/ui/sheet';
 import type { ProjectOptionLike } from '@/lib/projects-presentation';
 import { useProjectCommands } from '@/src/data/projects';
+
+const defaultColors = [
+   '#ef4444',
+   '#f97316',
+   '#facc15',
+   '#22c55e',
+   '#38bdf8',
+   '#8b5cf6',
+   '#ec4899',
+   '#94a3b8',
+];
 
 type OptionType = 'status' | 'priority';
 
@@ -39,7 +56,7 @@ const initialSheetState: SheetState = {
    mode: 'create',
    optionId: undefined,
    name: '',
-   color: '#94a3b8',
+   color: defaultColors[7],
 };
 
 export function ProjectOptionsSettings({
@@ -75,7 +92,7 @@ export function ProjectOptionsSettings({
          mode: 'create',
          optionId: undefined,
          name: '',
-         color: '#94a3b8',
+         color: defaultColors[7],
       });
    };
 
@@ -212,7 +229,7 @@ export function ProjectOptionsSettings({
          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <OptionListCard
                title="Project statuses"
-               description="Control which project statuses can be selected in the projects view and creation dialog."
+               description="Statuses available in the projects view and creation dialog."
                items={orderedStatuses}
                onCreate={() => openCreateSheet('status')}
                onEdit={(option) => openEditSheet('status', option)}
@@ -229,7 +246,7 @@ export function ProjectOptionsSettings({
 
             <OptionListCard
                title="Project priorities"
-               description="Control project priority values used in list view and filtering."
+               description="Priorities used in list view and filtering."
                items={priorities}
                onCreate={() => openCreateSheet('priority')}
                onEdit={(option) => openEditSheet('priority', option)}
@@ -249,7 +266,7 @@ export function ProjectOptionsSettings({
                   </SheetDescription>
                </SheetHeader>
 
-               <form onSubmit={handleSubmit} className="px-4 space-y-4">
+               <form onSubmit={handleSubmit} className="px-4 space-y-5">
                   <div className="space-y-2">
                      <Label htmlFor="option-name">Name</Label>
                      <Input
@@ -263,17 +280,29 @@ export function ProjectOptionsSettings({
                      />
                   </div>
 
-                  <div className="space-y-2">
-                     <Label htmlFor="option-color">Color</Label>
+                  <div className="space-y-3">
+                     <Label>Color</Label>
+                     <div className="flex flex-wrap gap-2">
+                        {defaultColors.map((item) => (
+                           <button
+                              key={item}
+                              type="button"
+                              className="size-7 rounded-full border ring-offset-background data-[selected=true]:ring-2 data-[selected=true]:ring-ring data-[selected=true]:ring-offset-2"
+                              style={{ backgroundColor: item }}
+                              data-selected={sheetState.color.toLowerCase() === item.toLowerCase()}
+                              aria-label={`Use color ${item}`}
+                              onClick={() => setSheetState((state) => ({ ...state, color: item }))}
+                           />
+                        ))}
+                     </div>
                      <div className="flex items-center gap-3">
                         <Input
-                           id="option-color"
                            type="color"
                            value={sheetState.color}
                            onChange={(event) =>
                               setSheetState((state) => ({ ...state, color: event.target.value }))
                            }
-                           className="h-10 w-14 p-1"
+                           className="h-9 w-14 p-1 shrink-0"
                         />
                         <Input
                            value={sheetState.color}
@@ -348,7 +377,7 @@ function OptionListCard({
             </Button>
          </div>
 
-         <div className="space-y-2">
+         <div className="space-y-1.5">
             {items.map((item) => (
                <div
                   key={item.id}
@@ -364,44 +393,48 @@ function OptionListCard({
                         onDragEnd?.(draggedId, item.id);
                      }
                   }}
-                  className="flex items-center justify-between gap-3 rounded-md border px-3 py-2"
+                  className="group flex items-center justify-between gap-3 rounded-md border px-3 py-2 hover:bg-accent/50"
                   style={{
                      opacity: draggable && draggedId === item.id ? 0.5 : 1,
                   }}
                >
                   <div className="flex items-center gap-3 min-w-0">
                      {draggable ? (
-                        <GripVertical className="size-4 shrink-0 text-muted-foreground" />
+                        <GripVertical className="size-4 shrink-0 text-muted-foreground/60" />
                      ) : null}
                      <span
                         className="size-2.5 rounded-full shrink-0"
                         style={{ backgroundColor: item.color }}
                      />
-                     <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{item.name}</p>
-                        <p className="text-xs text-muted-foreground truncate">{item.id}</p>
-                     </div>
+                     <p className="text-sm font-medium truncate">{item.name}</p>
                   </div>
 
-                  <div className="flex items-center gap-1">
-                     <Button
-                        size="icon"
-                        variant="ghost"
-                        className="size-7"
-                        onClick={() => onEdit(item)}
-                     >
-                        <Pencil className="size-4" />
-                     </Button>
-                     <Button
-                        size="icon"
-                        variant="ghost"
-                        className="size-7"
-                        disabled={pendingDeleteId === item.id}
-                        onClick={() => onDelete(item.id)}
-                     >
-                        <Trash2 className="size-4" />
-                     </Button>
-                  </div>
+                  <DropdownMenu>
+                     <DropdownMenuTrigger asChild>
+                        <Button
+                           size="icon"
+                           variant="ghost"
+                           className="size-7 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                           disabled={pendingDeleteId === item.id}
+                           aria-label={`Manage ${item.name}`}
+                        >
+                           <MoreHorizontal className="size-4" />
+                        </Button>
+                     </DropdownMenuTrigger>
+                     <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onEdit(item)}>
+                           <Pencil className="size-4" />
+                           Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                           className="text-destructive"
+                           onClick={() => onDelete(item.id)}
+                        >
+                           <Trash2 className="size-4" />
+                           Delete
+                        </DropdownMenuItem>
+                     </DropdownMenuContent>
+                  </DropdownMenu>
                </div>
             ))}
          </div>

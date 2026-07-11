@@ -815,8 +815,9 @@ export const addComment = mutation({
       issueId: v.string(),
       body: v.string(),
       kind: v.optional(v.union(v.literal('comment'), v.literal('triage-note'))),
+      authorId: v.optional(v.string()),
    },
-   handler: async (ctx, { issueId, body, kind }) => {
+   handler: async (ctx, { issueId, body, kind, authorId }) => {
       const id = issueId as Id<'issues'>;
       if (!(await ctx.db.get(id))) throw new Error('Issue not found.');
       const normalizedBody = body.trim();
@@ -826,7 +827,7 @@ export const addComment = mutation({
          issueId: id,
          body: normalizedBody,
          kind: kind ?? 'comment',
-         authorId: 'me',
+         authorId: authorId ?? 'me',
          createdAt: now,
          updatedAt: now,
       });

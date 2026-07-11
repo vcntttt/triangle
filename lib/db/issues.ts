@@ -48,6 +48,8 @@ export interface IssueListItem {
       name: string;
       color: string;
    }>;
+   blockedBy: Array<{ id: string; identifier: string; title: string; status: string }>;
+   blocks: Array<{ id: string; identifier: string; title: string; status: string }>;
 }
 
 export interface IssuesPageData {

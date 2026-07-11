@@ -13,6 +13,10 @@ export function issuesPageQuery(args: IssuesPageArgs = {}) {
    });
 }
 
+export function issueDetailQuery(issueIdentifier: string) {
+   return convexQuery(api.issues.detail, { issueIdentifier });
+}
+
 export function useIssueCommands() {
    const createIssue = useMutation(api.issues.create);
    const createIssueWithSubissues = useMutation(api.issues.createWithSubissues);
@@ -23,6 +27,7 @@ export function useIssueCommands() {
    const setIssueParent = useMutation(api.issues.setParent);
    const addIssueBlocker = useMutation(api.issues.addBlocker);
    const removeIssueBlocker = useMutation(api.issues.removeBlocker);
+   const addIssueComment = useMutation(api.issues.addComment);
 
    return {
       createIssue,
@@ -34,5 +39,6 @@ export function useIssueCommands() {
       setIssueParent,
       addIssueBlocker,
       removeIssueBlocker,
+      addIssueComment,
    };
 }

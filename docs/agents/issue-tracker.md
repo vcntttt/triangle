@@ -20,7 +20,7 @@ Before a mutation, call `triangle_workspace` or the relevant list/get tool to ob
 - Issue statuses: list, create, update, and delete when unused. `completed` is required by blocking semantics.
 - Workspace context: projects, areas, labels, issue/project statuses, priorities, and recent updates.
 
-Triangle is intentionally a personal tracker. It has no teams, initiatives, members, or external pull-request triage.
+Triangle is intentionally a personal tracker. It has no teams, initiatives, or external pull-request triage; assignment is limited to the current personal user.
 
 ## Planning workflow
 

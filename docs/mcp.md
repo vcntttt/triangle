@@ -13,7 +13,7 @@ Triangle includes a remote MCP server at `https://triangle.tailf8b14c.ts.net/mcp
 - Labels and issue statuses: create, update, and delete.
 - Projects and areas: list, fetch, create, update, delete areas, and publish updates.
 
-The server intentionally omits teams, initiatives, and members because Triangle does not model them.
+The server intentionally omits teams and initiatives. Triangle is single-user, but it exposes the current personal assignee (`me`) for claiming and assigning work.
 
 ## Run locally
 

@@ -225,11 +225,12 @@ export function createTriangleMcpServer(
       {
          title: 'Add issue comment',
          description:
-            'Add a normal comment or a durable triage note. Keep the returned comment ID to detect later activity.',
+            'Add a normal comment or a durable triage note. Use authorId to mark the author: "me" for the human user, "opencode" or "codex" for the assistant. Keep the returned comment ID to detect later activity.',
          inputSchema: {
             issueId: z.string().min(1),
             body: z.string().min(1),
             kind: z.enum(['comment', 'triage-note']).optional(),
+            authorId: z.enum(['me', 'opencode', 'codex']).optional(),
          },
       },
       (input) => run(() => convex.mutation(api.issues.addComment, input))

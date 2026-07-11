@@ -120,6 +120,17 @@ export interface Issue {
    estimatedHours?: number;
 }
 
+export type IssueCommentKind = 'comment' | 'triage-note';
+
+export interface IssueComment {
+   id: string;
+   body: string;
+   kind: IssueCommentKind;
+   authorId: string;
+   createdAt: string;
+   updatedAt: string;
+}
+
 export interface SidebarItem {
    name: string;
    url: string;

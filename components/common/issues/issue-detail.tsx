@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
+import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { Archive, ArrowLeft, Link2, Plus, Trash2, X } from 'lucide-react';
+import { Archive, ArrowLeft, Link2, MessageSquare, Plus, Send, Trash2, X } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { LabelSelector } from './label-selector';
 import { LabelBadge } from './label-badge';
 import { PrioritySelector } from './priority-selector';
@@ -15,7 +17,7 @@ import { StatusSelector } from './status-selector';
 import { AssigneeUser } from './assignee-user';
 import { useIssuesData } from '@/components/common/issues/issues-data-context';
 import { toast } from 'sonner';
-import type { Issue } from '@/lib/models';
+import type { Issue, User } from '@/lib/models';
 import { ProjectSelector } from '@/components/layout/sidebar/create-new-issue/project-selector';
 import { AreaSelector } from '@/components/layout/sidebar/create-new-issue/area-selector';
 import { ParentIssueSelector } from './parent-issue-selector';
@@ -26,7 +28,38 @@ import { parseIssueInlineTokens } from '@/lib/issue-inline-tokens';
 import { useProjectOptions } from '@/hooks/use-project-options';
 import { useLabelOptions } from '@/hooks/use-label-options';
 import { useViewerUser } from '@/hooks/use-viewer-user';
-import { useIssueCommands } from '@/src/data/issues';
+import { issueDetailQuery, useIssueCommands } from '@/src/data/issues';
+
+const agentAvatars: Record<string, string> = {
+   opencode:
+      'https://api.dicebear.com/7.x/bottts/svg?seed=opencode&backgroundColor=3b82f6&radius=50',
+   codex: 'https://api.dicebear.com/7.x/bottts/svg?seed=codex&backgroundColor=10b981&radius=50',
+};
+
+function resolveCommentAuthor(authorId: string, viewer: User): User {
+   if (authorId === 'me' || authorId === viewer.id) {
+      return viewer;
+   }
+
+   const normalizedId = authorId.toLowerCase();
+   if (normalizedId === 'opencode' || normalizedId === 'codex') {
+      const name = normalizedId === 'opencode' ? 'OpenCode' : 'Codex';
+      return {
+         id: authorId,
+         name,
+         avatarUrl:
+            agentAvatars[normalizedId] ??
+            'https://api.dicebear.com/7.x/bottts/svg?seed=agent&radius=50',
+         email: `${normalizedId}@agent.local`,
+         status: 'online',
+         role: 'Member',
+         joinedDate: '2026-01-01',
+         teamIds: [],
+      };
+   }
+
+   return { ...viewer, id: authorId };
+}
 
 export function IssueDetail({
    issueId,
@@ -55,7 +88,7 @@ export function IssueDetail({
       updateIssueParent,
       addIssueLabel,
    } = useIssuesData();
-   const { createIssue, addIssueBlocker, removeIssueBlocker } = useIssueCommands();
+   const { createIssue, addIssueBlocker, removeIssueBlocker, addIssueComment } = useIssueCommands();
    const projectOptions = useProjectOptions();
    const labelOptions = useLabelOptions();
    const currentUser = useViewerUser();
@@ -77,6 +110,15 @@ export function IssueDetail({
    const [newSubissueDescription, setNewSubissueDescription] = useState('');
    const [creatingSubissue, setCreatingSubissue] = useState(false);
    const newSubissueTitleRef = useRef<HTMLInputElement | null>(null);
+   const [commentBody, setCommentBody] = useState('');
+   const [submittingComment, setSubmittingComment] = useState(false);
+
+   const issueDetailIdentifier = presentationIssue?.identifier ?? '';
+   const { data: issueDetail } = useQuery({
+      ...issueDetailQuery(issueDetailIdentifier),
+      enabled: Boolean(issueDetailIdentifier),
+   });
+   const comments = issueDetail?.comments ?? [];
 
    const applyInlineTokenMetadata = useCallback(
       (rawTitle: string) => {
@@ -208,6 +250,27 @@ export function IssueDetail({
       }
 
       void navigate({ to: '/issues', replace: true });
+   };
+
+   const handleSubmitComment = async () => {
+      const body = commentBody.trim();
+      if (!body || !presentationIssue) return;
+
+      setSubmittingComment(true);
+      try {
+         await addIssueComment({
+            issueId: presentationIssue.id,
+            body,
+            kind: 'comment',
+         });
+         setCommentBody('');
+         toast.success('Comment added');
+      } catch (error) {
+         console.error('Failed to add comment.', error);
+         toast.error('Comment could not be added');
+      } finally {
+         setSubmittingComment(false);
+      }
    };
 
    const handleCreateSubissue = async () => {
@@ -509,6 +572,79 @@ export function IssueDetail({
                            </Button>
                         </div>
                      ))}
+                  </div>
+               )}
+            </section>
+
+            <section className="space-y-3 border-t border-border/60 pt-5">
+               <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">
+                     <MessageSquare className="-mt-0.5 inline-block size-3.5" /> Comments{' '}
+                     {comments.length > 0 && (
+                        <span className="text-muted-foreground/70">({comments.length})</span>
+                     )}
+                  </span>
+               </div>
+
+               <div className="flex gap-3">
+                  <Avatar className="size-8 shrink-0">
+                     <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                     <AvatarFallback>{currentUser.name[0]}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1 space-y-2">
+                     <Textarea
+                        value={commentBody}
+                        onChange={(event) => setCommentBody(event.target.value)}
+                        onKeyDown={(event) => {
+                           if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+                              event.preventDefault();
+                              void handleSubmitComment();
+                           }
+                        }}
+                        placeholder="Write a comment..."
+                        rows={3}
+                        className="min-h-[80px] resize-none rounded-lg border bg-card p-3 text-sm leading-relaxed"
+                     />
+                     <div className="flex items-center justify-end">
+                        <Button
+                           size="sm"
+                           disabled={!commentBody.trim() || submittingComment}
+                           onClick={() => void handleSubmitComment()}
+                        >
+                           <Send className="mr-1.5 size-3.5" />
+                           Comment
+                        </Button>
+                     </div>
+                  </div>
+               </div>
+
+               {comments.length > 0 && (
+                  <div className="space-y-4 pt-2">
+                     {comments.map((comment) => {
+                        const author = resolveCommentAuthor(comment.authorId, currentUser);
+                        return (
+                           <div key={comment.id} className="flex gap-3">
+                              <Avatar className="size-8 shrink-0">
+                                 <AvatarImage src={author.avatarUrl} alt={author.name} />
+                                 <AvatarFallback>{author.name[0]}</AvatarFallback>
+                              </Avatar>
+                              <div className="min-w-0 flex-1 space-y-1">
+                                 <div className="flex items-center gap-2 text-sm">
+                                    <span className="font-medium">{author.name}</span>
+                                    <span
+                                       className="text-xs text-muted-foreground"
+                                       suppressHydrationWarning
+                                    >
+                                       {format(new Date(comment.createdAt), 'MMM dd, yyyy h:mm a')}
+                                    </span>
+                                 </div>
+                                 <p className="whitespace-pre-wrap text-sm text-foreground">
+                                    {comment.body}
+                                 </p>
+                              </div>
+                           </div>
+                        );
+                     })}
                   </div>
                )}
             </section>
