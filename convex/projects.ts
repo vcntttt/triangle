@@ -381,8 +381,10 @@ async function updateOption(
    table: ProjectOptionTable,
    input: { id: string; name: string; color: string }
 ) {
-   const existing = await findOptionById(ctx, table, input.id);
-   const conflictingName = await findOptionByName(ctx, table, input.name);
+   const [existing, conflictingName] = await Promise.all([
+      findOptionById(ctx, table, input.id),
+      findOptionByName(ctx, table, input.name),
+   ]);
 
    if (conflictingName && conflictingName.id !== input.id) {
       throw new Error('An option with that name already exists.');
@@ -458,16 +460,15 @@ export const page = query({
 export const bySlug = query({
    args: { projectSlug: v.string() },
    handler: async (ctx, { projectSlug }) => {
-      const [statusOptions, priorityOptions] = await Promise.all([
+      const [statusOptions, priorityOptions, project] = await Promise.all([
          listOptions(ctx, 'projectStatuses'),
          listOptions(ctx, 'projectPriorities'),
+         findProjectBySlugOrId(ctx, projectSlug),
       ]);
-      const project = await findProjectBySlugOrId(ctx, projectSlug);
+      const latestUpdate = project ? await getLatestProjectUpdate(ctx, project._id) : null;
 
       return {
-         project: project
-            ? serializeProject(project, await getLatestProjectUpdate(ctx, project._id))
-            : null,
+         project: project ? serializeProject(project, latestUpdate) : null,
          statusOptions,
          priorityOptions,
          databaseError: null,
@@ -479,20 +480,25 @@ export const bySlug = query({
 export const detail = query({
    args: { projectSlug: v.string() },
    handler: async (ctx, { projectSlug }) => {
-      const [statusOptions, priorityOptions] = await Promise.all([
+      const [statusOptions, priorityOptions, project] = await Promise.all([
          listOptions(ctx, 'projectStatuses'),
          listOptions(ctx, 'projectPriorities'),
+         findProjectBySlugOrId(ctx, projectSlug),
       ]);
-      const project = await findProjectBySlugOrId(ctx, projectSlug);
+      const [latestUpdate, areas, issues] = project
+         ? await Promise.all([
+              getLatestProjectUpdate(ctx, project._id),
+              listProjectAreas(ctx, project._id),
+              listProjectIssues(ctx, project._id),
+           ])
+         : [null, [], []];
 
       return {
-         project: project
-            ? serializeProject(project, await getLatestProjectUpdate(ctx, project._id))
-            : null,
+         project: project ? serializeProject(project, latestUpdate) : null,
          statusOptions,
          priorityOptions,
-         areas: project ? await listProjectAreas(ctx, project._id) : [],
-         issues: project ? await listProjectIssues(ctx, project._id) : [],
+         areas,
+         issues,
          databaseError: null,
          isConnected: true,
       };
@@ -782,8 +788,10 @@ export const updateArea = mutation({
       }
 
       const now = Date.now();
-      await ctx.db.patch(areaId, { name, color: input.color, updatedAt: now });
-      await ctx.db.patch(area.projectId, { updatedAt: now });
+      await Promise.all([
+         ctx.db.patch(areaId, { name, color: input.color, updatedAt: now }),
+         ctx.db.patch(area.projectId, { updatedAt: now }),
+      ]);
       return serializeProjectArea((await ctx.db.get(areaId))!);
    },
 });
@@ -803,13 +811,14 @@ export const deleteArea = mutation({
          .collect();
       const now = Date.now();
 
-      await Promise.all(
-         issues
-            .filter((issue) => issue.areaId === id)
-            .map((issue) => ctx.db.patch(issue._id, { areaId: undefined, updatedAt: now }))
-      );
-      await ctx.db.delete(id);
-      await ctx.db.patch(area.projectId, { updatedAt: now });
+      const issueUpdates = [];
+      for (const issue of issues) {
+         if (issue.areaId === id) {
+            issueUpdates.push(ctx.db.patch(issue._id, { areaId: undefined, updatedAt: now }));
+         }
+      }
+      await Promise.all(issueUpdates);
+      await Promise.all([ctx.db.delete(id), ctx.db.patch(area.projectId, { updatedAt: now })]);
 
       return { ok: true };
    },
