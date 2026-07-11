@@ -13,10 +13,6 @@ export function issuesPageQuery(args: IssuesPageArgs = {}) {
    });
 }
 
-export function issueDetailQuery(issueIdentifier: string) {
-   return convexQuery(api.issues.detail, { issueIdentifier });
-}
-
 export function useIssueCommands() {
    const createIssue = useMutation(api.issues.create);
    const createIssueWithSubissues = useMutation(api.issues.createWithSubissues);

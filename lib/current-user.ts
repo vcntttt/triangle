@@ -17,10 +17,6 @@ export const currentUser: User = {
    teamIds: [],
 };
 
-export const personalAssigneeOptions: User[] = [currentUser];
-
-export const personalMemberOptions: User[] = [currentUser];
-
 export type ViewerProfileLike = Omit<User, 'teamIds'> & {
    teamIds?: string[];
 };

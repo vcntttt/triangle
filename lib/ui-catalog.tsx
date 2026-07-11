@@ -317,8 +317,6 @@ export const archivedStatus: Status = {
    icon: ArchivedIcon,
 };
 
-export const issueStatusOptions: Status[] = [...status, archivedStatus];
-
 export const priorities: Priority[] = [
    { id: 'no-priority', name: 'No priority', icon: NoPriorityIcon },
    { id: 'urgent', name: 'Urgent', icon: UrgentPriorityIcon },

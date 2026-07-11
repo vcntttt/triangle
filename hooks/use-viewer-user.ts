@@ -9,8 +9,3 @@ export function useViewerUser(): User {
    const profile = useViewerProfile();
    return useMemo(() => viewerProfileToUser(profile), [profile]);
 }
-
-export function useViewerAssigneeOptions(): User[] {
-   const viewer = useViewerUser();
-   return useMemo(() => [viewer], [viewer]);
-}
