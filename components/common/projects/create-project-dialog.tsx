@@ -183,6 +183,7 @@ export function CreateProjectDialog({ disabled = false }: CreateProjectDialogPro
                   <select
                      id="status"
                      name="status"
+                     aria-label="Initial status"
                      defaultValue={statusOptions[0]?.id ?? 'backlog'}
                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors outline-none"
                   >
@@ -199,6 +200,7 @@ export function CreateProjectDialog({ disabled = false }: CreateProjectDialogPro
                   <select
                      id="priority"
                      name="priority"
+                     aria-label="Priority"
                      defaultValue={priorityOptions[0]?.id ?? 'no-priority'}
                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors outline-none"
                   >

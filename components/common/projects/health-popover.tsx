@@ -21,6 +21,10 @@ import { health as healthOptions } from '@/lib/ui-catalog';
 import { ProjectIconGlyph } from './project-icon';
 import { useProjectCommands } from '@/src/data/projects';
 
+const updateDateFormatter = new Intl.DateTimeFormat('en-US', {
+   timeZone: 'UTC',
+});
+
 function getHealthIcon(healthId: string) {
    switch (healthId) {
       case 'on-track':
@@ -51,8 +55,8 @@ export function HealthPopover({ project, onProjectUpdate }: HealthPopoverProps) 
    const isMobile = useIsMobile();
 
    const latestUpdateDate = project.latestUpdate
-      ? new Date(project.latestUpdate.createdAt).toLocaleDateString()
-      : new Date(project.startDate).toLocaleDateString();
+      ? updateDateFormatter.format(new Date(project.latestUpdate.createdAt))
+      : updateDateFormatter.format(new Date(project.startDate));
 
    const handleCreateUpdate = async () => {
       const trimmedBody = body.trim();

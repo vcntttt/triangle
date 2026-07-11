@@ -34,6 +34,9 @@ export function Filter() {
 
    const { filters, sort, toggleFilter, clearFilters, getActiveFiltersCount, setSort } =
       useProjectsFilterStore();
+   const selectedHealthIds = new Set(filters.health);
+   const selectedPriorityIds = new Set(filters.priority);
+   const priorityIcons = new Map(priorities.map((priority) => [priority.id, priority.icon]));
 
    return (
       <Popover open={open} onOpenChange={setOpen}>
@@ -144,7 +147,7 @@ export function Filter() {
                                  />
                                  {h.name}
                               </div>
-                              {filters.health.includes(h.id) && <CheckIcon size={16} />}
+                              {selectedHealthIds.has(h.id) && <CheckIcon size={16} />}
                            </CommandItem>
                         ))}
                      </CommandGroup>
@@ -168,9 +171,7 @@ export function Filter() {
                      <CommandEmpty>No priorities found.</CommandEmpty>
                      <CommandGroup>
                         {priorityOptions.map((p) => {
-                           const Icon =
-                              priorities.find((priority) => priority.id === p.id)?.icon ??
-                              priorities[0].icon;
+                           const Icon = priorityIcons.get(p.id) ?? priorities[0].icon;
 
                            return (
                               <CommandItem
@@ -183,7 +184,7 @@ export function Filter() {
                                     <Icon className="text-muted-foreground size-4" />
                                     {p.name}
                                  </div>
-                                 {filters.priority.includes(p.id) && <CheckIcon size={16} />}
+                                 {selectedPriorityIds.has(p.id) && <CheckIcon size={16} />}
                               </CommandItem>
                            );
                         })}

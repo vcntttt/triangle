@@ -45,14 +45,16 @@ export default function Projects({
          viewer
       );
    });
+   const healthFilterIds = new Set(filters.health);
+   const priorityFilterIds = new Set(filters.priority);
 
    const visibleProjects = presentationProjects
       .filter((project) => {
-         if (filters.health.length > 0 && !filters.health.includes(project.health.id)) {
+         if (healthFilterIds.size > 0 && !healthFilterIds.has(project.health.id)) {
             return false;
          }
 
-         if (filters.priority.length > 0 && !filters.priority.includes(project.priority.id)) {
+         if (priorityFilterIds.size > 0 && !priorityFilterIds.has(project.priority.id)) {
             return false;
          }
 
