@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, use } from 'react';
+import { createContext, use, useMemo } from 'react';
 import { archivedStatus, status as baseStatus } from '@/lib/ui-catalog';
 import type { ProjectOptionLike } from '@/lib/projects-presentation';
 import type { Status } from '@/lib/models';
@@ -56,19 +56,20 @@ export function IssuesStatusProvider({
    statuses: ProjectOptionLike[];
    children: React.ReactNode;
 }) {
-   const issueStatuses: Status[] = statuses.map((item) => {
-      return {
-         id: item.id,
-         name: item.name,
-         color: item.color,
-         icon: resolveStatusIcon(item.id, item.name),
-      };
-   });
+   const issueStatuses = useMemo<Status[]>(
+      () =>
+         statuses.map((item) => ({
+            id: item.id,
+            name: item.name,
+            color: item.color,
+            icon: resolveStatusIcon(item.id, item.name),
+         })),
+      [statuses]
+   );
+   const contextValue = useMemo(() => [...issueStatuses, archivedStatus], [issueStatuses]);
 
    return (
-      <IssuesStatusContext.Provider value={[...issueStatuses, archivedStatus]}>
-         {children}
-      </IssuesStatusContext.Provider>
+      <IssuesStatusContext.Provider value={contextValue}>{children}</IssuesStatusContext.Provider>
    );
 }
 

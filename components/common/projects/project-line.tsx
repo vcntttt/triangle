@@ -24,7 +24,20 @@ interface ProjectLineProps {
    onProjectUpdate?: (projectId: string, update: ProjectUpdate) => void;
 }
 
-export default function ProjectLine({
+export default function ProjectLine(props: ProjectLineProps) {
+   const { project } = props;
+   const fieldStateKey = [
+      project.id,
+      project.status.id,
+      project.status.name,
+      project.priority.id,
+      project.priority.name,
+   ].join(':');
+
+   return <ProjectLineContent key={fieldStateKey} {...props} />;
+}
+
+function ProjectLineContent({
    project,
    visibleProperties,
    statusOptions,

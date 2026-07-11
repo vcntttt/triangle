@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Project } from '@/lib/models';
 import type { ProjectOptionLike } from '@/lib/projects-presentation';
@@ -14,14 +14,6 @@ export function useProjectFieldUpdates(
    const [currentStatus, setCurrentStatus] = useState(project.status);
    const [currentPriority, setCurrentPriority] = useState(project.priority);
    const { updateProject } = useProjectCommands();
-
-   useEffect(() => {
-      setCurrentStatus(project.status);
-   }, [project.status.id, project.status.name]);
-
-   useEffect(() => {
-      setCurrentPriority(project.priority);
-   }, [project.priority.id, project.priority.name]);
 
    const handleStatusChange = async (statusId: string) => {
       if (statusId === currentStatus.id) {
