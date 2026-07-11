@@ -16,7 +16,7 @@ import type { Project, ProjectArea } from '@/lib/models';
 import { projectAreasQuery } from '@/src/data/projects';
 import { useQuery } from '@tanstack/react-query';
 import { CheckIcon, Component, Layers2 } from 'lucide-react';
-import { useEffect, useId, useState } from 'react';
+import { useId, useState } from 'react';
 
 interface AreaSelectorProps {
    project: Project | undefined;
@@ -50,17 +50,6 @@ export function AreaSelector({
    const isOpen = open ?? internalOpen;
    const setOpen = onOpenChange ?? setInternalOpen;
    const selectedArea = area ? areas.find((item) => item.id === area.id) : null;
-
-   useEffect(() => {
-      if (!project && area) {
-         onChange(null);
-         return;
-      }
-
-      if (area && !areas.some((item) => item.id === area.id)) {
-         onChange(null);
-      }
-   }, [area, areas, onChange, project]);
 
    const handleAreaChange = (areaId: string) => {
       if (areaId === 'no-area') {

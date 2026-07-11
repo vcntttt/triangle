@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Clock3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,12 +24,6 @@ export function EstimatedHoursSelector({ estimatedHours, onChange }: EstimatedHo
    const [open, setOpen] = useState(false);
    const [value, setValue] = useState(estimatedHours !== undefined ? String(estimatedHours) : '');
 
-   useEffect(() => {
-      if (!open) {
-         setValue(estimatedHours !== undefined ? String(estimatedHours) : '');
-      }
-   }, [estimatedHours, open]);
-
    const applyValue = () => {
       const nextValue = value.trim();
 
@@ -50,8 +44,15 @@ export function EstimatedHoursSelector({ estimatedHours, onChange }: EstimatedHo
       setOpen(false);
    };
 
+   const handleOpenChange = (nextOpen: boolean) => {
+      if (nextOpen) {
+         setValue(estimatedHours !== undefined ? String(estimatedHours) : '');
+      }
+      setOpen(nextOpen);
+   };
+
    return (
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover open={open} onOpenChange={handleOpenChange}>
          <PopoverTrigger asChild>
             <Button
                type="button"
