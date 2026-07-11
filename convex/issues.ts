@@ -548,13 +548,16 @@ export const createWithSubissues = mutation({
       subissues: v.array(v.object({ title: v.string() })),
    },
    handler: async (ctx, input) => {
-      const project = await findProjectById(ctx, input.projectId);
-      const area = await findProjectAreaById(ctx, input.areaId, project?._id);
-      const matchedLabels = await findLabelsByIds(ctx, input.labelIds ?? []);
-      const { identifier, projectIssueNumber } = await createIssueIdentifier(
-         ctx,
-         project?.key ?? 'TRI'
-      );
+      const [project, matchedLabels] = await Promise.all([
+         findProjectById(ctx, input.projectId),
+         findLabelsByIds(ctx, input.labelIds ?? []),
+      ]);
+      const [area, issueIdentifier, rank] = await Promise.all([
+         findProjectAreaById(ctx, input.areaId, project?._id),
+         createIssueIdentifier(ctx, project?.key ?? 'TRI'),
+         createIssueRank(ctx),
+      ]);
+      const { identifier, projectIssueNumber } = issueIdentifier;
       const now = Date.now();
       const issueId = await ctx.db.insert('issues', {
          identifier,
@@ -564,7 +567,7 @@ export const createWithSubissues = mutation({
          status: input.status,
          priority: input.priority,
          assigneeId: input.assigneeId ?? undefined,
-         rank: await createIssueRank(ctx),
+         rank,
          estimatedHours:
             input.estimatedHours === undefined || input.estimatedHours === null
                ? undefined
