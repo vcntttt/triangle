@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { format } from 'date-fns';
-import { Archive, ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { Archive, ArrowLeft, Link2, Plus, Trash2, X } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -46,6 +46,7 @@ export function IssueDetail({
    const navigate = useNavigate();
    const {
       getIssueById,
+      getAllIssues,
       updateIssueContent,
       deleteIssue,
       archiveIssue,
@@ -54,7 +55,7 @@ export function IssueDetail({
       updateIssueParent,
       addIssueLabel,
    } = useIssuesData();
-   const { createIssue } = useIssueCommands();
+   const { createIssue, addIssueBlocker, removeIssueBlocker } = useIssueCommands();
    const projectOptions = useProjectOptions();
    const labelOptions = useLabelOptions();
    const currentUser = useViewerUser();
@@ -409,6 +410,95 @@ export function IssueDetail({
                   className="min-h-[156px] resize-none rounded-lg border bg-card p-4 text-sm leading-relaxed"
                />
             </div>
+
+            <section className="space-y-3 border-t border-border/60 pt-5">
+               <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">
+                     Blocking relations
+                  </span>
+                  <Button
+                     variant="ghost"
+                     size="sm"
+                     onClick={async () => {
+                        const identifier = window.prompt(
+                           'Identifier of the issue that blocks this one'
+                        );
+                        if (!identifier) return;
+                        const issue = getAllIssues().find(
+                           (item) =>
+                              item.identifier.toLowerCase() === identifier.trim().toLowerCase()
+                        );
+                        if (!issue) {
+                           toast.error('Issue not found');
+                           return;
+                        }
+                        try {
+                           await addIssueBlocker({
+                              blockedIssueId: presentationIssue.id,
+                              blockerIssueId: issue.id,
+                           });
+                           toast.success('Blocker added');
+                        } catch (error) {
+                           toast.error(
+                              error instanceof Error ? error.message : 'Could not add blocker'
+                           );
+                        }
+                     }}
+                  >
+                     <Link2 className="size-4" /> Add blocker
+                  </Button>
+               </div>
+               {presentationIssue.blockedBy.length === 0 &&
+               presentationIssue.blocks.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No blocking relations.</p>
+               ) : (
+                  <div className="space-y-2 text-sm">
+                     {presentationIssue.blockedBy.map((relation) => (
+                        <div
+                           key={relation.id}
+                           className="flex items-center gap-2 rounded-md border px-3 py-2"
+                        >
+                           <span className="text-muted-foreground">Blocked by</span>
+                           <Link
+                              to="/issues/$issueIdentifier"
+                              params={{ issueIdentifier: relation.identifier }}
+                              className="font-medium hover:underline"
+                           >
+                              {relation.identifier} · {relation.title}
+                           </Link>
+                           <Button
+                              className="ml-auto size-6"
+                              size="icon"
+                              variant="ghost"
+                              onClick={() =>
+                                 void removeIssueBlocker({
+                                    blockedIssueId: presentationIssue.id,
+                                    blockerIssueId: relation.id,
+                                 })
+                              }
+                           >
+                              <X className="size-3" />
+                           </Button>
+                        </div>
+                     ))}
+                     {presentationIssue.blocks.map((relation) => (
+                        <div
+                           key={relation.id}
+                           className="flex items-center gap-2 rounded-md border px-3 py-2"
+                        >
+                           <span className="text-muted-foreground">Blocks</span>
+                           <Link
+                              to="/issues/$issueIdentifier"
+                              params={{ issueIdentifier: relation.identifier }}
+                              className="font-medium hover:underline"
+                           >
+                              {relation.identifier} · {relation.title}
+                           </Link>
+                        </div>
+                     ))}
+                  </div>
+               )}
+            </section>
 
             <section className="border-t border-border/60 pt-5">
                <div className="space-y-3">
