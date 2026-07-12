@@ -187,12 +187,6 @@ async function assertCanEnterStatus(ctx: MutationCtx, issueId: Id<'issues'>, sta
       .unique();
    const option = stored ?? defaultIssueStatuses.find((item) => item.id === status);
    if (!option) throw new Error(`Unknown issue status: ${status}.`);
-   if (option.type === 'completed') {
-      const issue = await ctx.db.get(issueId);
-      if (!issue?.resolution) {
-         throw new Error('Use close with a resolution before completing this issue.');
-      }
-   }
    if (option.type === 'unstarted') return;
    const relations = await ctx.db
       .query('issueRelations')
