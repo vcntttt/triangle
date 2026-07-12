@@ -2,7 +2,7 @@ import { v } from 'convex/values';
 import { mutation, query, type MutationCtx } from './_generated/server';
 
 const statusType = v.union(v.literal('unstarted'), v.literal('started'), v.literal('completed'));
-const defaults = [
+export const defaultIssueStatuses = [
    { id: 'backlog', name: 'Backlog', color: '#ec4899', type: 'unstarted' as const },
    { id: 'to-do', name: 'Todo', color: '#f97316', type: 'unstarted' as const },
    { id: 'in-progress', name: 'In Progress', color: '#facc15', type: 'started' as const },
@@ -21,7 +21,7 @@ async function ensureDefaults(ctx: MutationCtx) {
    const existing = new Set((await ctx.db.query('issueStatuses').collect()).map((row) => row.id));
    const now = Date.now();
    await Promise.all(
-      defaults.flatMap((item, position) =>
+      defaultIssueStatuses.flatMap((item, position) =>
          existing.has(item.id)
             ? []
             : [
@@ -48,7 +48,9 @@ export const list = query({
    args: {},
    handler: async (ctx) => {
       const rows = await ctx.db.query('issueStatuses').withIndex('by_position').collect();
-      const values = new Map(defaults.map((item, position) => [item.id, { ...item, position }]));
+      const values = new Map(
+         defaultIssueStatuses.map((item, position) => [item.id, { ...item, position }])
+      );
       rows.forEach((row) => values.set(row.id, row));
       return Array.from(values.values())
          .map(({ id, name, color, position, type }) => ({ id, name, color, position, type }))

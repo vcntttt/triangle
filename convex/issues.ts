@@ -1,13 +1,18 @@
 import { v } from 'convex/values';
 import type { Doc, Id } from './_generated/dataModel';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
-import { listOptions } from './projects';
+import { defaultIssueStatuses } from './issueStatuses';
 
 const nowIso = (value: number) => new Date(value).toISOString();
 const toNullable = <T>(value: T | undefined): T | null => value ?? null;
 
 async function listStatusOptions(ctx: QueryCtx) {
-   return listOptions(ctx, 'projectStatuses');
+   const rows = await ctx.db.query('issueStatuses').withIndex('by_position').collect();
+   const values = new Map(
+      defaultIssueStatuses.map((item, position) => [item.id, { ...item, position }])
+   );
+   rows.forEach((row) => values.set(row.id, row));
+   return Array.from(values.values()).toSorted((left, right) => left.position - right.position);
 }
 
 function serializeProject(project: Doc<'projects'>) {
@@ -179,7 +184,7 @@ async function assertCanEnterStatus(ctx: MutationCtx, issueId: Id<'issues'>, sta
       .query('issueStatuses')
       .withIndex('by_option_id', (q) => q.eq('id', status))
       .unique();
-   const option = stored ?? defaultProjectStatuses.find((item) => item.id === status);
+   const option = stored ?? defaultIssueStatuses.find((item) => item.id === status);
    if (!option) throw new Error(`Unknown issue status: ${status}.`);
    if (option.type === 'completed') {
       const issue = await ctx.db.get(issueId);

@@ -29,6 +29,7 @@ import { useProjectOptions } from '@/hooks/use-project-options';
 import { useLabelOptions } from '@/hooks/use-label-options';
 import { useViewerUser } from '@/hooks/use-viewer-user';
 import { issueDetailQuery, useIssueCommands } from '@/src/data/issues';
+import { MarkdownContent } from './markdown-content';
 
 const agentAvatars: Record<string, string> = {
    opencode:
@@ -105,6 +106,7 @@ export function IssueDetail({
       : null;
    const [title, setTitle] = useState(presentationIssue?.title ?? '');
    const [description, setDescription] = useState(presentationIssue?.description ?? '');
+   const [editingDescription, setEditingDescription] = useState(false);
    const [subissueComposerOpen, setSubissueComposerOpen] = useState(false);
    const [newSubissueTitle, setNewSubissueTitle] = useState('');
    const [newSubissueDescription, setNewSubissueDescription] = useState('');
@@ -453,25 +455,50 @@ export function IssueDetail({
                </div>
             </div>
 
-            <div className="prose prose-sm max-w-none">
+            <div className="max-w-none">
                <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
                   <span>Description</span>
                </div>
-               <Textarea
-                  value={description}
-                  onChange={(event) => setDescription(event.target.value)}
-                  onBlur={persistDescription}
-                  onKeyDown={(event) => {
-                     if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
-                        event.preventDefault();
-                        event.currentTarget.blur();
-                     }
-                     handleEditorShortcuts(event);
-                  }}
-                  placeholder="Add a description..."
-                  rows={7}
-                  className="min-h-[156px] resize-none rounded-lg border bg-card p-4 text-sm leading-relaxed"
-               />
+               {editingDescription ? (
+                  <Textarea
+                     autoFocus
+                     value={description}
+                     onChange={(event) => setDescription(event.target.value)}
+                     onBlur={() => {
+                        persistDescription();
+                        setEditingDescription(false);
+                     }}
+                     onKeyDown={(event) => {
+                        if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+                           event.preventDefault();
+                           event.currentTarget.blur();
+                        }
+                        handleEditorShortcuts(event);
+                     }}
+                     placeholder="Add a description..."
+                     rows={7}
+                     className="min-h-[156px] resize-none rounded-lg border bg-card p-4 text-sm leading-relaxed"
+                  />
+               ) : (
+                  <div
+                     role="button"
+                     tabIndex={0}
+                     onClick={() => setEditingDescription(true)}
+                     onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                           event.preventDefault();
+                           setEditingDescription(true);
+                        }
+                     }}
+                     className="block min-h-[156px] w-full rounded-lg border bg-card p-4 text-left transition-colors hover:border-primary/40"
+                  >
+                     {description.trim() ? (
+                        <MarkdownContent content={description} />
+                     ) : (
+                        <span className="text-sm text-muted-foreground">Add a description...</span>
+                     )}
+                  </div>
+               )}
             </div>
 
             <section className="space-y-3 border-t border-border/60 pt-5">
