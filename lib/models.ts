@@ -13,6 +13,25 @@ export interface LabelInterface {
    color: string;
 }
 
+export interface IssueAutomation {
+   id: string;
+   name: string;
+   enabled: boolean;
+   fromStatus: string | null;
+   toStatus: string;
+   actions: Array<{ type: 'removeLabel'; labelId: string }>;
+   createdAt: number;
+   updatedAt: number;
+}
+
+export interface IssueStatusOption {
+   id: string;
+   name: string;
+   color: string;
+   type: 'unstarted' | 'started' | 'completed';
+   position: number;
+}
+
 export interface ProjectArea {
    id: string;
    projectId: string;

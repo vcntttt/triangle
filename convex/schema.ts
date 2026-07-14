@@ -75,6 +75,24 @@ export default defineSchema({
       color: v.string(),
       createdAt: v.number(),
    }).index('by_name', ['name']),
+   issueAutomations: defineTable({
+      name: v.string(),
+      enabled: v.boolean(),
+      fromStatus: v.optional(v.string()),
+      toStatus: v.string(),
+      actions: v.array(
+         v.object({
+            type: v.literal('removeLabel'),
+            labelId: v.id('labels'),
+         })
+      ),
+      templateKey: v.optional(v.string()),
+      deletedAt: v.optional(v.number()),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+   })
+      .index('by_enabled', ['enabled'])
+      .index('by_template_key', ['templateKey']),
    viewerProfiles: defineTable({
       singletonKey: v.string(),
       name: v.string(),

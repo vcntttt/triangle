@@ -67,6 +67,20 @@ export const remove = mutation({
          }
       }
       await Promise.all(issueUpdates);
+      const automations = await ctx.db.query('issueAutomations').collect();
+      await Promise.all(
+         automations.flatMap((automation) => {
+            const actions = automation.actions.filter((action) => action.labelId !== id);
+            if (actions.length === automation.actions.length) return [];
+            return [
+               ctx.db.patch(automation._id, {
+                  actions,
+                  enabled: actions.length > 0 ? automation.enabled : false,
+                  updatedAt,
+               }),
+            ];
+         })
+      );
       await ctx.db.delete(id);
       return { ok: true };
    },

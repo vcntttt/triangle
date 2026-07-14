@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as issueAutomations from "../issueAutomations.js";
 import type * as issueStatuses from "../issueStatuses.js";
 import type * as issues from "../issues.js";
 import type * as labels from "../labels.js";
@@ -21,6 +22,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  issueAutomations: typeof issueAutomations;
   issueStatuses: typeof issueStatuses;
   issues: typeof issues;
   labels: typeof labels;

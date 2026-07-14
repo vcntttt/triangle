@@ -1,14 +1,21 @@
 'use client';
 
-import type { LabelInterface } from '@/lib/models';
+import type { IssueAutomation, IssueStatusOption, LabelInterface } from '@/lib/models';
+import { AutomationsSettings } from './automations-settings';
 import { LabelsSettings } from './labels-settings';
 import { ProjectOptionsSettings } from './project-options-settings';
 
 interface SettingsProps {
    initialLabels: LabelInterface[];
+   initialAutomations: IssueAutomation[];
+   issueStatuses: IssueStatusOption[];
 }
 
-export default function Settings({ initialLabels }: SettingsProps) {
+export default function Settings({
+   initialLabels,
+   initialAutomations,
+   issueStatuses,
+}: SettingsProps) {
    return (
       <div className="w-full max-w-5xl mx-auto p-8">
          <div className="mb-10">
@@ -24,6 +31,12 @@ export default function Settings({ initialLabels }: SettingsProps) {
             </div>
             <ProjectOptionsSettings />
          </section>
+
+         <AutomationsSettings
+            initialAutomations={initialAutomations}
+            labels={initialLabels}
+            statuses={issueStatuses}
+         />
 
          <LabelsSettings initialLabels={initialLabels} />
       </div>

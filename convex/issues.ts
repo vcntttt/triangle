@@ -1,6 +1,7 @@
 import { v } from 'convex/values';
 import type { Doc, Id } from './_generated/dataModel';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
+import { applyIssueStatusAutomations } from './issueAutomations';
 import { defaultIssueStatuses } from './issueStatuses';
 import { listOptions } from './projects';
 
@@ -200,6 +201,25 @@ async function assertCanEnterStatus(ctx: MutationCtx, issueId: Id<'issues'>, sta
       throw new Error(
          `Issue is blocked by: ${pending.map((issue) => issue!.identifier).join(', ')}. Complete every blocker before starting this issue.`
       );
+   }
+}
+
+async function transitionIssueStatus(
+   ctx: MutationCtx,
+   issue: Doc<'issues'>,
+   status: string,
+   updatedAt: number,
+   options: { validate?: boolean; patch?: Partial<Doc<'issues'>> } = {}
+) {
+   if (options.validate !== false) await assertCanEnterStatus(ctx, issue._id, status);
+   await ctx.db.patch(issue._id, {
+      ...options.patch,
+      status,
+      updatedAt,
+   });
+   const updatedIssue = await ctx.db.get(issue._id);
+   if (updatedIssue) {
+      await applyIssueStatusAutomations(ctx, updatedIssue, issue.status, status, updatedAt);
    }
 }
 
@@ -602,8 +622,6 @@ export const update = mutation({
       const id = issueId as Id<'issues'>;
       const issue = await ctx.db.get(id);
       if (!issue) return null;
-      if (input.status !== undefined) await assertCanEnterStatus(ctx, id, input.status);
-
       const project =
          input.projectId !== undefined
             ? await findProjectById(ctx, input.projectId)
@@ -636,12 +654,11 @@ export const update = mutation({
          );
       }
 
-      await ctx.db.patch(id, {
+      const patch = {
          ...(input.title !== undefined ? { title: input.title } : {}),
          ...(input.description !== undefined
             ? { description: input.description ?? undefined }
             : {}),
-         ...(input.status !== undefined ? { status: input.status } : {}),
          ...(input.priority !== undefined ? { priority: input.priority } : {}),
          ...(input.assigneeId !== undefined ? { assigneeId: input.assigneeId ?? undefined } : {}),
          ...(input.estimatedHours !== undefined
@@ -668,7 +685,12 @@ export const update = mutation({
               : {}),
          ...(labels !== undefined ? { labelIds: labels.map((label) => label._id) } : {}),
          updatedAt: Date.now(),
-      });
+      };
+      if (input.status !== undefined) {
+         await transitionIssueStatus(ctx, issue, input.status, patch.updatedAt, { patch });
+      } else {
+         await ctx.db.patch(id, patch);
+      }
 
       return (await listIssues(ctx)).find((item) => item.id === id) ?? null;
    },
@@ -685,10 +707,9 @@ export const setStatus = mutation({
       const id = issueId as Id<'issues'>;
       const issue = await ctx.db.get(id);
       if (!issue) return null;
-      await assertCanEnterStatus(ctx, id, status);
 
       const now = Date.now();
-      await ctx.db.patch(id, { status, updatedAt: now });
+      await transitionIssueStatus(ctx, issue, status, now);
 
       if (cascadeChildren) {
          const children = await ctx.db
@@ -699,8 +720,7 @@ export const setStatus = mutation({
          await Promise.all(
             children.map(async (child) => {
                if (child.status === 'completed' || child.status === 'archived') return;
-               await assertCanEnterStatus(ctx, child._id, status);
-               await ctx.db.patch(child._id, { status, updatedAt: now });
+               await transitionIssueStatus(ctx, child, status, now);
             })
          );
       }
@@ -712,8 +732,7 @@ export const setStatus = mutation({
       ) {
          const parent = await ctx.db.get(issue.parentIssueId);
          if (parent?.status === 'to-do') {
-            await assertCanEnterStatus(ctx, parent._id, 'in-progress');
-            await ctx.db.patch(parent._id, { status: 'in-progress', updatedAt: now });
+            await transitionIssueStatus(ctx, parent, 'in-progress', now);
          }
       }
 
@@ -730,13 +749,8 @@ export const close = mutation({
       const normalizedResolution = resolution.trim();
       if (!normalizedResolution) throw new Error('Resolution is required.');
       const now = Date.now();
-      await ctx.db.patch(id, { resolution: normalizedResolution });
-      await assertCanEnterStatus(ctx, id, 'completed');
-      await ctx.db.patch(id, {
-         status: 'completed',
-         resolution: normalizedResolution,
-         resolvedAt: now,
-         updatedAt: now,
+      await transitionIssueStatus(ctx, issue, 'completed', now, {
+         patch: { resolution: normalizedResolution, resolvedAt: now },
       });
       return (await listIssues(ctx)).find((item) => item.id === id) ?? null;
    },
@@ -959,10 +973,7 @@ export const archive = mutation({
       const issue = await ctx.db.get(id);
       if (!issue) return null;
 
-      await ctx.db.patch(id, {
-         status: 'archived',
-         updatedAt: Date.now(),
-      });
+      await transitionIssueStatus(ctx, issue, 'archived', Date.now(), { validate: false });
 
       return (await listIssues(ctx)).find((item) => item.id === id) ?? null;
    },

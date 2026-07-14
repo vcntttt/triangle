@@ -128,6 +128,14 @@ export const remove = mutation({
          .withIndex('by_option_id', (q) => q.eq('id', id))
          .unique();
       if (!row) return { ok: true };
+      if (
+         (await ctx.db.query('issueAutomations').collect()).some(
+            (automation) =>
+               automation.deletedAt === undefined &&
+               (automation.fromStatus === id || automation.toStatus === id)
+         )
+      )
+         throw new Error('Cannot delete a status used by an automation.');
       if ((await ctx.db.query('issues').collect()).some((issue) => issue.status === id))
          throw new Error('Cannot delete a status used by issues.');
       await ctx.db.delete(row._id);
