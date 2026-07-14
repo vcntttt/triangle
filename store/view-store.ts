@@ -6,6 +6,7 @@ export type IssueDisplayProperty =
    | 'labels'
    | 'project'
    | 'area'
+   | 'dependencies'
    | 'assignee'
    | 'createdAt';
 
@@ -18,6 +19,7 @@ const defaultIssueView = {
       labels: true,
       project: true,
       area: true,
+      dependencies: true,
       assignee: true,
       createdAt: true,
    },

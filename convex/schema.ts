@@ -6,13 +6,16 @@ export default defineSchema({
       id: v.string(),
       name: v.string(),
       color: v.string(),
-      position: v.number(),
+      listPosition: v.optional(v.number()),
+      boardPosition: v.optional(v.number()),
+      position: v.optional(v.number()),
       createdAt: v.number(),
       updatedAt: v.number(),
    })
       .index('by_option_id', ['id'])
       .index('by_name', ['name'])
-      .index('by_position', ['position']),
+      .index('by_list_position', ['listPosition'])
+      .index('by_board_position', ['boardPosition']),
    issueStatuses: defineTable({
       id: v.string(),
       name: v.string(),
@@ -29,13 +32,16 @@ export default defineSchema({
       id: v.string(),
       name: v.string(),
       color: v.string(),
-      position: v.number(),
+      listPosition: v.optional(v.number()),
+      boardPosition: v.optional(v.number()),
+      position: v.optional(v.number()),
       createdAt: v.number(),
       updatedAt: v.number(),
    })
       .index('by_option_id', ['id'])
       .index('by_name', ['name'])
-      .index('by_position', ['position']),
+      .index('by_list_position', ['listPosition'])
+      .index('by_board_position', ['boardPosition']),
    projects: defineTable({
       name: v.string(),
       slug: v.string(),
@@ -115,6 +121,7 @@ export default defineSchema({
             labels: v.boolean(),
             project: v.boolean(),
             area: v.optional(v.boolean()),
+            dependencies: v.optional(v.boolean()),
             assignee: v.boolean(),
             createdAt: v.boolean(),
          }),

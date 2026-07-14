@@ -24,6 +24,7 @@ const defaultPreferences = {
          labels: true,
          project: true,
          area: true,
+         dependencies: true,
          assignee: true,
          createdAt: true,
       },
@@ -67,6 +68,7 @@ const issueViewPatchValidator = v.object({
          labels: v.optional(v.boolean()),
          project: v.optional(v.boolean()),
          area: v.optional(v.boolean()),
+         dependencies: v.optional(v.boolean()),
          assignee: v.optional(v.boolean()),
          createdAt: v.optional(v.boolean()),
       })

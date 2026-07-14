@@ -97,6 +97,11 @@ async function listIssues(ctx: QueryCtx | MutationCtx, projectId?: Id<'projects'
    const projectLookup = new Map(projects.map((project) => [project._id, project]));
    const labelLookup = new Map(labels.map((label) => [label._id, label]));
    const areaLookup = new Map(areas.map((area) => [area._id, area]));
+   const relationIssueLookup = projectId
+      ? new Map(
+           (await ctx.db.query('issues').collect()).map((issue) => [issue._id, issue] as const)
+        )
+      : new Map(issues.map((issue) => [issue._id, issue] as const));
    const issuesMap = new Map<
       Id<'issues'>,
       ReturnType<typeof serializeIssueBase> & {
@@ -129,21 +134,32 @@ async function listIssues(ctx: QueryCtx | MutationCtx, projectId?: Id<'projects'
    }
 
    for (const relation of relations) {
-      const blocker = issuesMap.get(relation.blockerIssueId);
-      const blocked = issuesMap.get(relation.blockedIssueId);
-      if (!blocker || !blocked) continue;
-      blocked.blockedBy.push({
-         id: blocker.id,
-         identifier: blocker.identifier,
-         title: blocker.title,
-         status: blocker.status,
-      });
-      blocker.blocks.push({
-         id: blocked.id,
-         identifier: blocked.identifier,
-         title: blocked.title,
-         status: blocked.status,
-      });
+      const blockerInResult = issuesMap.get(relation.blockerIssueId);
+      const blockedInResult = issuesMap.get(relation.blockedIssueId);
+
+      if (blockedInResult) {
+         const blocker = relationIssueLookup.get(relation.blockerIssueId);
+         if (blocker) {
+            blockedInResult.blockedBy.push({
+               id: blocker._id,
+               identifier: blocker.identifier,
+               title: blocker.title,
+               status: blocker.status,
+            });
+         }
+      }
+
+      if (blockerInResult) {
+         const blocked = relationIssueLookup.get(relation.blockedIssueId);
+         if (blocked) {
+            blockerInResult.blocks.push({
+               id: blocked._id,
+               identifier: blocked.identifier,
+               title: blocked.title,
+               status: blocked.status,
+            });
+         }
+      }
    }
 
    for (const issue of issuesMap.values()) {

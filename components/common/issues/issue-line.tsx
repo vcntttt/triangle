@@ -18,6 +18,7 @@ import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { IssueContextMenu } from './issue-context-menu';
 import { Clock3 } from 'lucide-react';
 import { IssueChip, issueChipIconClassName } from './issue-chip';
+import { IssueDependencyIndicator } from './issue-dependencies';
 
 const formatEstimatedHours = (estimatedHours?: number) => {
    if (estimatedHours === undefined) {
@@ -116,10 +117,11 @@ export function IssueLine({
                   </div>
                   <div className="flex items-center justify-end gap-2 ml-auto sm:w-fit">
                      <div className="w-3 shrink-0"></div>
-                     {(visibleProperties.labels ||
-                        visibleProperties.project ||
-                        visibleProperties.area) && (
-                        <div className="hidden items-center justify-end gap-1 sm:flex">
+                     <div className="flex items-center justify-end gap-1">
+                        {visibleProperties.dependencies && (
+                           <IssueDependencyIndicator issue={issue} />
+                        )}
+                        <div className="hidden sm:contents">
                            {visibleProperties.labels && <LabelBadge label={issue.labels} />}
                            {visibleProperties.project && issue.project && (
                               <ProjectBadge project={issue.project} />
@@ -128,7 +130,7 @@ export function IssueLine({
                               <ProjectAreaBadge area={issue.area} />
                            )}
                         </div>
-                     )}
+                     </div>
                      {issue.estimatedHours !== undefined && (
                         <IssueChip>
                            <Clock3 className={issueChipIconClassName} />

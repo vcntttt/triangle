@@ -59,7 +59,7 @@ export function IssuesPriorityProvider({
          priorities.map((item) => ({
             id: item.id,
             name: item.name,
-            position: item.position,
+            position: item.listPosition,
             icon: resolvePriorityIcon(item.id, item.name),
          })),
       [priorities]

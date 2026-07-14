@@ -15,6 +15,7 @@ import { AnimatePresence, LazyMotion, domAnimation } from 'motion/react';
 import * as m from 'motion/react-m';
 import { useMemo } from 'react';
 import { getIssueListRows } from './group-issue-rows';
+import { sortIssuesByPriority } from '@/lib/ui-catalog';
 
 interface GroupIssuesProps {
    status: Status;

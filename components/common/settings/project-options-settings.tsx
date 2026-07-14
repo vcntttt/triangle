@@ -40,6 +40,7 @@ const defaultColors = [
 ];
 
 type OptionType = 'status' | 'priority';
+type ProjectViewType = 'list' | 'board';
 
 interface SheetState {
    open: boolean;
@@ -63,8 +64,7 @@ export function ProjectOptionsSettings() {
    const { data: liveStatuses } = useQuery(projectStatusListQuery());
    const { data: livePriorities } = useQuery(projectPriorityListQuery());
    const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-   const [draggedStatusId, setDraggedStatusId] = useState<string | null>(null);
-   const [draggedPriorityId, setDraggedPriorityId] = useState<string | null>(null);
+   const [draggedId, setDraggedId] = useState<string | null>(null);
    const [isSaving, setIsSaving] = useState(false);
    const [sheetState, setSheetState] = useState<SheetState>(initialSheetState);
    const {
@@ -81,14 +81,20 @@ export function ProjectOptionsSettings() {
    const statuses = liveStatuses ?? [];
    const priorities = livePriorities ?? [];
    const currentItems = sheetState.type === 'status' ? statuses : priorities;
-   const orderedStatuses = useMemo(
-      () => [...(liveStatuses ?? [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0)),
-      [liveStatuses]
-   );
-   const orderedPriorities = useMemo(
-      () => [...(livePriorities ?? [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0)),
-      [livePriorities]
-   );
+   const orderedStatuses = useMemo(() => {
+      const statuses = liveStatuses ?? [];
+      return {
+         list: [...statuses].sort((a, b) => a.listPosition - b.listPosition),
+         board: [...statuses].sort((a, b) => a.boardPosition - b.boardPosition),
+      };
+   }, [liveStatuses]);
+   const orderedPriorities = useMemo(() => {
+      const priorities = livePriorities ?? [];
+      return {
+         list: [...priorities].sort((a, b) => a.listPosition - b.listPosition),
+         board: [...priorities].sort((a, b) => a.boardPosition - b.boardPosition),
+      };
+   }, [livePriorities]);
 
    const openCreateSheet = (type: OptionType) => {
       setSheetState({
@@ -135,56 +141,38 @@ export function ProjectOptionsSettings() {
       }
    };
 
-   const handleStatusReorder = async (activeId: string, overId: string) => {
+   const handleReorder = async (
+      type: OptionType,
+      view: ProjectViewType,
+      activeId: string,
+      overId: string
+   ) => {
       if (activeId === overId) {
          return;
       }
 
-      const activeIndex = orderedStatuses.findIndex((item) => item.id === activeId);
-      const overIndex = orderedStatuses.findIndex((item) => item.id === overId);
+      const options = type === 'status' ? orderedStatuses[view] : orderedPriorities[view];
+      const activeIndex = options.findIndex((item) => item.id === activeId);
+      const overIndex = options.findIndex((item) => item.id === overId);
 
       if (activeIndex < 0 || overIndex < 0) {
          return;
       }
 
-      const nextStatuses = [...orderedStatuses];
-      const [moved] = nextStatuses.splice(activeIndex, 1);
-      nextStatuses.splice(overIndex, 0, moved);
-      const orderedIds = nextStatuses.map((item) => item.id);
+      const nextOptions = [...options];
+      const [moved] = nextOptions.splice(activeIndex, 1);
+      nextOptions.splice(overIndex, 0, moved);
+      const orderedIds = nextOptions.map((item) => item.id);
 
       try {
-         await reorderProjectStatuses({ ids: orderedIds });
-         toast.success('Statuses reordered');
+         if (type === 'status') {
+            await reorderProjectStatuses({ ids: orderedIds, view });
+         } else {
+            await reorderProjectPriorities({ ids: orderedIds, view });
+         }
+         toast.success(`${type === 'status' ? 'Statuses' : 'Priorities'} reordered`);
       } catch (error) {
-         const message =
-            error instanceof Error ? error.message : 'Statuses could not be reordered.';
-         toast.error(message);
-      }
-   };
-
-   const handlePriorityReorder = async (activeId: string, overId: string) => {
-      if (activeId === overId) {
-         return;
-      }
-
-      const activeIndex = orderedPriorities.findIndex((item) => item.id === activeId);
-      const overIndex = orderedPriorities.findIndex((item) => item.id === overId);
-
-      if (activeIndex < 0 || overIndex < 0) {
-         return;
-      }
-
-      const nextPriorities = [...orderedPriorities];
-      const [moved] = nextPriorities.splice(activeIndex, 1);
-      nextPriorities.splice(overIndex, 0, moved);
-      const orderedIds = nextPriorities.map((item) => item.id);
-
-      try {
-         await reorderProjectPriorities({ ids: orderedIds });
-         toast.success('Priorities reordered');
-      } catch (error) {
-         const message =
-            error instanceof Error ? error.message : 'Priorities could not be reordered.';
+         const message = error instanceof Error ? error.message : 'Options could not be reordered.';
          toast.error(message);
       }
    };
@@ -241,38 +229,35 @@ export function ProjectOptionsSettings() {
 
    return (
       <>
-         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <OptionListCard
-               title="Project statuses"
-               description="Statuses available in the projects view and creation dialog."
-               items={orderedStatuses}
-               onCreate={() => openCreateSheet('status')}
-               onEdit={(option) => openEditSheet('status', option)}
-               onDelete={(id) => void handleDelete('status', id)}
+         <div className="space-y-8">
+            <ProjectViewOptionsSection
+               title="List view"
+               description="Manage project options and their order in lists, filters, and forms."
+               statuses={orderedStatuses.list}
+               priorities={orderedPriorities.list}
+               draggedId={draggedId}
                pendingDeleteId={pendingDeleteId}
-               draggable
-               draggedId={draggedStatusId}
-               onDragStart={(id) => setDraggedStatusId(id)}
-               onDragEnd={(activeId, overId) => {
-                  setDraggedStatusId(null);
-                  void handleStatusReorder(activeId, overId);
+               onCreate={openCreateSheet}
+               onEdit={openEditSheet}
+               onDelete={(type, id) => void handleDelete(type, id)}
+               onDragStart={setDraggedId}
+               onDragEnd={(type, activeId, overId) => {
+                  setDraggedId(null);
+                  void handleReorder(type, 'list', activeId, overId);
                }}
             />
 
-            <OptionListCard
-               title="Project priorities"
-               description="Priorities used in list view and filtering."
-               items={orderedPriorities}
-               onCreate={() => openCreateSheet('priority')}
-               onEdit={(option) => openEditSheet('priority', option)}
-               onDelete={(id) => void handleDelete('priority', id)}
+            <ProjectViewOptionsSection
+               title="Board view"
+               description="Set the column order used when boards are grouped by status or priority."
+               statuses={orderedStatuses.board}
+               priorities={orderedPriorities.board}
+               draggedId={draggedId}
                pendingDeleteId={pendingDeleteId}
-               draggable
-               draggedId={draggedPriorityId}
-               onDragStart={(id) => setDraggedPriorityId(id)}
-               onDragEnd={(activeId, overId) => {
-                  setDraggedPriorityId(null);
-                  void handlePriorityReorder(activeId, overId);
+               onDragStart={setDraggedId}
+               onDragEnd={(type, activeId, overId) => {
+                  setDraggedId(null);
+                  void handleReorder(type, 'board', activeId, overId);
                }}
             />
          </div>
@@ -361,6 +346,69 @@ export function ProjectOptionsSettings() {
    );
 }
 
+function ProjectViewOptionsSection({
+   title,
+   description,
+   statuses,
+   priorities,
+   draggedId,
+   pendingDeleteId,
+   onCreate,
+   onEdit,
+   onDelete,
+   onDragStart,
+   onDragEnd,
+}: {
+   title: string;
+   description: string;
+   statuses: ProjectOptionLike[];
+   priorities: ProjectOptionLike[];
+   draggedId: string | null;
+   pendingDeleteId: string | null;
+   onCreate?: (type: OptionType) => void;
+   onEdit?: (type: OptionType, option: ProjectOptionLike) => void;
+   onDelete?: (type: OptionType, id: string) => void;
+   onDragStart: (id: string) => void;
+   onDragEnd: (type: OptionType, activeId: string, overId: string) => void;
+}) {
+   return (
+      <section className="space-y-4">
+         <div>
+            <h3 className="font-semibold">{title}</h3>
+            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+         </div>
+         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <OptionListCard
+               title="Project statuses"
+               description="Order of project statuses."
+               items={statuses}
+               onCreate={onCreate ? () => onCreate('status') : undefined}
+               onEdit={onEdit ? (option) => onEdit('status', option) : undefined}
+               onDelete={onDelete ? (id) => onDelete('status', id) : undefined}
+               pendingDeleteId={pendingDeleteId}
+               draggable
+               draggedId={draggedId}
+               onDragStart={onDragStart}
+               onDragEnd={(activeId, overId) => onDragEnd('status', activeId, overId)}
+            />
+            <OptionListCard
+               title="Project priorities"
+               description="Order of project priorities."
+               items={priorities}
+               onCreate={onCreate ? () => onCreate('priority') : undefined}
+               onEdit={onEdit ? (option) => onEdit('priority', option) : undefined}
+               onDelete={onDelete ? (id) => onDelete('priority', id) : undefined}
+               pendingDeleteId={pendingDeleteId}
+               draggable
+               draggedId={draggedId}
+               onDragStart={onDragStart}
+               onDragEnd={(activeId, overId) => onDragEnd('priority', activeId, overId)}
+            />
+         </div>
+      </section>
+   );
+}
+
 function OptionListCard({
    title,
    description,
@@ -377,9 +425,9 @@ function OptionListCard({
    title: string;
    description: string;
    items: ProjectOptionLike[];
-   onCreate: () => void;
-   onEdit: (option: ProjectOptionLike) => void;
-   onDelete: (id: string) => void;
+   onCreate?: () => void;
+   onEdit?: (option: ProjectOptionLike) => void;
+   onDelete?: (id: string) => void;
    pendingDeleteId: string | null;
    draggable?: boolean;
    draggedId?: string | null;
@@ -393,10 +441,12 @@ function OptionListCard({
                <h3 className="font-medium text-card-foreground">{title}</h3>
                <p className="text-sm text-muted-foreground mt-1">{description}</p>
             </div>
-            <Button size="sm" variant="secondary" onClick={onCreate}>
-               <Plus className="size-4" />
-               Add
-            </Button>
+            {onCreate && (
+               <Button size="sm" variant="secondary" onClick={onCreate}>
+                  <Plus className="size-4" />
+                  Add
+               </Button>
+            )}
          </div>
 
          <div className="space-y-1.5">
@@ -439,32 +489,34 @@ function OptionListCard({
                      <p className="text-sm font-medium truncate">{item.name}</p>
                   </div>
 
-                  <DropdownMenu>
-                     <DropdownMenuTrigger asChild>
-                        <Button
-                           size="icon"
-                           variant="ghost"
-                           className="size-7 opacity-0 group-hover:opacity-100 focus:opacity-100"
-                           disabled={pendingDeleteId === item.id}
-                           aria-label={`Manage ${item.name}`}
-                        >
-                           <MoreHorizontal className="size-4" />
-                        </Button>
-                     </DropdownMenuTrigger>
-                     <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onEdit(item)}>
-                           <Pencil className="size-4" />
-                           Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                           className="text-destructive"
-                           onClick={() => onDelete(item.id)}
-                        >
-                           <Trash2 className="size-4" />
-                           Delete
-                        </DropdownMenuItem>
-                     </DropdownMenuContent>
-                  </DropdownMenu>
+                  {onEdit && onDelete && (
+                     <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                           <Button
+                              size="icon"
+                              variant="ghost"
+                              className="size-7 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                              disabled={pendingDeleteId === item.id}
+                              aria-label={`Manage ${item.name}`}
+                           >
+                              <MoreHorizontal className="size-4" />
+                           </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                           <DropdownMenuItem onClick={() => onEdit(item)}>
+                              <Pencil className="size-4" />
+                              Edit
+                           </DropdownMenuItem>
+                           <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => onDelete(item.id)}
+                           >
+                              <Trash2 className="size-4" />
+                              Delete
+                           </DropdownMenuItem>
+                        </DropdownMenuContent>
+                     </DropdownMenu>
+                  )}
                </div>
             ))}
          </div>

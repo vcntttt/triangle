@@ -29,6 +29,7 @@
 - Client data modules live in `src/data/*` and should use Convex React/TanStack Query integration directly.
 - `lib/db/*` is a compatibility type surface for existing UI imports.
 - Client state under `store/*` should stay UI-oriented. Do not reintroduce a Zustand cache for Convex-backed remote data.
+- Treat the global issues workspace and every project's issues tab as two surfaces of the same feature. Any issue data, behavior, or UI change made for `/issues` must also work at `/projects/$projectSlug?tab=issues` for every project. Prefer shared components and data serializers, and verify both routes before considering the change complete.
 
 ## Product Scope
 

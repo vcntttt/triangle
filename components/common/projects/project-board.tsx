@@ -281,21 +281,25 @@ function getGroupDefinitions(
    priorityOptions: ProjectOptionLike[]
 ): ProjectGroup[] {
    if (groupBy === 'status') {
-      return statusOptions.map((option) => ({
-         id: option.id,
-         name: option.name,
-         color: option.color,
-         icon: statusIconMap[option.id] ?? allStatuses[0].icon,
-      }));
+      return statusOptions
+         .toSorted((a, b) => (a.boardPosition ?? 0) - (b.boardPosition ?? 0))
+         .map((option) => ({
+            id: option.id,
+            name: option.name,
+            color: option.color,
+            icon: statusIconMap[option.id] ?? allStatuses[0].icon,
+         }));
    }
 
    if (groupBy === 'priority') {
-      return priorityOptions.map((option) => ({
-         id: option.id,
-         name: option.name,
-         color: option.color,
-         icon: priorityIconMap[option.id] ?? priorities[0].icon,
-      }));
+      return priorityOptions
+         .toSorted((a, b) => (a.boardPosition ?? 0) - (b.boardPosition ?? 0))
+         .map((option) => ({
+            id: option.id,
+            name: option.name,
+            color: option.color,
+            icon: priorityIconMap[option.id] ?? priorities[0].icon,
+         }));
    }
 
    return allHealth.map((option) => ({

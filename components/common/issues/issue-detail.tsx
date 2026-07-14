@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { Archive, ArrowLeft, Link2, MessageSquare, Plus, Send, Trash2, X } from 'lucide-react';
+import { Archive, ArrowLeft, MessageSquare, Plus, Send, Trash2 } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -30,11 +30,11 @@ import { useLabelOptions } from '@/hooks/use-label-options';
 import { useViewerUser } from '@/hooks/use-viewer-user';
 import { issueDetailQuery, useIssueCommands } from '@/src/data/issues';
 import { MarkdownContent } from './markdown-content';
+import { IssueDependencyFlow } from './issue-dependencies';
 
 const agentAvatars: Record<string, string> = {
-   opencode:
-      'https://api.dicebear.com/7.x/bottts/svg?seed=opencode&backgroundColor=3b82f6&radius=50',
-   codex: 'https://api.dicebear.com/7.x/bottts/svg?seed=codex&backgroundColor=10b981&radius=50',
+   opencode: 'https://opencode.ai/favicon.ico',
+   codex: 'https://chatgpt.com/favicon.ico',
 };
 
 function resolveCommentAuthor(authorId: string, viewer: User): User {
@@ -373,28 +373,32 @@ export function IssueDetail({
                   className="min-h-0 resize-none border-none bg-transparent px-0 text-[26px] font-semibold leading-tight shadow-none focus-visible:ring-0"
                />
                {presentationIssue.parent && (
-                  <div className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
-                     <span>Sub-issue of</span>
-                     <Link
-                        to="/issues/$issueIdentifier"
-                        params={{ issueIdentifier: presentationIssue.parent.identifier }}
-                        className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
-                     >
+                  <Link
+                     to="/issues/$issueIdentifier"
+                     params={{ issueIdentifier: presentationIssue.parent.identifier }}
+                     className="group block min-w-0 space-y-1.5 text-[13px] text-muted-foreground"
+                  >
+                     <div className="whitespace-nowrap text-[11px] font-medium uppercase tracking-wide">
+                        Sub-issue of{' '}
+                        <span className="text-foreground transition-colors group-hover:text-foreground/80">
+                           {presentationIssue.parent.identifier}
+                        </span>
+                     </div>
+                     <div className="flex min-w-0 items-start gap-2 transition-colors group-hover:text-foreground">
                         {(() => {
                            const parent = getIssueById(presentationIssue.parent!.id);
                            return parent ? (
                               <span
-                                 className="inline-block size-2 rounded-full"
+                                 className="mt-1.5 size-2 shrink-0 rounded-full"
                                  style={{ backgroundColor: parent.status.color }}
                               />
                            ) : null;
                         })()}
-                        <span className="font-medium text-foreground">
-                           {presentationIssue.parent.identifier}
+                        <span className="line-clamp-2 min-w-0 leading-5">
+                           {presentationIssue.parent.title}
                         </span>
-                        <span>{presentationIssue.parent.title}</span>
-                     </Link>
-                  </div>
+                     </div>
+                  </Link>
                )}
                <div className="flex flex-wrap items-center gap-2">
                   <PrioritySelector
@@ -501,107 +505,36 @@ export function IssueDetail({
                )}
             </div>
 
-            <section className="space-y-3 border-t border-border/60 pt-5">
-               <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-muted-foreground">
-                     Blocking relations
-                  </span>
-                  <Button
-                     variant="ghost"
-                     size="sm"
-                     onClick={async () => {
-                        const identifier = window.prompt(
-                           'Identifier of the issue that blocks this one'
-                        );
-                        if (!identifier) return;
-                        const issue = getAllIssues().find(
-                           (item) =>
-                              item.identifier.toLowerCase() === identifier.trim().toLowerCase()
-                        );
-                        if (!issue) {
-                           toast.error('Issue not found');
-                           return;
-                        }
-                        try {
-                           await addIssueBlocker({
-                              blockedIssueId: presentationIssue.id,
-                              blockerIssueId: issue.id,
-                           });
-                           toast.success('Blocker added');
-                        } catch (error) {
-                           toast.error(
-                              error instanceof Error ? error.message : 'Could not add blocker'
-                           );
-                        }
-                     }}
-                  >
-                     <Link2 className="size-4" /> Add blocker
-                  </Button>
-               </div>
-               {presentationIssue.blockedBy.length === 0 &&
-               presentationIssue.blocks.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No blocking relations.</p>
-               ) : (
-                  <div className="space-y-2 text-sm">
-                     {presentationIssue.blockedBy.map((relation) => (
-                        <div
-                           key={relation.id}
-                           className="flex items-center gap-2 rounded-md border px-3 py-2"
-                        >
-                           <span className="text-muted-foreground">Blocked by</span>
-                           <Link
-                              to="/issues/$issueIdentifier"
-                              params={{ issueIdentifier: relation.identifier }}
-                              className="font-medium hover:underline"
-                           >
-                              {relation.identifier} · {relation.title}
-                           </Link>
-                           <Button
-                              className="ml-auto size-6"
-                              size="icon"
-                              variant="ghost"
-                              onClick={() =>
-                                 void removeIssueBlocker({
-                                    blockedIssueId: presentationIssue.id,
-                                    blockerIssueId: relation.id,
-                                 })
-                              }
-                           >
-                              <X className="size-3" />
-                           </Button>
-                        </div>
-                     ))}
-                     {presentationIssue.blocks.map((relation) => (
-                        <div
-                           key={relation.id}
-                           className="flex items-center gap-2 rounded-md border px-3 py-2"
-                        >
-                           <span className="text-muted-foreground">Blocks</span>
-                           <Link
-                              to="/issues/$issueIdentifier"
-                              params={{ issueIdentifier: relation.identifier }}
-                              className="font-medium hover:underline"
-                           >
-                              {relation.identifier} · {relation.title}
-                           </Link>
-                           <Button
-                              className="ml-auto size-6"
-                              size="icon"
-                              variant="ghost"
-                              onClick={() =>
-                                 void removeIssueBlocker({
-                                    blockedIssueId: relation.id,
-                                    blockerIssueId: presentationIssue.id,
-                                 })
-                              }
-                           >
-                              <X className="size-3" />
-                           </Button>
-                        </div>
-                     ))}
-                  </div>
-               )}
-            </section>
+            <IssueDependencyFlow
+               issue={presentationIssue}
+               onAddBlocker={async () => {
+                  const identifier = window.prompt(
+                     'Identificador de la tarea que bloquea esta issue'
+                  );
+                  if (!identifier) return;
+                  const issue = getAllIssues().find(
+                     (item) => item.identifier.toLowerCase() === identifier.trim().toLowerCase()
+                  );
+                  if (!issue) {
+                     toast.error('Tarea no encontrada');
+                     return;
+                  }
+                  try {
+                     await addIssueBlocker({
+                        blockedIssueId: presentationIssue.id,
+                        blockerIssueId: issue.id,
+                     });
+                     toast.success('Bloqueador añadido');
+                  } catch (error) {
+                     toast.error(
+                        error instanceof Error ? error.message : 'No se pudo añadir el bloqueador'
+                     );
+                  }
+               }}
+               onRemoveBlocker={(blockedIssueId, blockerIssueId) => {
+                  void removeIssueBlocker({ blockedIssueId, blockerIssueId });
+               }}
+            />
 
             <section className="space-y-3 border-t border-border/60 pt-5">
                <div className="flex items-center justify-between">

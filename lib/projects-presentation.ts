@@ -13,7 +13,8 @@ export interface ProjectOptionLike {
    id: string;
    name: string;
    color: string;
-   position?: number;
+   listPosition?: number;
+   boardPosition?: number;
 }
 
 export interface ProjectLike {

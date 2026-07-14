@@ -6,20 +6,26 @@ type ProjectHealth = 'no-update' | 'off-track' | 'on-track' | 'at-risk';
 type ProjectOptionTable = 'projectStatuses' | 'projectPriorities';
 
 const defaultProjectStatuses = [
-   { id: 'backlog', name: 'Backlog', color: '#ec4899', position: 0 },
-   { id: 'to-do', name: 'Todo', color: '#f97316', position: 1 },
-   { id: 'in-progress', name: 'In Progress', color: '#facc15', position: 2 },
-   { id: 'technical-review', name: 'Technical Review', color: '#22c55e', position: 3 },
-   { id: 'paused', name: 'Paused', color: '#0ea5e9', position: 4 },
-   { id: 'completed', name: 'Completed', color: '#8b5cf6', position: 5 },
+   { id: 'backlog', name: 'Backlog', color: '#ec4899', listPosition: 0, boardPosition: 0 },
+   { id: 'to-do', name: 'Todo', color: '#f97316', listPosition: 1, boardPosition: 1 },
+   { id: 'in-progress', name: 'In Progress', color: '#facc15', listPosition: 2, boardPosition: 2 },
+   {
+      id: 'technical-review',
+      name: 'Technical Review',
+      color: '#22c55e',
+      listPosition: 3,
+      boardPosition: 3,
+   },
+   { id: 'paused', name: 'Paused', color: '#0ea5e9', listPosition: 4, boardPosition: 4 },
+   { id: 'completed', name: 'Completed', color: '#8b5cf6', listPosition: 5, boardPosition: 5 },
 ];
 
 const defaultProjectPriorities = [
-   { id: 'no-priority', name: 'No priority', color: '#94a3b8', position: 0 },
-   { id: 'urgent', name: 'Urgent', color: '#ef4444', position: 1 },
-   { id: 'high', name: 'High', color: '#f97316', position: 2 },
-   { id: 'medium', name: 'Medium', color: '#facc15', position: 3 },
-   { id: 'low', name: 'Low', color: '#22c55e', position: 4 },
+   { id: 'no-priority', name: 'No priority', color: '#94a3b8', listPosition: 0, boardPosition: 0 },
+   { id: 'urgent', name: 'Urgent', color: '#ef4444', listPosition: 1, boardPosition: 1 },
+   { id: 'high', name: 'High', color: '#f97316', listPosition: 2, boardPosition: 2 },
+   { id: 'medium', name: 'Medium', color: '#facc15', listPosition: 3, boardPosition: 3 },
+   { id: 'low', name: 'Low', color: '#22c55e', listPosition: 4, boardPosition: 4 },
 ];
 
 const projectHealthValues = ['no-update', 'off-track', 'on-track', 'at-risk'] as const;
@@ -171,18 +177,21 @@ function serializeIssueBase(
 }
 
 async function listProjectIssues(ctx: QueryCtx, projectId: Id<'projects'>) {
-   const [issues, projects, labels, areas] = await Promise.all([
+   const [issues, allIssues, projects, labels, areas, relations] = await Promise.all([
       ctx.db
          .query('issues')
          .withIndex('by_project', (q) => q.eq('projectId', projectId))
          .collect(),
+      ctx.db.query('issues').collect(),
       ctx.db.query('projects').collect(),
       ctx.db.query('labels').collect(),
       ctx.db
          .query('projectAreas')
          .withIndex('by_project_position', (q) => q.eq('projectId', projectId))
          .collect(),
+      ctx.db.query('issueRelations').collect(),
    ]);
+   const issueLookup = new Map(allIssues.map((issue) => [issue._id, issue]));
    const projectLookup = new Map(projects.map((project) => [project._id, project]));
    const labelLookup = new Map(labels.map((label) => [label._id, label]));
    const areaLookup = new Map(areas.map((area) => [area._id, area]));
@@ -199,6 +208,8 @@ async function listProjectIssues(ctx: QueryCtx, projectId: Id<'projects'>) {
             assigneeId: string | null;
             rank: string;
          }>;
+         blockedBy: Array<{ id: string; identifier: string; title: string; status: string }>;
+         blocks: Array<{ id: string; identifier: string; title: string; status: string }>;
       }
    >();
 
@@ -210,7 +221,38 @@ async function listProjectIssues(ctx: QueryCtx, projectId: Id<'projects'>) {
          ...serializeIssueBase(issue, projectLookup.get(issue.projectId!), labelLookup, areaLookup),
          parentIssue: null,
          subissues: [],
+         blockedBy: [],
+         blocks: [],
       });
+   }
+
+   for (const relation of relations) {
+      const blockerInProject = issuesMap.get(relation.blockerIssueId);
+      const blockedInProject = issuesMap.get(relation.blockedIssueId);
+
+      if (blockedInProject) {
+         const blocker = issueLookup.get(relation.blockerIssueId);
+         if (blocker) {
+            blockedInProject.blockedBy.push({
+               id: blocker._id,
+               identifier: blocker.identifier,
+               title: blocker.title,
+               status: blocker.status,
+            });
+         }
+      }
+
+      if (blockerInProject) {
+         const blocked = issueLookup.get(relation.blockedIssueId);
+         if (blocked) {
+            blockerInProject.blocks.push({
+               id: blocked._id,
+               identifier: blocked.identifier,
+               title: blocked.title,
+               status: blocked.status,
+            });
+         }
+      }
    }
 
    for (const issue of issuesMap.values()) {
@@ -249,16 +291,19 @@ async function listProjectIssues(ctx: QueryCtx, projectId: Id<'projects'>) {
 }
 
 function serializeOption(option: Doc<'projectStatuses'> | Doc<'projectPriorities'>) {
+   const legacyPosition = option.position ?? 0;
+
    return {
       id: option.id,
       name: option.name,
       color: option.color,
-      position: option.position,
+      listPosition: option.listPosition ?? legacyPosition,
+      boardPosition: option.boardPosition ?? option.listPosition ?? legacyPosition,
    };
 }
 
 export async function listOptions(ctx: QueryCtx, table: ProjectOptionTable) {
-   const rows = await ctx.db.query(table).withIndex('by_position').collect();
+   const rows = await ctx.db.query(table).collect();
    const defaults = table === 'projectStatuses' ? defaultProjectStatuses : defaultProjectPriorities;
 
    const values = new Map(defaults.map((item) => [item.id, { ...item }]));
@@ -267,7 +312,7 @@ export async function listOptions(ctx: QueryCtx, table: ProjectOptionTable) {
    }
 
    return Array.from(values.values()).toSorted(
-      (left, right) => left.position - right.position || left.name.localeCompare(right.name)
+      (left, right) => left.listPosition - right.listPosition || left.name.localeCompare(right.name)
    );
 }
 
@@ -362,12 +407,28 @@ async function saveOption(
    }
 
    const rows = await ctx.db.query(table).collect();
+   const defaults = table === 'projectStatuses' ? defaultProjectStatuses : defaultProjectPriorities;
+   const currentOptions = new Map(defaults.map((option) => [option.id, option]));
+   for (const row of rows) {
+      currentOptions.set(row.id, serializeOption(row));
+   }
+   const nextListPosition =
+      Array.from(currentOptions.values()).reduce(
+         (max, option) => Math.max(max, option.listPosition),
+         -1
+      ) + 1;
+   const nextBoardPosition =
+      Array.from(currentOptions.values()).reduce(
+         (max, option) => Math.max(max, option.boardPosition),
+         -1
+      ) + 1;
    const now = Date.now();
    const optionId = await ctx.db.insert(table, {
       id,
       name: input.name,
       color: input.color,
-      position: rows.reduce((max, row) => Math.max(max, row.position), -1) + 1,
+      listPosition: nextListPosition,
+      boardPosition: nextBoardPosition,
       createdAt: now,
       updatedAt: now,
    });
@@ -399,7 +460,8 @@ async function updateOption(
          id: input.id,
          name: input.name,
          color: input.color,
-         position: defaultOption?.position ?? 0,
+         listPosition: defaultOption?.listPosition ?? 0,
+         boardPosition: defaultOption?.boardPosition ?? 0,
          createdAt: now,
          updatedAt: now,
       });
@@ -866,15 +928,27 @@ export const deleteStatus = mutation({
 });
 
 export const reorderStatuses = mutation({
-   args: { ids: v.array(v.string()) },
-   handler: async (ctx, { ids }) => {
+   args: {
+      ids: v.array(v.string()),
+      view: v.union(v.literal('list'), v.literal('board')),
+   },
+   handler: async (ctx, { ids, view }) => {
       const now = Date.now();
       const defaults = new Map(defaultProjectStatuses.map((option) => [option.id, option]));
       await Promise.all(
          ids.map(async (id, position) => {
             const existing = await findOptionById(ctx, 'projectStatuses', id);
             if (existing) {
-               await ctx.db.patch(existing._id, { position, updatedAt: now });
+               await ctx.db.patch(existing._id, {
+                  listPosition: existing.listPosition ?? existing.position ?? position,
+                  boardPosition:
+                     existing.boardPosition ??
+                     existing.listPosition ??
+                     existing.position ??
+                     position,
+                  [view === 'list' ? 'listPosition' : 'boardPosition']: position,
+                  updatedAt: now,
+               });
                return;
             }
 
@@ -882,7 +956,7 @@ export const reorderStatuses = mutation({
             if (defaultOption) {
                await ctx.db.insert('projectStatuses', {
                   ...defaultOption,
-                  position,
+                  [view === 'list' ? 'listPosition' : 'boardPosition']: position,
                   createdAt: now,
                   updatedAt: now,
                });
@@ -912,15 +986,27 @@ export const deletePriority = mutation({
 });
 
 export const reorderPriorities = mutation({
-   args: { ids: v.array(v.string()) },
-   handler: async (ctx, { ids }) => {
+   args: {
+      ids: v.array(v.string()),
+      view: v.union(v.literal('list'), v.literal('board')),
+   },
+   handler: async (ctx, { ids, view }) => {
       const now = Date.now();
       const defaults = new Map(defaultProjectPriorities.map((option) => [option.id, option]));
       await Promise.all(
          ids.map(async (id, position) => {
             const existing = await findOptionById(ctx, 'projectPriorities', id);
             if (existing) {
-               await ctx.db.patch(existing._id, { position, updatedAt: now });
+               await ctx.db.patch(existing._id, {
+                  listPosition: existing.listPosition ?? existing.position ?? position,
+                  boardPosition:
+                     existing.boardPosition ??
+                     existing.listPosition ??
+                     existing.position ??
+                     position,
+                  [view === 'list' ? 'listPosition' : 'boardPosition']: position,
+                  updatedAt: now,
+               });
                return;
             }
 
@@ -928,7 +1014,7 @@ export const reorderPriorities = mutation({
             if (defaultOption) {
                await ctx.db.insert('projectPriorities', {
                   ...defaultOption,
-                  position,
+                  [view === 'list' ? 'listPosition' : 'boardPosition']: position,
                   createdAt: now,
                   updatedAt: now,
                });

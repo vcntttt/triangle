@@ -115,7 +115,7 @@ export function createTriangleMcpServer(
       {
          title: 'Create a Triangle issue',
          description:
-            'Create an issue. Use projectName and labelNames when possible; use workspace data first to choose valid status and priority IDs.',
+            'Create an issue. New issues are always assigned to the current personal user (me). Use projectName and labelNames when possible; use workspace data first to choose valid status and priority IDs.',
          inputSchema: {
             title: z.string().min(1),
             description: z.string().optional(),
@@ -126,13 +126,18 @@ export function createTriangleMcpServer(
             areaId: z.string().optional(),
             labelIds: z.array(z.string()).optional(),
             labelNames: z.array(z.string()).optional(),
-            assigneeId: z.string().optional(),
             estimatedHours: z.number().nonnegative().optional(),
             dueDate: z.string().datetime().optional(),
             parentIssueId: z.string().optional(),
          },
       },
-      (input) => run(() => convex.mutation(api.issues.create, input))
+      (input) =>
+         run(() =>
+            convex.mutation(api.issues.create, {
+               ...input,
+               assigneeId: 'me',
+            })
+         )
    );
 
    server.registerTool(

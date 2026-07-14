@@ -36,14 +36,16 @@ export interface ProjectStatusOption {
    id: string;
    name: string;
    color: string;
-   position: number;
+   listPosition: number;
+   boardPosition: number;
 }
 
 export interface ProjectPriorityOption {
    id: string;
    name: string;
    color: string;
-   position: number;
+   listPosition: number;
+   boardPosition: number;
 }
 
 export interface ProjectArea {
