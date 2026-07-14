@@ -8,8 +8,20 @@ export type IssueListRow = {
    completedChildrenCount: number;
 };
 
-export function getIssueListRows(issues: Issue[]): IssueListRow[] {
+export function getIssueListRows(
+   issues: Issue[],
+   listMode: 'hierarchy' | 'flat' = 'hierarchy'
+): IssueListRow[] {
    const sortedIssues = sortIssuesByPriority(issues);
+
+   if (listMode === 'flat') {
+      return sortedIssues.map((issue) => ({
+         issue,
+         nestingLevel: 0,
+         childrenCount: 0,
+         completedChildrenCount: 0,
+      }));
+   }
    const issueMap = new Map(sortedIssues.map((issue) => [issue.id, issue]));
    const rows: IssueListRow[] = [];
    const seen = new Set<string>();

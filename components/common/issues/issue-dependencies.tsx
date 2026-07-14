@@ -21,6 +21,8 @@ type IssueRelation = Issue['blockedBy'][number];
 const isRelationComplete = (relation: IssueRelation) =>
    relation.status === 'completed' || relation.status === 'archived';
 
+const isReadyToStartStatus = (statusId: string) => statusId === 'backlog' || statusId === 'to-do';
+
 export function IssueDependencyIndicator({ issue }: { issue: Issue }) {
    if (issue.status.id === 'completed' || issue.status.id === 'archived') {
       return null;
@@ -167,10 +169,12 @@ export function IssueDependencyFlow({
    issue,
    onAddBlocker,
    onRemoveBlocker,
+   compact = false,
 }: {
    issue: Issue;
    onAddBlocker: () => void;
    onRemoveBlocker: (blockedIssueId: string, blockerIssueId: string) => void;
+   compact?: boolean;
 }) {
    const pendingBlockers = issue.blockedBy.filter((relation) => !isRelationComplete(relation));
    const pendingBlocks = issue.blocks.filter((relation) => !isRelationComplete(relation));
@@ -178,8 +182,18 @@ export function IssueDependencyFlow({
    const allPrerequisitesComplete = issue.blockedBy.length > 0 && !isBlocked;
 
    return (
-      <section className="overflow-hidden rounded-xl border border-border/70 bg-card/40">
-         <div className="flex items-start justify-between gap-4 border-b border-border/60 px-4 py-3.5">
+      <section
+         className={cn(
+            'overflow-hidden rounded-xl border border-border/70 bg-card/40',
+            compact && 'rounded-none border-0 bg-transparent'
+         )}
+      >
+         <div
+            className={cn(
+               'flex items-start justify-between gap-4 border-b border-border/60 px-4 py-3.5',
+               compact && 'flex-col border-b-0 px-0 pt-0 pb-4'
+            )}
+         >
             <div className="min-w-0">
                <div className="flex items-center gap-2">
                   <GitBranch className="size-4 text-muted-foreground" />
@@ -193,13 +207,19 @@ export function IssueDependencyFlow({
                        : 'Sin bloqueos pendientes. Esta tarea puede avanzar.'}
                </p>
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={onAddBlocker}>
+            <Button
+               type="button"
+               variant="outline"
+               size="sm"
+               className={cn(compact && 'w-full justify-center')}
+               onClick={onAddBlocker}
+            >
                <Plus className="size-3.5" />
                Añadir bloqueador
             </Button>
          </div>
 
-         <div className="p-4">
+         <div className={cn('p-4', compact && 'px-0 pb-0 pt-4')}>
             {issue.blockedBy.length > 0 && (
                <div>
                   <div className="mb-2 flex items-center justify-between gap-3">
@@ -271,7 +291,11 @@ export function IssueDependencyFlow({
                            : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
                      )}
                   >
-                     {isBlocked ? 'Bloqueada' : 'Lista'}
+                     {isBlocked
+                        ? 'Bloqueada'
+                        : isReadyToStartStatus(issue.status.id)
+                          ? 'Lista'
+                          : issue.status.name}
                   </span>
                </div>
             </div>

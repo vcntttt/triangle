@@ -1,4 +1,4 @@
-import { Outlet, createFileRoute, useMatches } from '@tanstack/react-router';
+import { createFileRoute, useMatches } from '@tanstack/react-router';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import { useEffect, useMemo } from 'react';
@@ -8,6 +8,7 @@ import { useProjectOptions } from '@/hooks/use-project-options';
 import type { Project } from '@/lib/models';
 import { useCreateIssueStore } from '@/store/create-issue-store';
 import { issuesPageQuery } from '@/src/data/issues';
+import { IssuesWorkspace } from '@/components/common/issues/issues-workspace';
 
 const issuesSearchSchema = z.object({
    projectId: z.string().optional(),
@@ -32,6 +33,13 @@ function IssuesLayout() {
    const { issues, isConnected } = pageData;
    const projects = useProjectOptions();
    const { setDefaultProject } = useCreateIssueStore();
+   const selectedIssueIdentifier = useMatches({
+      select: (matches) => {
+         const issueMatch = matches.find((match) => match.routeId === '/issues/$issueIdentifier');
+
+         return (issueMatch?.params as { issueIdentifier?: string } | undefined)?.issueIdentifier;
+      },
+   });
 
    const project = useMemo<Project | undefined>(
       () => (projectId ? projects.find((project) => project.id === projectId) : undefined),
@@ -67,29 +75,14 @@ function IssuesLayout() {
             />
          }
       >
-         <Outlet />
+         <IssuesWorkspace
+            initialIssues={filteredIssues}
+            initialStatuses={pageData.statusOptions}
+            initialPriorities={pageData.priorityOptions}
+            databaseError={pageData.databaseError}
+            selectedIssueIdentifier={selectedIssueIdentifier}
+            projectFilterId={projectId}
+         />
       </MainLayout>
    );
-}
-
-export function useIssuesPageData() {
-   const data = useMatches({
-      select: (matches) => {
-         const match = matches.find((item) => item.routeId === '/issues');
-
-         return {
-            projectId: (match?.search as { projectId?: string } | undefined)?.projectId,
-         };
-      },
-   });
-   const { data: pageData } = useSuspenseQuery(issuesPageQuery({ projectId: data.projectId }));
-
-   if (!pageData) {
-      throw new Error('Issues route data is unavailable.');
-   }
-
-   return {
-      pageData,
-      projectId: data.projectId,
-   };
 }

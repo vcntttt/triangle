@@ -11,8 +11,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import { IssueDisplayProperty, useViewStore, ViewType } from '@/store/view-store';
-import { LayoutGrid, LayoutList, SlidersHorizontal } from 'lucide-react';
+import {
+   IssueDisplayProperty,
+   type IssueListMode,
+   useViewStore,
+   ViewType,
+} from '@/store/view-store';
+import { GitFork, LayoutGrid, LayoutList, ListTree, SlidersHorizontal } from 'lucide-react';
 
 const propertyLabels: Record<IssueDisplayProperty, string> = {
    identifier: 'ID',
@@ -28,6 +33,8 @@ export function DisplayMenu() {
    const {
       viewType,
       setViewType,
+      listMode,
+      setListMode,
       visibleProperties,
       toggleProperty,
       showEmptyStatuses,
@@ -52,7 +59,7 @@ export function DisplayMenu() {
             </Button>
          </DropdownMenuTrigger>
          <DropdownMenuContent className="w-72 p-3 space-y-3" align="end">
-            <div className="flex gap-2">
+            <div className="grid grid-cols-3 gap-2">
                <DropdownMenuItem
                   onClick={() => handleViewChange('list')}
                   className={cn(
@@ -73,7 +80,49 @@ export function DisplayMenu() {
                   <LayoutGrid className="size-4" />
                   Board
                </DropdownMenuItem>
+               <DropdownMenuItem
+                  onClick={() => handleViewChange('graph')}
+                  className={cn(
+                     'w-full text-xs border border-accent flex flex-col gap-1',
+                     viewType === 'graph' ? 'bg-accent' : ''
+                  )}
+               >
+                  <GitFork className="size-4" />
+                  Graph
+               </DropdownMenuItem>
             </div>
+
+            {viewType === 'list' && (
+               <>
+                  <DropdownMenuSeparator />
+                  <div className="space-y-2">
+                     <DropdownMenuLabel className="flex items-center gap-2 px-2 text-xs text-muted-foreground">
+                        <ListTree className="size-3.5" />
+                        List organization
+                     </DropdownMenuLabel>
+                     <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted/50 p-1">
+                        {(['hierarchy', 'flat'] as IssueListMode[]).map((mode) => (
+                           <button
+                              key={mode}
+                              type="button"
+                              className={cn(
+                                 'rounded-md px-2 py-1.5 text-xs capitalize transition-colors',
+                                 listMode === mode
+                                    ? 'bg-background text-foreground shadow-sm'
+                                    : 'text-muted-foreground hover:text-foreground'
+                              )}
+                              onClick={(event) => {
+                                 event.preventDefault();
+                                 setListMode(mode);
+                              }}
+                           >
+                              {mode}
+                           </button>
+                        ))}
+                     </div>
+                  </div>
+               </>
+            )}
 
             <DropdownMenuSeparator />
 

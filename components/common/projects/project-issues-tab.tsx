@@ -12,9 +12,9 @@ interface ProjectIssuesTabProps {
    initialStatuses: ProjectOptionLike[];
    initialPriorities: ProjectOptionLike[];
    selectedIssueIdentifier?: string;
-   onSelectIssue: (issue: Issue) => void;
-   onClearSelectedIssue: () => void;
-   onSelectAdjacentIssue: (issue: Issue) => void;
+   onSelectIssue: (issue: Issue) => void | Promise<void>;
+   onClearSelectedIssue: () => void | Promise<void>;
+   onSelectAdjacentIssue: (issue: Issue) => void | Promise<void>;
 }
 
 export function ProjectIssuesTab({
@@ -36,7 +36,11 @@ export function ProjectIssuesTab({
          return;
       }
 
-      onClearSelectedIssue();
+      void Promise.resolve()
+         .then(onClearSelectedIssue)
+         .catch((error) => {
+            console.error('Failed to clear an unavailable project issue.', error);
+         });
    }, [initialIssues, onClearSelectedIssue, selectedIssueIdentifier]);
 
    return (

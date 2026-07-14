@@ -19,6 +19,7 @@ import { IssueContextMenu } from './issue-context-menu';
 import { Clock3 } from 'lucide-react';
 import { IssueChip, issueChipIconClassName } from './issue-chip';
 import { IssueDependencyIndicator } from './issue-dependencies';
+import { memo } from 'react';
 
 const formatEstimatedHours = (estimatedHours?: number) => {
    if (estimatedHours === undefined) {
@@ -29,7 +30,7 @@ const formatEstimatedHours = (estimatedHours?: number) => {
    return `${Number(normalized.toFixed(2)).toString()}h`;
 };
 
-export function IssueLine({
+export const IssueLine = memo(function IssueLine({
    issue,
    layoutId = false,
    isActive = false,
@@ -157,4 +158,4 @@ export function IssueLine({
          </ContextMenu>
       </LazyMotion>
    );
-}
+});

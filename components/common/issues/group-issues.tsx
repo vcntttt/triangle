@@ -36,10 +36,10 @@ export function GroupIssues({
    onSelectIssue,
    onToggleIssueSelection,
 }: GroupIssuesProps) {
-   const { viewType } = useViewStore();
+   const { viewType, listMode } = useViewStore();
    const isViewTypeGrid = viewType === 'grid';
    const { openModal } = useCreateIssueStore();
-   const listRows = useMemo(() => getIssueListRows(issues), [issues]);
+   const listRows = useMemo(() => getIssueListRows(issues, listMode), [issues, listMode]);
 
    return (
       <div

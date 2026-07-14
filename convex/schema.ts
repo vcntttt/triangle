@@ -113,7 +113,9 @@ export default defineSchema({
    viewerPreferences: defineTable({
       singletonKey: v.string(),
       issueView: v.object({
-         viewType: v.union(v.literal('list'), v.literal('grid')),
+         viewType: v.union(v.literal('list'), v.literal('grid'), v.literal('graph')),
+         listMode: v.optional(v.union(v.literal('hierarchy'), v.literal('flat'))),
+         objectiveIssueIds: v.optional(v.array(v.string())),
          showEmptyStatuses: v.boolean(),
          hideCompletedIssues: v.boolean(),
          visibleProperties: v.object({

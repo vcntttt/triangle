@@ -272,7 +272,7 @@ export function ProjectOverview({
    }, [presentationProject, setDefaultProject]);
 
    const handleSelectIssue = (issue: Issue) => {
-      void router.navigate({
+      return router.navigate({
          to: '/projects/$projectSlug',
          params: { projectSlug: project.slug },
          search: { tab: 'issues', issue: issue.identifier },
@@ -280,7 +280,7 @@ export function ProjectOverview({
    };
 
    const handleClearSelectedIssue = () => {
-      void router.navigate({
+      return router.navigate({
          to: '/projects/$projectSlug',
          params: { projectSlug: project.slug },
          search: { tab: 'issues' },

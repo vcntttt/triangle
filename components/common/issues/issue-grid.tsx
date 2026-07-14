@@ -4,7 +4,7 @@ import type { Issue } from '@/lib/models';
 import { format } from 'date-fns';
 import { LazyMotion, domAnimation } from 'motion/react';
 import * as m from 'motion/react-m';
-import { useEffect, useRef } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import { DragSourceMonitor, useDrag, useDragLayer, useDrop } from 'react-dnd';
 import { getEmptyImage } from 'react-dnd-html5-backend';
 import { AssigneeUser } from './assignee-user';
@@ -87,7 +87,7 @@ export function CustomDragLayer() {
    );
 }
 
-export function IssueGrid({
+export const IssueGrid = memo(function IssueGrid({
    issue,
    isActive = false,
    isBulkSelected = false,
@@ -207,4 +207,4 @@ export function IssueGrid({
          </ContextMenu>
       </LazyMotion>
    );
-}
+});

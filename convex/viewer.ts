@@ -17,6 +17,8 @@ const defaultProfile = {
 const defaultPreferences = {
    issueView: {
       viewType: 'list' as const,
+      listMode: 'hierarchy' as const,
+      objectiveIssueIds: [] as string[],
       showEmptyStatuses: true,
       hideCompletedIssues: false,
       visibleProperties: {
@@ -59,7 +61,9 @@ const defaultPreferences = {
 };
 
 const issueViewPatchValidator = v.object({
-   viewType: v.optional(v.union(v.literal('list'), v.literal('grid'))),
+   viewType: v.optional(v.union(v.literal('list'), v.literal('grid'), v.literal('graph'))),
+   listMode: v.optional(v.union(v.literal('hierarchy'), v.literal('flat'))),
+   objectiveIssueIds: v.optional(v.array(v.string())),
    showEmptyStatuses: v.optional(v.boolean()),
    hideCompletedIssues: v.optional(v.boolean()),
    visibleProperties: v.optional(

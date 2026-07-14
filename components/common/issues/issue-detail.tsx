@@ -4,7 +4,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { Archive, ArrowLeft, MessageSquare, Plus, Send, Trash2 } from 'lucide-react';
+import {
+   Archive,
+   ArrowLeft,
+   Maximize2,
+   MessageSquare,
+   Minimize2,
+   Plus,
+   Send,
+   Trash2,
+   X,
+} from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -62,6 +72,80 @@ function resolveCommentAuthor(authorId: string, viewer: User): User {
    return { ...viewer, id: authorId };
 }
 
+function IssueDetailProperties({
+   issue,
+   canBecomeSubissue,
+   condensed = false,
+}: {
+   issue: Issue;
+   canBecomeSubissue: boolean;
+   condensed?: boolean;
+}) {
+   const { updateIssueProject, updateIssueArea, updateIssueParent } = useIssuesData();
+
+   const handleProjectChange = (project: Issue['project']) => {
+      updateIssueProject(issue.id, project);
+      if (issue.area?.projectId !== project?.id) {
+         updateIssueArea(issue.id, null);
+      }
+   };
+
+   const handleParentChange = (parent: Issue['parent']) => {
+      if (!canBecomeSubissue && parent) {
+         toast.error('Issues with subissues cannot become subissues');
+         return;
+      }
+
+      updateIssueParent(issue.id, parent);
+      if (parent) {
+         toast.success(`Parent set to ${parent.identifier}`);
+      }
+   };
+
+   return (
+      <div className="flex flex-wrap items-center gap-2">
+         <StatusSelector status={issue.status} issueId={issue.id} display="chip" />
+         <PrioritySelector priority={issue.priority} issueId={issue.id} display="chip" />
+         <AssigneeUser user={issue.assignee} issueId={issue.id} />
+         <ProjectSelector
+            project={issue.project}
+            onChange={handleProjectChange}
+            showShortcut={false}
+            triggerClassName={issueChipClassName}
+            variant="ghost"
+            size="sm"
+         />
+         {!condensed ? (
+            <>
+               <AreaSelector
+                  project={issue.project}
+                  area={issue.area}
+                  onChange={(area) => updateIssueArea(issue.id, area?.id ?? null)}
+                  triggerClassName={issueChipClassName}
+                  variant="ghost"
+                  size="sm"
+               />
+               <LabelSelector issueId={issue.id} />
+               {issue.dueDate ? (
+                  <IssueChip suppressHydrationWarning>
+                     Due {format(new Date(issue.dueDate), 'MMM dd')}
+                  </IssueChip>
+               ) : null}
+               {!issue.parent ? (
+                  <ParentIssueSelector
+                     issueId={issue.id}
+                     parent={null}
+                     onChange={handleParentChange}
+                     compact
+                     emptyLabel="Add parent"
+                  />
+               ) : null}
+            </>
+         ) : null}
+      </div>
+   );
+}
+
 export function IssueDetail({
    issueId,
    initialIssue,
@@ -69,6 +153,9 @@ export function IssueDetail({
    onArchive,
    onMobileBack,
    mobileBack = false,
+   onClose,
+   expanded = false,
+   onExpandedChange,
 }: {
    issueId: string;
    initialIssue?: Issue;
@@ -76,6 +163,9 @@ export function IssueDetail({
    onArchive?: (issueId: string) => void;
    onMobileBack?: () => void;
    mobileBack?: boolean;
+   onClose?: () => void;
+   expanded?: boolean;
+   onExpandedChange?: (expanded: boolean) => void;
 }) {
    const navigate = useNavigate();
    const {
@@ -85,8 +175,6 @@ export function IssueDetail({
       deleteIssue,
       archiveIssue,
       updateIssueProject,
-      updateIssueArea,
-      updateIssueParent,
       addIssueLabel,
    } = useIssuesData();
    const { createIssue, addIssueBlocker, removeIssueBlocker, addIssueComment } = useIssueCommands();
@@ -101,9 +189,6 @@ export function IssueDetail({
    const createdAtLabel = presentationIssue
       ? format(new Date(presentationIssue.createdAt), 'MMM dd, yyyy')
       : '';
-   const dueDateLabel = presentationIssue?.dueDate
-      ? format(new Date(presentationIssue.dueDate), 'MMM dd')
-      : null;
    const [title, setTitle] = useState(presentationIssue?.title ?? '');
    const [description, setDescription] = useState(presentationIssue?.description ?? '');
    const [editingDescription, setEditingDescription] = useState(false);
@@ -316,6 +401,40 @@ export function IssueDetail({
       }
    };
 
+   const handleAddBlocker = async () => {
+      const identifier = window.prompt('Identificador de la tarea que bloquea esta issue');
+      if (!identifier) return;
+
+      const issue = getAllIssues().find(
+         (item) => item.identifier.toLowerCase() === identifier.trim().toLowerCase()
+      );
+      if (!issue) {
+         toast.error('Tarea no encontrada');
+         return;
+      }
+
+      try {
+         await addIssueBlocker({
+            blockedIssueId: presentationIssue.id,
+            blockerIssueId: issue.id,
+         });
+         toast.success('Bloqueador añadido');
+      } catch (error) {
+         toast.error(error instanceof Error ? error.message : 'No se pudo añadir el bloqueador');
+      }
+   };
+
+   const dependencyFlow = (
+      <IssueDependencyFlow
+         issue={presentationIssue}
+         onAddBlocker={() => void handleAddBlocker()}
+         onRemoveBlocker={(blockedIssueId, blockerIssueId) => {
+            void removeIssueBlocker({ blockedIssueId, blockerIssueId });
+         }}
+         compact={expanded}
+      />
+   );
+
    return (
       <div className="flex h-full flex-col bg-background">
          <div className="flex items-center justify-between px-4 h-10 border-b border-border">
@@ -350,397 +469,371 @@ export function IssueDetail({
                <Button variant="ghost" size="icon" className="size-7" onClick={handleDelete}>
                   <Trash2 className="size-4 text-muted-foreground" />
                </Button>
+               {onExpandedChange ? (
+                  <Button
+                     variant="ghost"
+                     size="icon"
+                     className="hidden size-7 lg:inline-flex"
+                     onClick={() => onExpandedChange(!expanded)}
+                     aria-label={expanded ? 'Restore split view' : 'Expand issue detail'}
+                     title={expanded ? 'Restore split view' : 'Expand issue detail'}
+                  >
+                     {expanded ? (
+                        <Minimize2 className="size-4 text-muted-foreground" />
+                     ) : (
+                        <Maximize2 className="size-4 text-muted-foreground" />
+                     )}
+                  </Button>
+               ) : null}
+               {onClose ? (
+                  <Button
+                     variant="ghost"
+                     size="icon"
+                     className="size-7"
+                     onClick={onClose}
+                     aria-label="Close issue detail"
+                     title="Close issue detail"
+                  >
+                     <X className="size-4 text-muted-foreground" />
+                  </Button>
+               ) : null}
             </div>
          </div>
 
-         <div className="pt-8 pb-6 px-5 space-y-6 w-full max-w-4xl mx-auto overflow-y-auto h-full">
-            <div className="space-y-3">
-               <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                  {presentationIssue.identifier}
-               </div>
-               <Textarea
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  onBlur={persistTitle}
-                  onKeyDown={(event) => {
-                     if (event.key === 'Enter') {
-                        event.preventDefault();
-                        event.currentTarget.blur();
-                     }
-                     handleEditorShortcuts(event);
-                  }}
-                  rows={1}
-                  className="min-h-0 resize-none border-none bg-transparent px-0 text-[26px] font-semibold leading-tight shadow-none focus-visible:ring-0"
-               />
-               {presentationIssue.parent && (
-                  <Link
-                     to="/issues/$issueIdentifier"
-                     params={{ issueIdentifier: presentationIssue.parent.identifier }}
-                     className="group block min-w-0 space-y-1.5 text-[13px] text-muted-foreground"
-                  >
-                     <div className="whitespace-nowrap text-[11px] font-medium uppercase tracking-wide">
-                        Sub-issue of{' '}
-                        <span className="text-foreground transition-colors group-hover:text-foreground/80">
-                           {presentationIssue.parent.identifier}
-                        </span>
-                     </div>
-                     <div className="flex min-w-0 items-start gap-2 transition-colors group-hover:text-foreground">
-                        {(() => {
-                           const parent = getIssueById(presentationIssue.parent!.id);
-                           return parent ? (
-                              <span
-                                 className="mt-1.5 size-2 shrink-0 rounded-full"
-                                 style={{ backgroundColor: parent.status.color }}
-                              />
-                           ) : null;
-                        })()}
-                        <span className="line-clamp-2 min-w-0 leading-5">
-                           {presentationIssue.parent.title}
-                        </span>
-                     </div>
-                  </Link>
+         <div className={cn('h-full overflow-y-auto', expanded ? 'px-8 py-8' : 'px-5 pb-6 pt-8')}>
+            <div
+               className={cn(
+                  'mx-auto w-full',
+                  expanded
+                     ? 'grid max-w-[1480px] gap-8 lg:grid-cols-[minmax(0,1fr)_380px] xl:gap-10 xl:grid-cols-[minmax(0,1fr)_400px]'
+                     : 'max-w-4xl'
                )}
-               <div className="flex flex-wrap items-center gap-2">
-                  <PrioritySelector
-                     priority={presentationIssue.priority}
-                     issueId={presentationIssue.id}
-                     display="chip"
-                  />
-                  <StatusSelector
-                     status={presentationIssue.status}
-                     issueId={presentationIssue.id}
-                     display="chip"
-                  />
-                  <AssigneeUser user={presentationIssue.assignee} issueId={presentationIssue.id} />
-                  <ProjectSelector
-                     project={presentationIssue.project}
-                     onChange={(project) => {
-                        updateIssueProject(presentationIssue.id, project);
-                        if (presentationIssue.area?.projectId !== project?.id) {
-                           updateIssueArea(presentationIssue.id, null);
-                        }
-                     }}
-                     showShortcut={false}
-                     triggerClassName={issueChipClassName}
-                     variant="ghost"
-                     size="sm"
-                  />
-                  <AreaSelector
-                     project={presentationIssue.project}
-                     area={presentationIssue.area}
-                     onChange={(area) => updateIssueArea(presentationIssue.id, area?.id ?? null)}
-                     triggerClassName={issueChipClassName}
-                     variant="ghost"
-                     size="sm"
-                  />
-                  <LabelSelector issueId={presentationIssue.id} />
-                  {presentationIssue.dueDate && (
-                     <IssueChip suppressHydrationWarning>Due {dueDateLabel}</IssueChip>
-                  )}
-                  {!presentationIssue.parent && (
-                     <ParentIssueSelector
-                        issueId={presentationIssue.id}
-                        parent={null}
-                        onChange={(parent) => {
-                           if (!canBecomeSubissue && parent) {
-                              toast.error('Issues with subissues cannot become subissues');
-                              return;
-                           }
-
-                           updateIssueParent(presentationIssue.id, parent);
-                           if (parent) {
-                              toast.success(`Parent set to ${parent.identifier}`);
-                           }
-                        }}
-                        compact
-                        emptyLabel="Add parent"
-                     />
-                  )}
-               </div>
-            </div>
-
-            <div className="max-w-none">
-               <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Description</span>
-               </div>
-               {editingDescription ? (
-                  <Textarea
-                     autoFocus
-                     value={description}
-                     onChange={(event) => setDescription(event.target.value)}
-                     onBlur={() => {
-                        persistDescription();
-                        setEditingDescription(false);
-                     }}
-                     onKeyDown={(event) => {
-                        if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
-                           event.preventDefault();
-                           event.currentTarget.blur();
-                        }
-                        handleEditorShortcuts(event);
-                     }}
-                     placeholder="Add a description..."
-                     rows={7}
-                     className="min-h-[156px] resize-none rounded-lg border bg-card p-4 text-sm leading-relaxed"
-                  />
-               ) : (
-                  <div
-                     role="button"
-                     tabIndex={0}
-                     onClick={() => setEditingDescription(true)}
-                     onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                           event.preventDefault();
-                           setEditingDescription(true);
-                        }
-                     }}
-                     className="block min-h-[156px] w-full rounded-lg border bg-card p-4 text-left transition-colors hover:border-primary/40"
-                  >
-                     {description.trim() ? (
-                        <MarkdownContent content={description} />
-                     ) : (
-                        <span className="text-sm text-muted-foreground">Add a description...</span>
-                     )}
-                  </div>
-               )}
-            </div>
-
-            <IssueDependencyFlow
-               issue={presentationIssue}
-               onAddBlocker={async () => {
-                  const identifier = window.prompt(
-                     'Identificador de la tarea que bloquea esta issue'
-                  );
-                  if (!identifier) return;
-                  const issue = getAllIssues().find(
-                     (item) => item.identifier.toLowerCase() === identifier.trim().toLowerCase()
-                  );
-                  if (!issue) {
-                     toast.error('Tarea no encontrada');
-                     return;
-                  }
-                  try {
-                     await addIssueBlocker({
-                        blockedIssueId: presentationIssue.id,
-                        blockerIssueId: issue.id,
-                     });
-                     toast.success('Bloqueador añadido');
-                  } catch (error) {
-                     toast.error(
-                        error instanceof Error ? error.message : 'No se pudo añadir el bloqueador'
-                     );
-                  }
-               }}
-               onRemoveBlocker={(blockedIssueId, blockerIssueId) => {
-                  void removeIssueBlocker({ blockedIssueId, blockerIssueId });
-               }}
-            />
-
-            <section className="space-y-3 border-t border-border/60 pt-5">
-               <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-muted-foreground">
-                     <MessageSquare className="-mt-0.5 inline-block size-3.5" /> Comments{' '}
-                     {comments.length > 0 && (
-                        <span className="text-muted-foreground/70">({comments.length})</span>
-                     )}
-                  </span>
-               </div>
-
-               <div className="flex gap-3">
-                  <Avatar className="size-8 shrink-0">
-                     <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                     <AvatarFallback>{currentUser.name[0]}</AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0 flex-1 space-y-2">
+            >
+               <main className="min-w-0 space-y-6">
+                  <div className="space-y-3">
+                     <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                        {presentationIssue.identifier}
+                     </div>
                      <Textarea
-                        value={commentBody}
-                        onChange={(event) => setCommentBody(event.target.value)}
+                        value={title}
+                        onChange={(event) => setTitle(event.target.value)}
+                        onBlur={persistTitle}
                         onKeyDown={(event) => {
-                           if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+                           if (event.key === 'Enter') {
                               event.preventDefault();
-                              void handleSubmitComment();
+                              event.currentTarget.blur();
                            }
+                           handleEditorShortcuts(event);
                         }}
-                        placeholder="Write a comment..."
-                        rows={3}
-                        className="min-h-[80px] resize-none rounded-lg border bg-card p-3 text-sm leading-relaxed"
+                        rows={1}
+                        className="min-h-0 resize-none border-none bg-transparent px-0 text-[26px] font-semibold leading-tight shadow-none focus-visible:ring-0"
                      />
-                     <div className="flex items-center justify-end">
-                        <Button
-                           size="sm"
-                           disabled={!commentBody.trim() || submittingComment}
-                           onClick={() => void handleSubmitComment()}
+                     {presentationIssue.parent && (
+                        <Link
+                           to="/issues/$issueIdentifier"
+                           params={{ issueIdentifier: presentationIssue.parent.identifier }}
+                           className="group block min-w-0 space-y-1.5 text-[13px] text-muted-foreground"
                         >
-                           <Send className="mr-1.5 size-3.5" />
-                           Comment
-                        </Button>
-                     </div>
-                  </div>
-               </div>
-
-               {comments.length > 0 && (
-                  <div className="space-y-4 pt-2">
-                     {comments.map((comment) => {
-                        const author = resolveCommentAuthor(comment.authorId, currentUser);
-                        return (
-                           <div key={comment.id} className="flex gap-3">
-                              <Avatar className="size-8 shrink-0">
-                                 <AvatarImage src={author.avatarUrl} alt={author.name} />
-                                 <AvatarFallback>{author.name[0]}</AvatarFallback>
-                              </Avatar>
-                              <div className="min-w-0 flex-1 space-y-1">
-                                 <div className="flex items-center gap-2 text-sm">
-                                    <span className="font-medium">{author.name}</span>
+                           <div className="whitespace-nowrap text-[11px] font-medium uppercase tracking-wide">
+                              Sub-issue of{' '}
+                              <span className="text-foreground transition-colors group-hover:text-foreground/80">
+                                 {presentationIssue.parent.identifier}
+                              </span>
+                           </div>
+                           <div className="flex min-w-0 items-start gap-2 transition-colors group-hover:text-foreground">
+                              {(() => {
+                                 const parent = getIssueById(presentationIssue.parent!.id);
+                                 return parent ? (
                                     <span
-                                       className="text-xs text-muted-foreground"
-                                       suppressHydrationWarning
-                                    >
-                                       {format(new Date(comment.createdAt), 'MMM dd, yyyy h:mm a')}
-                                    </span>
-                                 </div>
-                                 <p className="whitespace-pre-wrap text-sm text-foreground">
-                                    {comment.body}
-                                 </p>
-                              </div>
+                                       className="mt-1.5 size-2 shrink-0 rounded-full"
+                                       style={{ backgroundColor: parent.status.color }}
+                                    />
+                                 ) : null;
+                              })()}
+                              <span className="line-clamp-2 min-w-0 leading-5">
+                                 {presentationIssue.parent.title}
+                              </span>
                            </div>
-                        );
-                     })}
+                        </Link>
+                     )}
+                     <IssueDetailProperties
+                        issue={presentationIssue}
+                        canBecomeSubissue={canBecomeSubissue}
+                        condensed={expanded}
+                     />
                   </div>
-               )}
-            </section>
 
-            <section className="border-t border-border/60 pt-5">
-               <div className="space-y-3">
-                  {presentationIssue.subissues.map((subissue) => {
-                     const childIssue = getIssueById(subissue.id);
-                     const subissueStatus = childIssue?.status ?? subissue.status;
-                     const subissuePriority = childIssue?.priority ?? subissue.priority;
-                     const subissueLabels = childIssue?.labels ?? [];
-                     const subissueDescription = childIssue?.description.trim();
-                     const hasSubissueDescription = Boolean(subissueDescription);
-                     const hasSubissueLabels = subissueLabels.length > 0;
-
-                     return (
+                  <div className="max-w-none">
+                     <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
+                        <span>Description</span>
+                     </div>
+                     {editingDescription ? (
+                        <Textarea
+                           autoFocus
+                           value={description}
+                           onChange={(event) => setDescription(event.target.value)}
+                           onBlur={() => {
+                              persistDescription();
+                              setEditingDescription(false);
+                           }}
+                           onKeyDown={(event) => {
+                              if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+                                 event.preventDefault();
+                                 event.currentTarget.blur();
+                              }
+                              handleEditorShortcuts(event);
+                           }}
+                           placeholder="Add a description..."
+                           rows={7}
+                           className="min-h-[156px] resize-none rounded-lg border bg-card p-4 text-sm leading-relaxed"
+                        />
+                     ) : (
                         <div
-                           key={subissue.id}
-                           className={cn(
-                              'flex gap-2 rounded-lg border border-border/70 bg-card/30 px-2.5 py-2',
-                              hasSubissueDescription ? 'items-start' : 'items-center'
-                           )}
+                           role="button"
+                           tabIndex={0}
+                           onClick={() => setEditingDescription(true)}
+                           onKeyDown={(event) => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                 event.preventDefault();
+                                 setEditingDescription(true);
+                              }
+                           }}
+                           className="block min-h-[156px] w-full rounded-lg border bg-card p-4 text-left transition-colors hover:border-primary/40"
                         >
-                           <div
-                              className={cn(
-                                 'flex items-center gap-0.5',
-                                 hasSubissueDescription && 'pt-0.5'
-                              )}
-                              onMouseDownCapture={(event) => event.stopPropagation()}
-                           >
-                              <PrioritySelector priority={subissuePriority} issueId={subissue.id} />
-                              <StatusSelector status={subissueStatus} issueId={subissue.id} />
-                           </div>
-                           <Link
-                              to="/issues/$issueIdentifier"
-                              params={{ issueIdentifier: subissue.identifier }}
-                              className="min-w-0 flex-1 space-y-1"
-                           >
-                              <div className="flex min-w-0 items-center gap-2">
-                                 <div className="min-w-0 flex-1 truncate text-sm font-medium leading-5 text-foreground">
-                                    {subissue.title}
-                                 </div>
-                                 {hasSubissueLabels && (
-                                    <div className="ml-auto flex shrink-0 items-center gap-1">
-                                       <LabelBadge label={subissueLabels} />
-                                    </div>
-                                 )}
-                              </div>
-                              {subissueDescription && (
-                                 <p className="line-clamp-2 text-xs text-muted-foreground">
-                                    {subissueDescription}
-                                 </p>
-                              )}
-                           </Link>
+                           {description.trim() ? (
+                              <MarkdownContent content={description} />
+                           ) : (
+                              <span className="text-sm text-muted-foreground">
+                                 Add a description...
+                              </span>
+                           )}
                         </div>
-                     );
-                  })}
+                     )}
+                  </div>
 
-                  {subissueComposerOpen ? (
-                     <div className="rounded-xl border bg-card">
-                        <div className="px-4 pt-3">
-                           <div className="flex items-start gap-3">
-                              <div className="pt-2">
-                                 <div className="size-4 rounded-full border border-muted-foreground/50" />
-                              </div>
-                              <div className="flex-1 space-y-3">
-                                 <Input
-                                    ref={newSubissueTitleRef}
-                                    value={newSubissueTitle}
-                                    onChange={(event) => setNewSubissueTitle(event.target.value)}
-                                    onKeyDown={(event) => {
-                                       if (event.key === 'Enter') {
-                                          event.preventDefault();
-                                          void handleCreateSubissue();
-                                       }
-                                    }}
-                                    placeholder="Issue title"
-                                    className="h-auto border-none bg-transparent p-0 text-base font-medium shadow-none focus-visible:ring-0"
-                                 />
-                                 <Textarea
-                                    value={newSubissueDescription}
-                                    onChange={(event) =>
-                                       setNewSubissueDescription(event.target.value)
-                                    }
-                                    onKeyDown={(event) => {
-                                       if (
-                                          (event.metaKey || event.ctrlKey) &&
-                                          event.key === 'Enter'
-                                       ) {
-                                          event.preventDefault();
-                                          void handleCreateSubissue();
-                                       }
-                                    }}
-                                    placeholder="Add description..."
-                                    rows={2}
-                                    className="min-h-0 resize-none border-none bg-transparent p-0 text-sm shadow-none focus-visible:ring-0"
-                                 />
-                              </div>
+                  {!expanded ? dependencyFlow : null}
+
+                  <section className="space-y-3 border-t border-border/60 pt-5">
+                     <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-muted-foreground">
+                           <MessageSquare className="-mt-0.5 inline-block size-3.5" /> Comments{' '}
+                           {comments.length > 0 && (
+                              <span className="text-muted-foreground/70">({comments.length})</span>
+                           )}
+                        </span>
+                     </div>
+
+                     <div className="flex gap-3">
+                        <Avatar className="size-8 shrink-0">
+                           <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                           <AvatarFallback>{currentUser.name[0]}</AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1 space-y-2">
+                           <Textarea
+                              value={commentBody}
+                              onChange={(event) => setCommentBody(event.target.value)}
+                              onKeyDown={(event) => {
+                                 if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+                                    event.preventDefault();
+                                    void handleSubmitComment();
+                                 }
+                              }}
+                              placeholder="Write a comment..."
+                              rows={3}
+                              className="min-h-[80px] resize-none rounded-lg border bg-card p-3 text-sm leading-relaxed"
+                           />
+                           <div className="flex items-center justify-end">
+                              <Button
+                                 size="sm"
+                                 disabled={!commentBody.trim() || submittingComment}
+                                 onClick={() => void handleSubmitComment()}
+                              >
+                                 <Send className="mr-1.5 size-3.5" />
+                                 Comment
+                              </Button>
                            </div>
-                        </div>
-                        <div className="flex items-center justify-end gap-2 border-t px-4 py-2.5">
-                           <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                 setSubissueComposerOpen(false);
-                                 setNewSubissueTitle('');
-                                 setNewSubissueDescription('');
-                              }}
-                           >
-                              Cancel
-                           </Button>
-                           <Button
-                              size="sm"
-                              onClick={() => {
-                                 void handleCreateSubissue();
-                              }}
-                              disabled={creatingSubissue}
-                           >
-                              Create
-                           </Button>
                         </div>
                      </div>
-                  ) : (
-                     <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 px-0 text-muted-foreground hover:text-foreground"
-                        onClick={() => setSubissueComposerOpen(true)}
-                     >
-                        <Plus className="size-4" />
-                        Add sub-issues
-                     </Button>
-                  )}
-               </div>
-            </section>
+
+                     {comments.length > 0 && (
+                        <div className="space-y-4 pt-2">
+                           {comments.map((comment) => {
+                              const author = resolveCommentAuthor(comment.authorId, currentUser);
+                              return (
+                                 <div key={comment.id} className="flex gap-3">
+                                    <Avatar className="size-8 shrink-0">
+                                       <AvatarImage src={author.avatarUrl} alt={author.name} />
+                                       <AvatarFallback>{author.name[0]}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="min-w-0 flex-1 space-y-1">
+                                       <div className="flex items-center gap-2 text-sm">
+                                          <span className="font-medium">{author.name}</span>
+                                          <span
+                                             className="text-xs text-muted-foreground"
+                                             suppressHydrationWarning
+                                          >
+                                             {format(
+                                                new Date(comment.createdAt),
+                                                'MMM dd, yyyy h:mm a'
+                                             )}
+                                          </span>
+                                       </div>
+                                       <p className="whitespace-pre-wrap text-sm text-foreground">
+                                          {comment.body}
+                                       </p>
+                                    </div>
+                                 </div>
+                              );
+                           })}
+                        </div>
+                     )}
+                  </section>
+
+                  <section className="border-t border-border/60 pt-5">
+                     <div className="space-y-3">
+                        {presentationIssue.subissues.map((subissue) => {
+                           const childIssue = getIssueById(subissue.id);
+                           const subissueStatus = childIssue?.status ?? subissue.status;
+                           const subissuePriority = childIssue?.priority ?? subissue.priority;
+                           const subissueLabels = childIssue?.labels ?? [];
+                           const subissueDescription = childIssue?.description.trim();
+                           const hasSubissueDescription = Boolean(subissueDescription);
+                           const hasSubissueLabels = subissueLabels.length > 0;
+
+                           return (
+                              <div
+                                 key={subissue.id}
+                                 className={cn(
+                                    'flex gap-2 rounded-lg border border-border/70 bg-card/30 px-2.5 py-2',
+                                    hasSubissueDescription ? 'items-start' : 'items-center'
+                                 )}
+                              >
+                                 <div
+                                    className={cn(
+                                       'flex items-center gap-0.5',
+                                       hasSubissueDescription && 'pt-0.5'
+                                    )}
+                                    onMouseDownCapture={(event) => event.stopPropagation()}
+                                 >
+                                    <PrioritySelector
+                                       priority={subissuePriority}
+                                       issueId={subissue.id}
+                                    />
+                                    <StatusSelector status={subissueStatus} issueId={subissue.id} />
+                                 </div>
+                                 <Link
+                                    to="/issues/$issueIdentifier"
+                                    params={{ issueIdentifier: subissue.identifier }}
+                                    className="min-w-0 flex-1 space-y-1"
+                                 >
+                                    <div className="flex min-w-0 items-center gap-2">
+                                       <div className="min-w-0 flex-1 truncate text-sm font-medium leading-5 text-foreground">
+                                          {subissue.title}
+                                       </div>
+                                       {hasSubissueLabels && (
+                                          <div className="ml-auto flex shrink-0 items-center gap-1">
+                                             <LabelBadge label={subissueLabels} />
+                                          </div>
+                                       )}
+                                    </div>
+                                    {subissueDescription && (
+                                       <p className="line-clamp-2 text-xs text-muted-foreground">
+                                          {subissueDescription}
+                                       </p>
+                                    )}
+                                 </Link>
+                              </div>
+                           );
+                        })}
+
+                        {subissueComposerOpen ? (
+                           <div className="rounded-xl border bg-card">
+                              <div className="px-4 pt-3">
+                                 <div className="flex items-start gap-3">
+                                    <div className="pt-2">
+                                       <div className="size-4 rounded-full border border-muted-foreground/50" />
+                                    </div>
+                                    <div className="flex-1 space-y-3">
+                                       <Input
+                                          ref={newSubissueTitleRef}
+                                          value={newSubissueTitle}
+                                          onChange={(event) =>
+                                             setNewSubissueTitle(event.target.value)
+                                          }
+                                          onKeyDown={(event) => {
+                                             if (event.key === 'Enter') {
+                                                event.preventDefault();
+                                                void handleCreateSubissue();
+                                             }
+                                          }}
+                                          placeholder="Issue title"
+                                          className="h-auto border-none bg-transparent p-0 text-base font-medium shadow-none focus-visible:ring-0"
+                                       />
+                                       <Textarea
+                                          value={newSubissueDescription}
+                                          onChange={(event) =>
+                                             setNewSubissueDescription(event.target.value)
+                                          }
+                                          onKeyDown={(event) => {
+                                             if (
+                                                (event.metaKey || event.ctrlKey) &&
+                                                event.key === 'Enter'
+                                             ) {
+                                                event.preventDefault();
+                                                void handleCreateSubissue();
+                                             }
+                                          }}
+                                          placeholder="Add description..."
+                                          rows={2}
+                                          className="min-h-0 resize-none border-none bg-transparent p-0 text-sm shadow-none focus-visible:ring-0"
+                                       />
+                                    </div>
+                                 </div>
+                              </div>
+                              <div className="flex items-center justify-end gap-2 border-t px-4 py-2.5">
+                                 <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                       setSubissueComposerOpen(false);
+                                       setNewSubissueTitle('');
+                                       setNewSubissueDescription('');
+                                    }}
+                                 >
+                                    Cancel
+                                 </Button>
+                                 <Button
+                                    size="sm"
+                                    onClick={() => {
+                                       void handleCreateSubissue();
+                                    }}
+                                    disabled={creatingSubissue}
+                                 >
+                                    Create
+                                 </Button>
+                              </div>
+                           </div>
+                        ) : (
+                           <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 px-0 text-muted-foreground hover:text-foreground"
+                              onClick={() => setSubissueComposerOpen(true)}
+                           >
+                              <Plus className="size-4" />
+                              Add sub-issues
+                           </Button>
+                        )}
+                     </div>
+                  </section>
+               </main>
+
+               {expanded ? (
+                  <aside className="min-w-0 border-t border-border/60 pt-8 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
+                     {dependencyFlow}
+                  </aside>
+               ) : null}
+            </div>
          </div>
       </div>
    );
