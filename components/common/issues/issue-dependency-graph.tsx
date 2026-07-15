@@ -66,6 +66,88 @@ const COLUMN_GAP = 104;
 const ROW_GAP = 28;
 const CANVAS_PADDING = 28;
 const HEADING_HEIGHT = 44;
+const PORT_INSET = 28;
+
+function connectionOrder(
+   nodeId: string,
+   adjacency: Map<string, string[]>,
+   orderById: Map<string, number>
+) {
+   const neighborOrders = (adjacency.get(nodeId) ?? [])
+      .map((neighborId) => orderById.get(neighborId))
+      .filter((order): order is number => order !== undefined)
+      .sort((a, b) => a - b);
+
+   if (neighborOrders.length === 0) return undefined;
+
+   return neighborOrders.reduce((total, order) => total + order, 0) / neighborOrders.length;
+}
+
+function minimizeLayerCrossings(
+   layers: Array<{ depth: number; nodes: GraphNode[] }>,
+   incoming: Map<string, string[]>,
+   outgoing: Map<string, string[]>
+) {
+   const ordered = layers.map((layer) => ({ ...layer, nodes: [...layer.nodes] }));
+
+   // Alternating left-to-right and right-to-left passes bring connected nodes closer while
+   // retaining the semantic initial order as a stable tie-breaker.
+   for (let pass = 0; pass < 4; pass += 1) {
+      const forward = pass % 2 === 0;
+      const indices = forward
+         ? Array.from({ length: ordered.length - 1 }, (_, index) => index + 1)
+         : Array.from({ length: ordered.length - 1 }, (_, index) => ordered.length - 2 - index);
+
+      for (const layerIndex of indices) {
+         const neighborLayer = ordered[layerIndex + (forward ? -1 : 1)];
+         const neighborOrder = new Map(neighborLayer.nodes.map((node, index) => [node.id, index]));
+         const adjacency = forward ? incoming : outgoing;
+         const previousOrder = new Map(
+            ordered[layerIndex].nodes.map((node, index) => [node.id, index])
+         );
+
+         ordered[layerIndex].nodes.sort((a, b) => {
+            const aOrder = connectionOrder(a.id, adjacency, neighborOrder);
+            const bOrder = connectionOrder(b.id, adjacency, neighborOrder);
+
+            if (aOrder === undefined && bOrder === undefined) {
+               return previousOrder.get(a.id)! - previousOrder.get(b.id)!;
+            }
+            if (aOrder === undefined) return 1;
+            if (bOrder === undefined) return -1;
+            return aOrder - bOrder || previousOrder.get(a.id)! - previousOrder.get(b.id)!;
+         });
+      }
+   }
+
+   return ordered;
+}
+
+function portY(cardTop: number, index: number, count: number) {
+   if (count <= 1) return cardTop + CARD_HEIGHT / 2;
+
+   const usableHeight = CARD_HEIGHT - PORT_INSET * 2;
+   return cardTop + PORT_INSET + (usableHeight * index) / (count - 1);
+}
+
+function createPortAssignments(
+   adjacency: Map<string, string[]>,
+   positions: Map<string, { x: number; y: number }>,
+   edgeKey: (nodeId: string, neighborId: string) => string
+) {
+   const ports = new Map<string, { index: number; count: number }>();
+
+   for (const [nodeId, neighborIds] of adjacency) {
+      const sortedNeighbors = [...neighborIds].sort(
+         (a, b) => positions.get(a)!.y - positions.get(b)!.y
+      );
+      sortedNeighbors.forEach((neighborId, index) => {
+         ports.set(edgeKey(nodeId, neighborId), { index, count: sortedNeighbors.length });
+      });
+   }
+
+   return ports;
+}
 
 function useGraphPan() {
    const viewportRef = useRef<HTMLDivElement>(null);
@@ -409,7 +491,7 @@ function createGraphLayout(issues: Issue[], objectiveIssueIds: string[]) {
       blocked: 2,
       completed: 3,
    };
-   const orderedLayers = [...layers.entries()]
+   const initialLayers = [...layers.entries()]
       .sort(([a], [b]) => a - b)
       .map(([layerDepth, layerNodes]) => ({
          depth: layerDepth,
@@ -423,6 +505,7 @@ function createGraphLayout(issues: Issue[], objectiveIssueIds: string[]) {
             );
          }),
       }));
+   const orderedLayers = minimizeLayerCrossings(initialLayers, incoming, outgoing);
    const maxRows = Math.max(1, ...orderedLayers.map((layer) => layer.nodes.length));
    const positions = new Map<string, { x: number; y: number }>();
 
@@ -752,6 +835,20 @@ export function IssueDependencyGraph({
       (node) =>
          !layout.objectiveIds.includes(node.id) && layout.stateById.get(node.id) !== 'completed'
    ).length;
+   const sourcePortByEdge = useMemo(() => {
+      return createPortAssignments(
+         layout.outgoing,
+         layout.positions,
+         (sourceId, targetId) => `${sourceId}:${targetId}`
+      );
+   }, [layout.outgoing, layout.positions]);
+   const targetPortByEdge = useMemo(() => {
+      return createPortAssignments(
+         layout.incoming,
+         layout.positions,
+         (targetId, sourceId) => `${sourceId}:${targetId}`
+      );
+   }, [layout.incoming, layout.positions]);
 
    if (layout.connectedNodes.length === 0) {
       return (
@@ -891,14 +988,30 @@ export function IssueDependencyGraph({
                      height={layout.height}
                      aria-hidden="true"
                   >
+                     <defs>
+                        <marker
+                           id="dependency-arrow"
+                           viewBox="0 0 6 6"
+                           refX="5"
+                           refY="3"
+                           markerWidth="5"
+                           markerHeight="5"
+                           orient="auto"
+                        >
+                           <path d="M 0 0 L 6 3 L 0 6 Z" fill="context-stroke" />
+                        </marker>
+                     </defs>
                      {layout.edges.map((edge) => {
                         const source = layout.positions.get(edge.source);
                         const target = layout.positions.get(edge.target);
                         if (!source || !target) return null;
+                        const edgeKey = `${edge.source}:${edge.target}`;
+                        const sourcePort = sourcePortByEdge.get(edgeKey) ?? { index: 0, count: 1 };
+                        const targetPort = targetPortByEdge.get(edgeKey) ?? { index: 0, count: 1 };
                         const startX = source.x + CARD_WIDTH;
-                        const startY = source.y + CARD_HEIGHT / 2;
+                        const startY = portY(source.y, sourcePort.index, sourcePort.count);
                         const endX = target.x;
-                        const endY = target.y + CARD_HEIGHT / 2;
+                        const endY = portY(target.y, targetPort.index, targetPort.count);
                         const control = Math.max(36, (endX - startX) / 2);
                         const highlighted =
                            isObjectiveMode ||
@@ -912,10 +1025,11 @@ export function IssueDependencyGraph({
 
                         return (
                            <path
-                              key={`${edge.source}:${edge.target}`}
+                              key={edgeKey}
                               d={`M ${startX} ${startY} C ${startX + control} ${startY}, ${endX - control} ${endY}, ${endX} ${endY}`}
                               fill="none"
                               stroke="currentColor"
+                              markerEnd="url(#dependency-arrow)"
                               strokeWidth={hoverHighlighted ? 2 : highlighted ? 1.75 : 0.9}
                               className={
                                  hoverHighlighted
