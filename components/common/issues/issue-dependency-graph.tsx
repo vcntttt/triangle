@@ -10,6 +10,9 @@ import {
    GitFork,
    Hand,
    LockKeyhole,
+   Maximize2,
+   Minus,
+   Plus,
    Route,
    Sparkles,
    X,
@@ -17,6 +20,7 @@ import {
 import {
    type MouseEvent as ReactMouseEvent,
    type PointerEvent as ReactPointerEvent,
+   type WheelEvent as ReactWheelEvent,
    useCallback,
    useEffect,
    useMemo,
@@ -63,10 +67,17 @@ type NodeState = 'completed' | 'active' | 'ready' | 'blocked';
 const CARD_WIDTH = 260;
 const CARD_HEIGHT = 136;
 const COLUMN_GAP = 104;
-const ROW_GAP = 28;
+const ROW_GAP = 36;
 const CANVAS_PADDING = 28;
 const HEADING_HEIGHT = 44;
 const PORT_INSET = 28;
+const EDGE_CORNER_RADIUS = 10;
+const MIN_EDGE_SEPARATION = 6;
+const MIN_ZOOM = 0.4;
+const MAX_ZOOM = 2;
+const ZOOM_STEP = 0.1;
+
+const graphEdgeKey = (sourceId: string, targetId: string) => `${sourceId}:${targetId}`;
 
 function connectionOrder(
    nodeId: string,
@@ -99,8 +110,18 @@ function minimizeLayerCrossings(
          : Array.from({ length: ordered.length - 1 }, (_, index) => ordered.length - 2 - index);
 
       for (const layerIndex of indices) {
-         const neighborLayer = ordered[layerIndex + (forward ? -1 : 1)];
-         const neighborOrder = new Map(neighborLayer.nodes.map((node, index) => [node.id, index]));
+         const connectedLayerIndices = forward
+            ? Array.from({ length: layerIndex }, (_, index) => index)
+            : Array.from(
+                 { length: ordered.length - layerIndex - 1 },
+                 (_, index) => layerIndex + index + 1
+              );
+         const neighborOrder = new Map<string, number>();
+         for (const connectedLayerIndex of connectedLayerIndices) {
+            ordered[connectedLayerIndex].nodes.forEach((node, index) => {
+               neighborOrder.set(node.id, index);
+            });
+         }
          const adjacency = forward ? incoming : outgoing;
          const previousOrder = new Map(
             ordered[layerIndex].nodes.map((node, index) => [node.id, index])
@@ -130,6 +151,14 @@ function portY(cardTop: number, index: number, count: number) {
    return cardTop + PORT_INSET + (usableHeight * index) / (count - 1);
 }
 
+function edgeColorClass(state: NodeState, objective: boolean) {
+   if (objective) return 'text-orange-500';
+   if (state === 'active') return 'text-emerald-500';
+   if (state === 'ready') return 'text-sky-500';
+   if (state === 'completed') return 'text-violet-500';
+   return 'text-muted-foreground';
+}
+
 function createPortAssignments(
    adjacency: Map<string, string[]>,
    positions: Map<string, { x: number; y: number }>,
@@ -147,6 +176,119 @@ function createPortAssignments(
    }
 
    return ports;
+}
+
+function roundedOrthogonalPath(points: Array<{ x: number; y: number }>) {
+   const distinctPoints = points.filter(
+      (point, index) =>
+         index === 0 || point.x !== points[index - 1].x || point.y !== points[index - 1].y
+   );
+   if (distinctPoints.length < 2) return '';
+
+   let path = `M ${distinctPoints[0].x} ${distinctPoints[0].y}`;
+
+   for (let index = 1; index < distinctPoints.length - 1; index += 1) {
+      const previous = distinctPoints[index - 1];
+      const current = distinctPoints[index];
+      const next = distinctPoints[index + 1];
+      const incomingLength = Math.hypot(current.x - previous.x, current.y - previous.y);
+      const outgoingLength = Math.hypot(next.x - current.x, next.y - current.y);
+      const radius = Math.min(EDGE_CORNER_RADIUS, incomingLength / 2, outgoingLength / 2);
+      const before = {
+         x: current.x - ((current.x - previous.x) / incomingLength) * radius,
+         y: current.y - ((current.y - previous.y) / incomingLength) * radius,
+      };
+      const after = {
+         x: current.x + ((next.x - current.x) / outgoingLength) * radius,
+         y: current.y + ((next.y - current.y) / outgoingLength) * radius,
+      };
+
+      path += ` L ${before.x} ${before.y} Q ${current.x} ${current.y} ${after.x} ${after.y}`;
+   }
+
+   const last = distinctPoints.at(-1)!;
+   return `${path} L ${last.x} ${last.y}`;
+}
+
+function allocateCorridorY(
+   nodes: GraphNode[],
+   positions: Map<string, { x: number; y: number }>,
+   preferredY: number,
+   column: number,
+   rowGap: number,
+   corridorUsage: Map<string, number>
+) {
+   const sortedTops = nodes.map((node) => positions.get(node.id)!.y).sort((a, b) => a - b);
+   const candidates = [sortedTops[0] - rowGap / 2];
+
+   for (let index = 0; index < sortedTops.length - 1; index += 1) {
+      candidates.push((sortedTops[index] + CARD_HEIGHT + sortedTops[index + 1]) / 2);
+   }
+   candidates.push(sortedTops.at(-1)! + CARD_HEIGHT + rowGap / 2);
+
+   const candidate = candidates.reduce((closest, current) =>
+      Math.abs(current - preferredY) < Math.abs(closest - preferredY) ? current : closest
+   );
+   const corridorKey = `${column}:${candidate}`;
+   const usage = corridorUsage.get(corridorKey) ?? 0;
+   const laneNumber = Math.ceil(usage / 2);
+   const laneOffset =
+      usage === 0 ? 0 : laneNumber * MIN_EDGE_SEPARATION * (usage % 2 === 1 ? 1 : -1);
+   corridorUsage.set(corridorKey, usage + 1);
+
+   return candidate + laneOffset;
+}
+
+function createLocalEdgeRoute({
+   sourceColumn,
+   targetColumn,
+   startX,
+   startY,
+   endX,
+   endY,
+   layers,
+   positions,
+   rowGap,
+   corridorUsage,
+}: {
+   sourceColumn: number;
+   targetColumn: number;
+   startX: number;
+   startY: number;
+   endX: number;
+   endY: number;
+   layers: Array<{ depth: number; nodes: GraphNode[] }>;
+   positions: Map<string, { x: number; y: number }>;
+   rowGap: number;
+   corridorUsage: Map<string, number>;
+}) {
+   let path = `M ${startX} ${startY}`;
+   let currentX = startX;
+   let currentY = startY;
+
+   for (let column = sourceColumn + 1; column < targetColumn; column += 1) {
+      const layer = layers[column];
+      const layerX = positions.get(layer.nodes[0].id)!.x;
+      const progress = (column - sourceColumn) / (targetColumn - sourceColumn);
+      const preferredY = startY + (endY - startY) * progress;
+      const corridorY = allocateCorridorY(
+         layer.nodes,
+         positions,
+         preferredY,
+         column,
+         rowGap,
+         corridorUsage
+      );
+      const gapControl = (layerX - currentX) * 0.42;
+
+      path += ` C ${currentX + gapControl} ${currentY}, ${layerX - gapControl} ${corridorY}, ${layerX} ${corridorY}`;
+      path += ` L ${layerX + CARD_WIDTH} ${corridorY}`;
+      currentX = layerX + CARD_WIDTH;
+      currentY = corridorY;
+   }
+
+   const finalControl = (endX - currentX) * 0.42;
+   return `${path} C ${currentX + finalControl} ${currentY}, ${endX - finalControl} ${endY}, ${endX} ${endY}`;
 }
 
 function useGraphPan() {
@@ -289,6 +431,115 @@ function useGraphPan() {
    };
 }
 
+function useGraphZoom(
+   viewportRef: { current: HTMLDivElement | null },
+   contentWidth: number,
+   contentHeight: number
+) {
+   const [scale, setScale] = useState(1);
+   const scaleRef = useRef(1);
+   const projectedScrollRef = useRef<{ left: number; top: number } | null>(null);
+   const animationFrameRef = useRef<number | null>(null);
+
+   useEffect(
+      () => () => {
+         if (animationFrameRef.current !== null) {
+            cancelAnimationFrame(animationFrameRef.current);
+         }
+      },
+      []
+   );
+
+   const zoomAt = useCallback(
+      (nextScale: number, clientX?: number, clientY?: number) => {
+         const viewport = viewportRef.current;
+         const clampedScale = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, nextScale));
+         if (!viewport || Math.abs(clampedScale - scaleRef.current) < 0.001) return;
+
+         const bounds = viewport.getBoundingClientRect();
+         const anchorX = clientX === undefined ? viewport.clientWidth / 2 : clientX - bounds.left;
+         const anchorY = clientY === undefined ? viewport.clientHeight / 2 : clientY - bounds.top;
+         const currentScroll = projectedScrollRef.current ?? {
+            left: viewport.scrollLeft,
+            top: viewport.scrollTop,
+         };
+         const worldX = (currentScroll.left + anchorX) / scaleRef.current;
+         const worldY = (currentScroll.top + anchorY) / scaleRef.current;
+         const projectedScroll = {
+            left: Math.min(
+               Math.max(0, contentWidth * clampedScale - viewport.clientWidth),
+               Math.max(0, worldX * clampedScale - anchorX)
+            ),
+            top: Math.min(
+               Math.max(0, contentHeight * clampedScale - viewport.clientHeight),
+               Math.max(0, worldY * clampedScale - anchorY)
+            ),
+         };
+
+         scaleRef.current = clampedScale;
+         projectedScrollRef.current = projectedScroll;
+         setScale(clampedScale);
+
+         if (animationFrameRef.current !== null) {
+            cancelAnimationFrame(animationFrameRef.current);
+         }
+         animationFrameRef.current = requestAnimationFrame(() => {
+            viewport.scrollLeft = projectedScroll.left;
+            viewport.scrollTop = projectedScroll.top;
+            projectedScrollRef.current = null;
+            animationFrameRef.current = null;
+         });
+      },
+      [contentHeight, contentWidth, viewportRef]
+   );
+
+   const handleWheel = useCallback(
+      (event: ReactWheelEvent<HTMLDivElement>) => {
+         if (!event.ctrlKey && !event.metaKey) return;
+
+         event.preventDefault();
+         const factor = Math.exp(-event.deltaY * 0.0025);
+         zoomAt(scaleRef.current * factor, event.clientX, event.clientY);
+      },
+      [zoomAt]
+   );
+
+   const fit = useCallback(
+      (contentWidth: number, contentHeight: number) => {
+         const viewport = viewportRef.current;
+         if (!viewport) return;
+
+         const nextScale = Math.min(
+            1,
+            (viewport.clientWidth - 48) / contentWidth,
+            (viewport.clientHeight - 48) / contentHeight
+         );
+         scaleRef.current = Math.max(MIN_ZOOM, nextScale);
+         projectedScrollRef.current = { left: 0, top: 0 };
+         setScale(scaleRef.current);
+         if (animationFrameRef.current !== null) {
+            cancelAnimationFrame(animationFrameRef.current);
+         }
+         animationFrameRef.current = requestAnimationFrame(() => {
+            viewport.scrollLeft = 0;
+            viewport.scrollTop = 0;
+            projectedScrollRef.current = null;
+            animationFrameRef.current = null;
+         });
+      },
+      [viewportRef]
+   );
+
+   return {
+      scale,
+      handleWheel,
+      zoomIn: () => zoomAt(scaleRef.current + ZOOM_STEP),
+      zoomOut: () => zoomAt(scaleRef.current - ZOOM_STEP),
+      reset: () => zoomAt(1),
+      fit,
+   };
+}
+
 const isCompletedStatus = (status: string) => status === 'completed' || status === 'archived';
 const isActiveStatus = (status: string) =>
    status === 'in-progress' || status === 'technical-review';
@@ -332,7 +583,7 @@ function buildGraph(issues: Issue[]) {
    const addEdge = (source: GraphNode, target: GraphNode) => {
       nodes.set(source.id, nodes.get(source.id) ?? source);
       nodes.set(target.id, nodes.get(target.id) ?? target);
-      const key = `${source.id}:${target.id}`;
+      const key = graphEdgeKey(source.id, target.id);
 
       if (!edgeKeys.has(key)) {
          edgeKeys.add(key);
@@ -506,19 +757,53 @@ function createGraphLayout(issues: Issue[], objectiveIssueIds: string[]) {
          }),
       }));
    const orderedLayers = minimizeLayerCrossings(initialLayers, incoming, outgoing);
+   const columnByNodeId = new Map<string, number>();
+   orderedLayers.forEach((layer, columnIndex) => {
+      for (const node of layer.nodes) columnByNodeId.set(node.id, columnIndex);
+   });
+   const exceptionalEdges = edges.filter((edge) => {
+      const sourceColumn = columnByNodeId.get(edge.source);
+      const targetColumn = columnByNodeId.get(edge.target);
+      return (
+         sourceColumn !== undefined && targetColumn !== undefined && targetColumn <= sourceColumn
+      );
+   });
+   const exceptionalEdgeLaneByKey = new Map(
+      exceptionalEdges.map((edge, index) => [graphEdgeKey(edge.source, edge.target), index])
+   );
+   const crossingCountByColumn = new Map<number, number>();
+   for (const edge of edges) {
+      const sourceColumn = columnByNodeId.get(edge.source);
+      const targetColumn = columnByNodeId.get(edge.target);
+      if (sourceColumn === undefined || targetColumn === undefined) continue;
+
+      for (let column = sourceColumn + 1; column < targetColumn; column += 1) {
+         crossingCountByColumn.set(column, (crossingCountByColumn.get(column) ?? 0) + 1);
+      }
+   }
+   const maxCrossingCount = Math.max(1, ...crossingCountByColumn.values());
+   const requiredLaneOffset = Math.ceil((maxCrossingCount - 1) / 2) * MIN_EDGE_SEPARATION;
+   const rowGap = Math.max(ROW_GAP, (requiredLaneOffset + 8) * 2);
+   const verticalPadding = Math.max(CANVAS_PADDING, rowGap / 2 + 8);
+   const routingHeight = exceptionalEdges.length > 0 ? exceptionalEdges.length * 10 + 8 : 0;
    const maxRows = Math.max(1, ...orderedLayers.map((layer) => layer.nodes.length));
    const positions = new Map<string, { x: number; y: number }>();
 
    orderedLayers.forEach((layer, columnIndex) => {
       const layerHeight =
-         layer.nodes.length * CARD_HEIGHT + Math.max(0, layer.nodes.length - 1) * ROW_GAP;
-      const maxHeight = maxRows * CARD_HEIGHT + Math.max(0, maxRows - 1) * ROW_GAP;
+         layer.nodes.length * CARD_HEIGHT + Math.max(0, layer.nodes.length - 1) * rowGap;
+      const maxHeight = maxRows * CARD_HEIGHT + Math.max(0, maxRows - 1) * rowGap;
       const topOffset = (maxHeight - layerHeight) / 2;
 
       layer.nodes.forEach((node, rowIndex) => {
          positions.set(node.id, {
             x: CANVAS_PADDING + columnIndex * (CARD_WIDTH + COLUMN_GAP),
-            y: HEADING_HEIGHT + CANVAS_PADDING + topOffset + rowIndex * (CARD_HEIGHT + ROW_GAP),
+            y:
+               HEADING_HEIGHT +
+               verticalPadding +
+               routingHeight +
+               topOffset +
+               rowIndex * (CARD_HEIGHT + rowGap),
          });
       });
    });
@@ -533,6 +818,9 @@ function createGraphLayout(issues: Issue[], objectiveIssueIds: string[]) {
       objectiveIds,
       orderedLayers,
       positions,
+      columnByNodeId,
+      exceptionalEdgeLaneByKey,
+      rowGap,
       stateById,
       activeIds,
       activePath,
@@ -543,9 +831,10 @@ function createGraphLayout(issues: Issue[], objectiveIssueIds: string[]) {
          Math.max(0, orderedLayers.length - 1) * COLUMN_GAP,
       height:
          HEADING_HEIGHT +
-         CANVAS_PADDING * 2 +
+         verticalPadding * 2 +
+         routingHeight +
          maxRows * CARD_HEIGHT +
-         Math.max(0, maxRows - 1) * ROW_GAP,
+         Math.max(0, maxRows - 1) * rowGap,
    };
 }
 
@@ -593,7 +882,7 @@ function GraphCard({
                'border-emerald-500/55 bg-emerald-500/[0.07] shadow-emerald-500/10',
             state === 'ready' && 'border-sky-500/35 bg-sky-500/[0.045]',
             state === 'blocked' && 'border-border/70',
-            state === 'completed' && 'border-border/40 bg-muted/20',
+            state === 'completed' && 'border-violet-500/50 bg-violet-500/[0.035]',
             objective && 'border-orange-500/55 bg-orange-500/[0.055] ring-1 ring-orange-500/15',
             selected && 'ring-2 ring-primary/45',
             !highlighted && 'opacity-50 grayscale-[0.25]'
@@ -818,8 +1107,10 @@ export function IssueDependencyGraph({
       () => createGraphLayout(issues, selectedObjectiveIds),
       [issues, selectedObjectiveIds]
    );
+   const zoom = useGraphZoom(pan.viewportRef, layout.width, layout.height);
    const hasActivePath = layout.activeIds.length > 0;
    const isObjectiveMode = layout.objectiveIds.length > 0;
+   const objectiveIdSet = useMemo(() => new Set(layout.objectiveIds), [layout.objectiveIds]);
    const hoveredPath = useMemo(() => {
       const path = new Set<string>();
       if (!hoveredNodeId) return path;
@@ -836,19 +1127,14 @@ export function IssueDependencyGraph({
          !layout.objectiveIds.includes(node.id) && layout.stateById.get(node.id) !== 'completed'
    ).length;
    const sourcePortByEdge = useMemo(() => {
-      return createPortAssignments(
-         layout.outgoing,
-         layout.positions,
-         (sourceId, targetId) => `${sourceId}:${targetId}`
-      );
+      return createPortAssignments(layout.outgoing, layout.positions, graphEdgeKey);
    }, [layout.outgoing, layout.positions]);
    const targetPortByEdge = useMemo(() => {
-      return createPortAssignments(
-         layout.incoming,
-         layout.positions,
-         (targetId, sourceId) => `${sourceId}:${targetId}`
+      return createPortAssignments(layout.incoming, layout.positions, (targetId, sourceId) =>
+         graphEdgeKey(sourceId, targetId)
       );
    }, [layout.incoming, layout.positions]);
+   const corridorUsage = new Map<string, number>();
 
    if (layout.connectedNodes.length === 0) {
       return (
@@ -959,134 +1245,177 @@ export function IssueDependencyGraph({
                onPointerUp={pan.handlePointerEnd}
                onPointerCancel={pan.handlePointerEnd}
                onClickCapture={pan.handleClickCapture}
+               onWheel={zoom.handleWheel}
             >
-               <div className="relative" style={{ width: layout.width, height: layout.height }}>
-                  {layout.orderedLayers.map((layer, index) => {
-                     const firstNode = layer.nodes[0];
-                     const position = firstNode ? layout.positions.get(firstNode.id) : undefined;
-                     return (
-                        <div
-                           key={layer.depth}
-                           className="absolute top-4 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.13em] text-muted-foreground"
-                           style={{ left: position?.x ?? CANVAS_PADDING }}
-                        >
-                           {index === 0
-                              ? 'Inicio'
-                              : index === layout.orderedLayers.length - 1
-                                ? 'Resultado'
-                                : `Paso ${index + 1}`}
-                           {index < layout.orderedLayers.length - 1 && (
-                              <ArrowRight className="size-3" />
-                           )}
-                        </div>
-                     );
-                  })}
-
-                  <svg
-                     className="pointer-events-none absolute inset-0"
-                     width={layout.width}
-                     height={layout.height}
-                     aria-hidden="true"
+               <div
+                  className="relative"
+                  style={{ width: layout.width * zoom.scale, height: layout.height * zoom.scale }}
+               >
+                  <div
+                     className="relative"
+                     style={{
+                        width: layout.width,
+                        height: layout.height,
+                        transform: `scale(${zoom.scale})`,
+                        transformOrigin: 'top left',
+                     }}
                   >
-                     <defs>
-                        <marker
-                           id="dependency-arrow"
-                           viewBox="0 0 6 6"
-                           refX="5"
-                           refY="3"
-                           markerWidth="5"
-                           markerHeight="5"
-                           orient="auto"
-                        >
-                           <path d="M 0 0 L 6 3 L 0 6 Z" fill="context-stroke" />
-                        </marker>
-                     </defs>
-                     {layout.edges.map((edge) => {
-                        const source = layout.positions.get(edge.source);
-                        const target = layout.positions.get(edge.target);
-                        if (!source || !target) return null;
-                        const edgeKey = `${edge.source}:${edge.target}`;
-                        const sourcePort = sourcePortByEdge.get(edgeKey) ?? { index: 0, count: 1 };
-                        const targetPort = targetPortByEdge.get(edgeKey) ?? { index: 0, count: 1 };
-                        const startX = source.x + CARD_WIDTH;
-                        const startY = portY(source.y, sourcePort.index, sourcePort.count);
-                        const endX = target.x;
-                        const endY = portY(target.y, targetPort.index, targetPort.count);
-                        const control = Math.max(36, (endX - startX) / 2);
-                        const highlighted =
-                           isObjectiveMode ||
-                           (hasActivePath &&
-                              layout.activePath.has(edge.source) &&
-                              layout.activePath.has(edge.target));
-                        const hoverHighlighted =
-                           hoveredNodeId !== null &&
-                           hoveredPath.has(edge.source) &&
-                           hoveredPath.has(edge.target);
-
+                     {layout.orderedLayers.map((layer, index) => {
+                        const firstNode = layer.nodes[0];
+                        const position = firstNode ? layout.positions.get(firstNode.id) : undefined;
                         return (
-                           <path
-                              key={edgeKey}
-                              d={`M ${startX} ${startY} C ${startX + control} ${startY}, ${endX - control} ${endY}, ${endX} ${endY}`}
-                              fill="none"
-                              stroke="currentColor"
-                              markerEnd="url(#dependency-arrow)"
-                              strokeWidth={hoverHighlighted ? 2 : highlighted ? 1.75 : 0.9}
-                              className={
-                                 hoverHighlighted
-                                    ? 'text-sky-400/70'
-                                    : hoveredNodeId
-                                      ? 'text-border/15'
-                                      : isObjectiveMode
-                                        ? 'text-orange-500/35'
-                                        : highlighted
-                                          ? 'text-emerald-500/55'
-                                          : 'text-border/45'
-                              }
-                           />
+                           <div
+                              key={layer.depth}
+                              className="absolute top-4 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.13em] text-muted-foreground"
+                              style={{ left: position?.x ?? CANVAS_PADDING }}
+                           >
+                              {index === 0
+                                 ? 'Inicio'
+                                 : index === layout.orderedLayers.length - 1
+                                   ? 'Resultado'
+                                   : `Paso ${index + 1}`}
+                              {index < layout.orderedLayers.length - 1 && (
+                                 <ArrowRight className="size-3" />
+                              )}
+                           </div>
                         );
                      })}
-                  </svg>
 
-                  {layout.connectedNodes.map((node) => {
-                     const position = layout.positions.get(node.id);
-                     if (!position) return null;
-                     const state = layout.stateById.get(node.id)!;
-                     const highlighted =
-                        hoveredNodeId !== null
-                           ? hoveredPath.has(node.id)
-                           : isObjectiveMode ||
-                             !hasActivePath ||
-                             layout.activePath.has(node.id) ||
-                             state === 'ready';
+                     <svg
+                        className="pointer-events-none absolute inset-0"
+                        width={layout.width}
+                        height={layout.height}
+                        aria-hidden="true"
+                     >
+                        {layout.edges.map((edge) => {
+                           const source = layout.positions.get(edge.source);
+                           const target = layout.positions.get(edge.target);
+                           if (!source || !target) return null;
+                           const edgeKey = graphEdgeKey(edge.source, edge.target);
+                           const sourcePort = sourcePortByEdge.get(edgeKey) ?? {
+                              index: 0,
+                              count: 1,
+                           };
+                           const targetPort = targetPortByEdge.get(edgeKey) ?? {
+                              index: 0,
+                              count: 1,
+                           };
+                           const startX = source.x + CARD_WIDTH;
+                           const startY = portY(source.y, sourcePort.index, sourcePort.count);
+                           const endX = target.x;
+                           const endY = portY(target.y, targetPort.index, targetPort.count);
+                           const sourceColumn = layout.columnByNodeId.get(edge.source);
+                           const targetColumn = layout.columnByNodeId.get(edge.target);
+                           if (sourceColumn === undefined || targetColumn === undefined)
+                              return null;
+                           const isAdjacent = targetColumn - sourceColumn === 1;
+                           const control = Math.max(36, (endX - startX) / 2);
+                           const exceptionalLaneIndex =
+                              layout.exceptionalEdgeLaneByKey.get(edgeKey) ?? 0;
+                           const path = isAdjacent
+                              ? `M ${startX} ${startY} C ${startX + control} ${startY}, ${endX - control} ${endY}, ${endX} ${endY}`
+                              : targetColumn > sourceColumn
+                                ? createLocalEdgeRoute({
+                                     sourceColumn,
+                                     targetColumn,
+                                     startX,
+                                     startY,
+                                     endX,
+                                     endY,
+                                     layers: layout.orderedLayers,
+                                     positions: layout.positions,
+                                     rowGap: layout.rowGap,
+                                     corridorUsage,
+                                  })
+                                : roundedOrthogonalPath([
+                                     { x: startX, y: startY },
+                                     { x: startX + COLUMN_GAP / 2, y: startY },
+                                     {
+                                        x: startX + COLUMN_GAP / 2,
+                                        y: HEADING_HEIGHT + 8 + exceptionalLaneIndex * 10,
+                                     },
+                                     {
+                                        x: endX - COLUMN_GAP / 2,
+                                        y: HEADING_HEIGHT + 8 + exceptionalLaneIndex * 10,
+                                     },
+                                     { x: endX - COLUMN_GAP / 2, y: endY },
+                                     { x: endX, y: endY },
+                                  ]);
+                           const highlighted =
+                              isObjectiveMode ||
+                              (hasActivePath &&
+                                 layout.activePath.has(edge.source) &&
+                                 layout.activePath.has(edge.target));
+                           const hoverHighlighted =
+                              hoveredNodeId !== null &&
+                              hoveredPath.has(edge.source) &&
+                              hoveredPath.has(edge.target);
+                           const sourceState = layout.stateById.get(edge.source) ?? 'blocked';
 
-                     return (
-                        <div
-                           key={node.id}
-                           style={{
-                              position: 'absolute',
-                              width: CARD_WIDTH,
-                              height: CARD_HEIGHT,
-                              left: position.x,
-                              top: position.y,
-                           }}
-                           onMouseEnter={() => setHoveredNodeId(node.id)}
-                           onMouseLeave={() => setHoveredNodeId(null)}
-                           onFocusCapture={() => setHoveredNodeId(node.id)}
-                           onBlurCapture={() => setHoveredNodeId(null)}
-                        >
-                           <GraphCard
-                              node={node}
-                              state={state}
-                              objective={layout.objectiveIds.includes(node.id)}
-                              highlighted={highlighted}
-                              selected={selectedIssueIdentifier === node.identifier}
-                              blockerCount={layout.incoming.get(node.id)?.length ?? 0}
-                              unlockCount={layout.outgoing.get(node.id)?.length ?? 0}
-                              onSelectIssue={onSelectIssue}
-                           />
-                        </div>
-                     );
-                  })}
+                           return (
+                              <path
+                                 key={edgeKey}
+                                 d={path}
+                                 fill="none"
+                                 stroke="currentColor"
+                                 strokeWidth={hoverHighlighted ? 2 : highlighted ? 1.75 : 0.9}
+                                 className={cn(
+                                    'transition-opacity',
+                                    edgeColorClass(sourceState, objectiveIdSet.has(edge.source)),
+                                    hoverHighlighted
+                                       ? 'opacity-85'
+                                       : hoveredNodeId
+                                         ? 'opacity-10'
+                                         : highlighted
+                                           ? 'opacity-60'
+                                           : 'opacity-35'
+                                 )}
+                              />
+                           );
+                        })}
+                     </svg>
+
+                     {layout.connectedNodes.map((node) => {
+                        const position = layout.positions.get(node.id);
+                        if (!position) return null;
+                        const state = layout.stateById.get(node.id)!;
+                        const highlighted =
+                           hoveredNodeId !== null
+                              ? hoveredPath.has(node.id)
+                              : isObjectiveMode ||
+                                !hasActivePath ||
+                                layout.activePath.has(node.id) ||
+                                state === 'ready';
+
+                        return (
+                           <div
+                              key={node.id}
+                              style={{
+                                 position: 'absolute',
+                                 width: CARD_WIDTH,
+                                 height: CARD_HEIGHT,
+                                 left: position.x,
+                                 top: position.y,
+                              }}
+                              onMouseEnter={() => setHoveredNodeId(node.id)}
+                              onMouseLeave={() => setHoveredNodeId(null)}
+                              onFocusCapture={() => setHoveredNodeId(node.id)}
+                              onBlurCapture={() => setHoveredNodeId(null)}
+                           >
+                              <GraphCard
+                                 node={node}
+                                 state={state}
+                                 objective={objectiveIdSet.has(node.id)}
+                                 highlighted={highlighted}
+                                 selected={selectedIssueIdentifier === node.identifier}
+                                 blockerCount={layout.incoming.get(node.id)?.length ?? 0}
+                                 unlockCount={layout.outgoing.get(node.id)?.length ?? 0}
+                                 onSelectIssue={onSelectIssue}
+                              />
+                           </div>
+                        );
+                     })}
+                  </div>
                </div>
 
                {layout.independentIssues.length > 0 && (
@@ -1140,6 +1469,47 @@ export function IssueDependencyGraph({
                      + arrastrar
                   </>
                )}
+            </div>
+
+            <div className="absolute bottom-5 right-5 z-20 inline-flex h-8 items-center overflow-hidden rounded-lg border bg-container/90 shadow-sm backdrop-blur">
+               <button
+                  type="button"
+                  className="flex size-8 items-center justify-center text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-35"
+                  onClick={zoom.zoomOut}
+                  disabled={zoom.scale <= MIN_ZOOM}
+                  title="Alejar"
+                  aria-label="Alejar el grafo"
+               >
+                  <Minus className="size-3.5" />
+               </button>
+               <button
+                  type="button"
+                  className="h-8 min-w-12 border-x px-2 text-[10px] font-medium tabular-nums text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  onClick={zoom.reset}
+                  title="Restablecer al 100 %"
+                  aria-label={`Zoom ${Math.round(zoom.scale * 100)} %. Restablecer al 100 %`}
+               >
+                  {Math.round(zoom.scale * 100)}%
+               </button>
+               <button
+                  type="button"
+                  className="flex size-8 items-center justify-center text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-35"
+                  onClick={zoom.zoomIn}
+                  disabled={zoom.scale >= MAX_ZOOM}
+                  title="Acercar"
+                  aria-label="Acercar el grafo"
+               >
+                  <Plus className="size-3.5" />
+               </button>
+               <button
+                  type="button"
+                  className="flex size-8 items-center justify-center border-l text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  onClick={() => zoom.fit(layout.width, layout.height)}
+                  title="Ajustar a pantalla"
+                  aria-label="Ajustar el grafo a la pantalla"
+               >
+                  <Maximize2 className="size-3.5" />
+               </button>
             </div>
          </div>
       </div>
