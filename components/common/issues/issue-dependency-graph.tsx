@@ -79,6 +79,23 @@ const ZOOM_STEP = 0.1;
 
 const graphEdgeKey = (sourceId: string, targetId: string) => `${sourceId}:${targetId}`;
 
+function graphDataKey(issues: Issue[]) {
+   return issues
+      .map((issue) =>
+         [
+            issue.id,
+            issue.identifier,
+            issue.title,
+            issue.status.id,
+            issue.priority.id,
+            issue.rank,
+            issue.blockedBy.map((relation) => `${relation.id}:${relation.status}`).join(','),
+            issue.blocks.map((relation) => `${relation.id}:${relation.status}`).join(','),
+         ].join('|')
+      )
+      .join('||');
+}
+
 function connectionOrder(
    nodeId: string,
    adjacency: Map<string, string[]>,
@@ -878,12 +895,12 @@ function GraphCard({
          data-graph-node={node.identifier}
          className={cn(
             'relative flex h-full w-full flex-col overflow-hidden rounded-xl border bg-card p-3 shadow-sm transition-all',
+            objective && 'border-orange-500/55 bg-orange-500/[0.055] ring-1 ring-orange-500/15',
             state === 'active' &&
                'border-emerald-500/55 bg-emerald-500/[0.07] shadow-emerald-500/10',
             state === 'ready' && 'border-sky-500/35 bg-sky-500/[0.045]',
             state === 'blocked' && 'border-border/70',
             state === 'completed' && 'border-violet-500/50 bg-violet-500/[0.035]',
-            objective && 'border-orange-500/55 bg-orange-500/[0.055] ring-1 ring-orange-500/15',
             selected && 'ring-2 ring-primary/45',
             !highlighted && 'opacity-50 grayscale-[0.25]'
          )}
@@ -1103,9 +1120,10 @@ export function IssueDependencyGraph({
       () => issues.filter((issue) => selectedObjectiveIds.includes(issue.id)),
       [issues, selectedObjectiveIds]
    );
+   const currentGraphDataKey = graphDataKey(issues);
    const layout = useMemo(
       () => createGraphLayout(issues, selectedObjectiveIds),
-      [issues, selectedObjectiveIds]
+      [currentGraphDataKey, issues, selectedObjectiveIds]
    );
    const zoom = useGraphZoom(pan.viewportRef, layout.width, layout.height);
    const hasActivePath = layout.activeIds.length > 0;
