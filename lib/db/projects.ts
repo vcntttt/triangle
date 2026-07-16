@@ -68,6 +68,7 @@ export interface ProjectsPageData {
 
 export interface ProjectUpdatesPageData {
    updates: ProjectTimelineUpdate[];
+   areas: import('@/lib/models').ProjectTimelineArea[];
    databaseError: string | null;
    isConnected: boolean;
 }
@@ -99,6 +100,7 @@ export interface CreateProjectUpdateInput {
    projectId: string;
    health: ProjectHealth;
    body: string;
+   areaMentions?: Array<{ areaId: string; start: number; end: number }>;
 }
 
 export interface SaveProjectAreaInput {

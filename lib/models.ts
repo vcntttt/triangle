@@ -93,8 +93,17 @@ export interface ProjectUpdate {
    projectId: string;
    health: Health['id'];
    body: string;
+   areaMentions: ProjectUpdateAreaMention[];
    createdAt: string;
    updatedAt: string;
+}
+
+export interface ProjectUpdateAreaMention {
+   areaId: string;
+   start: number;
+   end: number;
+   name: string;
+   color: string;
 }
 
 export interface ProjectTimelineUpdate extends ProjectUpdate {
@@ -103,6 +112,10 @@ export interface ProjectTimelineUpdate extends ProjectUpdate {
       name: string;
       slug: string;
    };
+}
+
+export interface ProjectTimelineArea extends ProjectArea {
+   projectName: string;
 }
 
 export interface Issue {

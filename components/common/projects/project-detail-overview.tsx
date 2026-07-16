@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { CreateProjectUpdateDialog } from '@/components/common/projects/create-project-update-dialog';
+import { ProjectUpdateMentionText } from '@/components/common/projects/project-update-mention-text';
 import { ProjectIcon } from '@/components/common/projects/project-icon';
 import { ProjectIconPicker } from '@/components/common/projects/project-icon-picker';
 import { ProjectAreasSection } from '@/components/common/projects/project-areas-section';
@@ -591,7 +592,10 @@ function LatestUpdateCard({
                   {latestUpdateDate ? <span>{latestUpdateDate}</span> : null}
                </div>
                <p className="mt-5 whitespace-pre-wrap text-[15px] leading-7">
-                  {project.latestUpdate.body}
+                  <ProjectUpdateMentionText
+                     body={project.latestUpdate.body}
+                     mentions={project.latestUpdate.areaMentions}
+                  />
                </p>
             </div>
          ) : (

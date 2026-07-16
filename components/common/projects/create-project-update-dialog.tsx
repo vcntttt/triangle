@@ -1,7 +1,8 @@
 'use client';
 
-import { useId, useState } from 'react';
-import type { FormEvent, ReactNode } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
+import type { FormEvent, KeyboardEvent, ReactNode } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
 import { Activity, CheckIcon, CircleAlert, CircleHelp, Plus, Send } from 'lucide-react';
 import { toast } from 'sonner';
@@ -29,6 +30,13 @@ import type { Health, Project, ProjectUpdate } from '@/lib/models';
 import { health as healthOptions } from '@/lib/ui-catalog';
 import { cn } from '@/lib/utils';
 import { useProjectCommands } from '@/src/data/projects';
+import { projectAreasQuery } from '@/src/data/projects';
+import {
+   adjustAreaMentions,
+   getAreaMentionContext,
+   insertAreaMention,
+   trimUpdateBody,
+} from '@/lib/project-update-mentions';
 import { ProjectIconGlyph } from './project-icon';
 
 interface CreateProjectUpdateDialogProps {
@@ -58,6 +66,12 @@ export function CreateProjectUpdateDialog({
       project?.health.id === 'no-update' || !project ? 'on-track' : project.health.id
    );
    const [body, setBody] = useState('');
+   const [areaMentions, setAreaMentions] = useState<
+      Array<{ areaId: string; start: number; end: number }>
+   >([]);
+   const [cursor, setCursor] = useState(0);
+   const [activeAreaIndex, setActiveAreaIndex] = useState(0);
+   const textareaRef = useRef<HTMLTextAreaElement>(null);
    const [isSubmitting, setIsSubmitting] = useState(false);
    const { createProjectUpdate } = useProjectCommands();
 
@@ -65,6 +79,15 @@ export function CreateProjectUpdateDialog({
    const setIsOpen = onOpenChange ?? setInternalOpen;
    const [previousOpen, setPreviousOpen] = useState(isOpen);
    const selectedProject = project ?? projects.find((item) => item.id === projectId);
+   const targetProjectId = project?.id ?? projectId;
+   const { data: areas = [] } = useQuery({
+      ...projectAreasQuery(targetProjectId),
+      enabled: Boolean(targetProjectId),
+   });
+   const areaSuggestion = useMemo(
+      () => getAreaMentionContext(body, cursor, areas),
+      [areas, body, cursor]
+   );
    const selectedHealthOption =
       healthOptions.find((item) => item.id === selectedHealth) ?? healthOptions[0];
 
@@ -74,6 +97,8 @@ export function CreateProjectUpdateDialog({
          project?.health.id && project.health.id !== 'no-update' ? project.health.id : 'on-track'
       );
       setBody('');
+      setAreaMentions([]);
+      setCursor(0);
       setProjectPickerOpen(false);
       setHealthPickerOpen(false);
    };
@@ -97,15 +122,14 @@ export function CreateProjectUpdateDialog({
    const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
 
-      const trimmedBody = body.trim();
-      const targetProjectId = project?.id ?? projectId;
+      const trimmed = trimUpdateBody(body, areaMentions);
 
       if (!targetProjectId) {
          toast.error('Choose a project first');
          return;
       }
 
-      if (!trimmedBody) {
+      if (!trimmed.body) {
          toast.error('Project update cannot be empty');
          return;
       }
@@ -116,7 +140,8 @@ export function CreateProjectUpdateDialog({
          const update = await createProjectUpdate({
             projectId: targetProjectId,
             health: selectedHealth,
-            body: trimmedBody,
+            body: trimmed.body,
+            areaMentions: trimmed.mentions,
          });
 
          onProjectUpdate?.(targetProjectId, update);
@@ -128,6 +153,38 @@ export function CreateProjectUpdateDialog({
          toast.error('Project update could not be posted');
       } finally {
          setIsSubmitting(false);
+      }
+   };
+
+   const selectArea = (index: number) => {
+      if (!areaSuggestion) return;
+      const area = areaSuggestion.items[index];
+      if (!area) return;
+      const inserted = insertAreaMention(body, areaSuggestion.start, areaSuggestion.end, area);
+      setBody(inserted.body);
+      setAreaMentions((current) => [...current, inserted.mention]);
+      setCursor(inserted.cursor);
+      setActiveAreaIndex(0);
+      requestAnimationFrame(() => {
+         textareaRef.current?.focus();
+         textareaRef.current?.setSelectionRange(inserted.cursor, inserted.cursor);
+      });
+   };
+
+   const handleBodyKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (!areaSuggestion) return;
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+         event.preventDefault();
+         const direction = event.key === 'ArrowDown' ? 1 : -1;
+         setActiveAreaIndex(
+            (current) =>
+               (current + direction + areaSuggestion.items.length) % areaSuggestion.items.length
+         );
+      } else if (event.key === 'Enter' || event.key === 'Tab') {
+         event.preventDefault();
+         selectArea(activeAreaIndex);
+      } else if (event.key === 'Escape') {
+         setCursor(-1);
       }
    };
 
@@ -143,17 +200,62 @@ export function CreateProjectUpdateDialog({
 
             <form onSubmit={handleSubmit}>
                <div className="px-4 pt-3 pb-4 space-y-4">
-                  <Textarea
-                     id="project-update-body"
-                     value={body}
-                     onChange={(event) => setBody(event.target.value)}
-                     placeholder={
-                        selectedProject
-                           ? `What's changed in ${selectedProject.name}?`
-                           : "What's changed?"
-                     }
-                     className="min-h-36 resize-none border-none px-0 text-base shadow-none focus-visible:ring-0"
-                  />
+                  <div className="relative">
+                     <Textarea
+                        ref={textareaRef}
+                        id="project-update-body"
+                        value={body}
+                        onChange={(event) => {
+                           const nextBody = event.target.value;
+                           setAreaMentions((current) =>
+                              adjustAreaMentions(body, nextBody, current)
+                           );
+                           setBody(nextBody);
+                           setCursor(event.target.selectionStart);
+                           setActiveAreaIndex(0);
+                        }}
+                        onSelect={(event) => setCursor(event.currentTarget.selectionStart)}
+                        onKeyDown={handleBodyKeyDown}
+                        placeholder={
+                           selectedProject
+                              ? `What's changed in ${selectedProject.name}?`
+                              : "What's changed?"
+                        }
+                        className="min-h-36 resize-none border-none px-0 text-base shadow-none focus-visible:ring-0"
+                     />
+                     {areaSuggestion ? (
+                        <div
+                           role="listbox"
+                           aria-label="Project areas"
+                           className="absolute inset-x-0 top-full z-50 mt-1 rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+                        >
+                           <div className="px-2 py-1 text-xs text-muted-foreground">Areas</div>
+                           {areaSuggestion.items.map((area, index) => (
+                              <button
+                                 key={area.id}
+                                 type="button"
+                                 role="option"
+                                 aria-selected={index === activeAreaIndex}
+                                 className={cn(
+                                    'flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm',
+                                    index === activeAreaIndex && 'bg-accent text-accent-foreground'
+                                 )}
+                                 onMouseDown={(event) => event.preventDefault()}
+                                 onClick={() => selectArea(index)}
+                              >
+                                 <span
+                                    className="size-2.5 rounded-full"
+                                    style={{ backgroundColor: area.color }}
+                                 />
+                                 <span className="flex-1 truncate">{area.name}</span>
+                                 <span className="text-xs text-muted-foreground">
+                                    @{area.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}
+                                 </span>
+                              </button>
+                           ))}
+                        </div>
+                     ) : null}
+                  </div>
 
                   <div className="flex flex-wrap items-center gap-1.5">
                      {project ? (
@@ -197,6 +299,7 @@ export function CreateProjectUpdateDialog({
                                              value={`${item.name} ${item.id}`}
                                              onSelect={() => {
                                                 setProjectId(item.id);
+                                                setAreaMentions([]);
                                                 setProjectPickerOpen(false);
                                              }}
                                              className="flex items-center justify-between"

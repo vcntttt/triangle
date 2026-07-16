@@ -9,17 +9,26 @@ import {
    CircleAlert,
    CircleHelp,
    MoreHorizontal,
+   Layers2,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { viewerProfileToUser } from '@/lib/current-user';
-import type { Health, ProjectTimelineUpdate } from '@/lib/models';
+import type { Health, ProjectTimelineArea, ProjectTimelineUpdate } from '@/lib/models';
 import { cn } from '@/lib/utils';
 import { useViewerProfile } from '@/src/data/viewer';
 import { CreateProjectUpdateButton } from './create-project-update-dialog';
+import { ProjectUpdateMentionText } from './project-update-mention-text';
+import {
+   DropdownMenu,
+   DropdownMenuCheckboxItem,
+   DropdownMenuContent,
+   DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface ProjectUpdatesTimelineProps {
    updates: ProjectTimelineUpdate[];
+   areas: ProjectTimelineArea[];
    databaseError: string | null;
    isConnected: boolean;
 }
@@ -83,19 +92,33 @@ function getRelativeDate(value: string) {
 
 export function ProjectUpdatesTimeline({
    updates,
+   areas,
    databaseError,
    isConnected,
 }: ProjectUpdatesTimelineProps) {
    const viewer = viewerProfileToUser(useViewerProfile());
    const [activeFilter, setActiveFilter] = useState<TimelineFilter>('recent');
+   const [selectedAreaIds, setSelectedAreaIds] = useState<string[]>([]);
+   const selectedAreaIdSet = useMemo(() => new Set(selectedAreaIds), [selectedAreaIds]);
+   const availableAreas = useMemo(
+      () =>
+         areas.toSorted(
+            (a, b) => a.projectName.localeCompare(b.projectName) || a.name.localeCompare(b.name)
+         ),
+      [areas]
+   );
 
    const visibleUpdates = useMemo(() => {
-      if (activeFilter === 'popular') {
-         return updates.toSorted((a, b) => a.project.name.localeCompare(b.project.name));
-      }
-
-      return updates;
-   }, [activeFilter, updates]);
+      const filtered =
+         selectedAreaIdSet.size === 0
+            ? updates
+            : updates.filter((update) =>
+                 update.areaMentions.some((mention) => selectedAreaIdSet.has(mention.areaId))
+              );
+      return activeFilter === 'popular'
+         ? filtered.toSorted((a, b) => a.project.name.localeCompare(b.project.name))
+         : filtered;
+   }, [activeFilter, selectedAreaIdSet, updates]);
 
    if (databaseError) {
       return (
@@ -131,6 +154,48 @@ export function ProjectUpdatesTimeline({
                   </Button>
                ))}
                <Activity className="ml-2 size-3.5 text-muted-foreground" />
+               {availableAreas.length > 0 ? (
+                  <DropdownMenu>
+                     <DropdownMenuTrigger asChild>
+                        <Button
+                           variant={selectedAreaIds.length > 0 ? 'secondary' : 'ghost'}
+                           size="sm"
+                           className="ml-1 h-7 rounded-full px-3 text-sm"
+                        >
+                           <Layers2 className="size-3.5" />
+                           Areas
+                           {selectedAreaIds.length > 0 ? ` ${selectedAreaIds.length}` : null}
+                        </Button>
+                     </DropdownMenuTrigger>
+                     <DropdownMenuContent className="w-64" align="start">
+                        {availableAreas.map((area) => {
+                           const selected = selectedAreaIdSet.has(area.id);
+                           return (
+                              <DropdownMenuCheckboxItem
+                                 key={area.id}
+                                 checked={selected}
+                                 onCheckedChange={() =>
+                                    setSelectedAreaIds((current) =>
+                                       selected
+                                          ? current.filter((id) => id !== area.id)
+                                          : [...current, area.id]
+                                    )
+                                 }
+                              >
+                                 <span
+                                    className="size-2.5 rounded-full"
+                                    style={{ backgroundColor: area.color }}
+                                 />
+                                 <span className="min-w-0 flex-1 truncate">{area.name}</span>
+                                 <span className="truncate text-xs text-muted-foreground">
+                                    {area.projectName}
+                                 </span>
+                              </DropdownMenuCheckboxItem>
+                           );
+                        })}
+                     </DropdownMenuContent>
+                  </DropdownMenu>
+               ) : null}
             </div>
          </div>
 
@@ -192,7 +257,10 @@ export function ProjectUpdatesTimeline({
                            </div>
 
                            <p className="mt-5 max-w-3xl whitespace-pre-wrap text-[15px] leading-6 text-foreground">
-                              {update.body}
+                              <ProjectUpdateMentionText
+                                 body={update.body}
+                                 mentions={update.areaMentions}
+                              />
                            </p>
                         </div>
                      </article>

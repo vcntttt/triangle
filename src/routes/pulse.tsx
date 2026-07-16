@@ -20,12 +20,13 @@ export const Route = createFileRoute('/pulse')({
 
 function PulsePage() {
    const { data } = useSuspenseQuery(projectUpdatesPageQuery());
-   const { updates, databaseError, isConnected } = data;
+   const { updates, areas, databaseError, isConnected } = data;
 
    return (
       <MainLayout headersNumber={1}>
          <ProjectUpdatesTimeline
             updates={updates}
+            areas={areas}
             databaseError={databaseError}
             isConnected={isConnected}
          />

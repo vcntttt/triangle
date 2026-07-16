@@ -61,6 +61,17 @@ export default defineSchema({
       projectId: v.id('projects'),
       health: v.string(),
       body: v.string(),
+      areaMentions: v.optional(
+         v.array(
+            v.object({
+               areaId: v.id('projectAreas'),
+               start: v.number(),
+               end: v.number(),
+               name: v.string(),
+               color: v.string(),
+            })
+         )
+      ),
       createdAt: v.number(),
       updatedAt: v.number(),
    })

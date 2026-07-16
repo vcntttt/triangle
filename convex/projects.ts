@@ -82,7 +82,11 @@ function toProjectHealth(value: string): ProjectHealth {
       : 'no-update';
 }
 
-function serializeProject(project: Doc<'projects'>, latestUpdate: Doc<'projectUpdates'> | null) {
+async function serializeProject(
+   ctx: QueryCtx | MutationCtx,
+   project: Doc<'projects'>,
+   latestUpdate: Doc<'projectUpdates'> | null
+) {
    return {
       id: project._id,
       name: project.name,
@@ -93,18 +97,25 @@ function serializeProject(project: Doc<'projects'>, latestUpdate: Doc<'projectUp
       iconValue: project.iconValue,
       status: project.status,
       priority: project.priority,
-      latestUpdate: latestUpdate ? serializeProjectUpdate(latestUpdate) : null,
+      latestUpdate: latestUpdate ? await serializeProjectUpdate(ctx, latestUpdate) : null,
       createdAt: nowIso(project.createdAt),
       updatedAt: nowIso(project.updatedAt),
    };
 }
 
-function serializeProjectUpdate(update: Doc<'projectUpdates'>) {
+async function serializeProjectUpdate(ctx: QueryCtx | MutationCtx, update: Doc<'projectUpdates'>) {
+   const areaMentions = await Promise.all(
+      (update.areaMentions ?? []).map(async (mention) => {
+         const area = await ctx.db.get(mention.areaId);
+         return area ? { ...mention, name: area.name, color: area.color } : mention;
+      })
+   );
    return {
       id: update._id,
       projectId: update.projectId,
       health: toProjectHealth(update.health),
       body: update.body,
+      areaMentions,
       createdAt: nowIso(update.createdAt),
       updatedAt: nowIso(update.updatedAt),
    };
@@ -335,7 +346,7 @@ async function listProjects(ctx: QueryCtx | MutationCtx) {
 
    return Promise.all(
       projects.map(async (project) =>
-         serializeProject(project, await getLatestProjectUpdate(ctx, project._id))
+         serializeProject(ctx, project, await getLatestProjectUpdate(ctx, project._id))
       )
    );
 }
@@ -356,7 +367,7 @@ async function listProjectAreas(ctx: QueryCtx | MutationCtx, projectId: Id<'proj
 async function getProjectById(ctx: QueryCtx | MutationCtx, projectId: Id<'projects'>) {
    const project = await ctx.db.get(projectId);
    if (!project) return null;
-   return serializeProject(project, await getLatestProjectUpdate(ctx, projectId));
+   return serializeProject(ctx, project, await getLatestProjectUpdate(ctx, projectId));
 }
 
 async function findProjectBySlugOrId(ctx: QueryCtx, slugOrId: string) {
@@ -529,7 +540,7 @@ export const bySlug = query({
       const latestUpdate = project ? await getLatestProjectUpdate(ctx, project._id) : null;
 
       return {
-         project: project ? serializeProject(project, latestUpdate) : null,
+         project: project ? await serializeProject(ctx, project, latestUpdate) : null,
          statusOptions,
          priorityOptions,
          databaseError: null,
@@ -555,7 +566,7 @@ export const detail = query({
          : [null, [], []];
 
       return {
-         project: project ? serializeProject(project, latestUpdate) : null,
+         project: project ? await serializeProject(ctx, project, latestUpdate) : null,
          statusOptions,
          priorityOptions,
          areas,
@@ -576,11 +587,10 @@ export const areas = query({
 export const updatesPage = query({
    args: {},
    handler: async (ctx) => {
-      const updates = await ctx.db
-         .query('projectUpdates')
-         .withIndex('by_createdAt')
-         .order('desc')
-         .collect();
+      const [updates, areas] = await Promise.all([
+         ctx.db.query('projectUpdates').withIndex('by_createdAt').order('desc').collect(),
+         ctx.db.query('projectAreas').collect(),
+      ]);
 
       return {
          updates: (
@@ -590,7 +600,7 @@ export const updatesPage = query({
                   if (!project) return null;
 
                   return {
-                     ...serializeProjectUpdate(update),
+                     ...(await serializeProjectUpdate(ctx, update)),
                      project: {
                         id: project._id,
                         name: project.name,
@@ -600,6 +610,16 @@ export const updatesPage = query({
                })
             )
          ).filter((update) => update !== null),
+         areas: (
+            await Promise.all(
+               areas.map(async (area) => {
+                  const project = await ctx.db.get(area.projectId);
+                  return project
+                     ? { ...serializeProjectArea(area), projectName: project.name }
+                     : null;
+               })
+            )
+         ).filter((area) => area !== null),
          databaseError: null,
          isConnected: true,
       };
@@ -779,6 +799,9 @@ export const createUpdate = mutation({
       projectId: v.string(),
       health: v.string(),
       body: v.string(),
+      areaMentions: v.optional(
+         v.array(v.object({ areaId: v.string(), start: v.number(), end: v.number() }))
+      ),
    },
    handler: async (ctx, input) => {
       const projectId = input.projectId as Id<'projects'>;
@@ -787,17 +810,42 @@ export const createUpdate = mutation({
          throw new Error('Project does not exist.');
       }
 
+      const areaMentions = await Promise.all(
+         (input.areaMentions ?? []).map(async (mention) => {
+            const area = await ctx.db.get(mention.areaId as Id<'projectAreas'>);
+            if (!area || area.projectId !== projectId) {
+               throw new Error('Mentioned area does not belong to this project.');
+            }
+            if (
+               mention.start < 0 ||
+               mention.end <= mention.start ||
+               mention.end > input.body.length ||
+               input.body.slice(mention.start, mention.end) !== `@${toOptionId(area.name)}`
+            ) {
+               throw new Error('Area mention has an invalid text range.');
+            }
+            return {
+               areaId: area._id,
+               start: mention.start,
+               end: mention.end,
+               name: area.name,
+               color: area.color,
+            };
+         })
+      );
+
       const now = Date.now();
       const updateId = await ctx.db.insert('projectUpdates', {
          projectId,
          health: input.health,
          body: input.body,
+         areaMentions,
          createdAt: now,
          updatedAt: now,
       });
       await ctx.db.patch(projectId, { updatedAt: now });
 
-      return serializeProjectUpdate((await ctx.db.get(updateId))!);
+      return serializeProjectUpdate(ctx, (await ctx.db.get(updateId))!);
    },
 });
 
