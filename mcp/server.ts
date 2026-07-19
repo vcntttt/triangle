@@ -4,6 +4,7 @@ import { ConvexHttpClient } from 'convex/browser';
 import { z } from 'zod';
 
 import { api } from '../convex/_generated/api';
+import { createExecutionPath } from './execution-path';
 
 function result(value: unknown) {
    return {
@@ -38,14 +39,20 @@ export function createTriangleMcpServer(
       logger: false,
       skipConvexDeploymentUrlCheck: true,
    });
-   const server = new McpServer({ name: 'triangle', version: '0.2.0' });
+   const server = new McpServer(
+      { name: 'triangle', version: '0.3.0' },
+      {
+         instructions:
+            "When examining or working on one or more issues, call triangle_get_execution_path first with those issues as objectiveIdentifiers. It returns the complete prerequisite path, work that is ready now, blockers, and recommended parallel stages. Objectives passed to the tool are ephemeral agent context and never change the user's personally selected graph objectives or any database record.",
+      }
+   );
 
    server.registerTool(
       'triangle_workspace',
       {
          title: 'Triangle workspace',
          description:
-            'Return issue statuses, project statuses and priorities, projects, labels, and recent project updates. Use this before creating or changing records when you need valid option IDs.',
+            'Return issue statuses, project statuses and priorities, projects, labels, and recent project updates. Use this before creating or changing records when you need valid option IDs. To examine or execute issues, use triangle_get_execution_path instead.',
          annotations: { readOnlyHint: true },
       },
       () =>
@@ -79,11 +86,41 @@ export function createTriangleMcpServer(
    );
 
    server.registerTool(
+      'triangle_get_execution_path',
+      {
+         title: 'Get Triangle execution path',
+         description:
+            "Start here whenever you examine or work on one or more issues. Treat objectiveIdentifiers as this agent's ephemeral goals. Returns every transitive prerequisite, ready work, direct blockers, essential issue context, and parallel execution stages without reading or changing the user's personal graph objectives or any database record.",
+         inputSchema: {
+            objectiveIdentifiers: z
+               .array(z.string().min(1))
+               .min(1)
+               .describe('Human-readable issue identifiers that this agent wants to achieve.'),
+            includeCompleted: z
+               .boolean()
+               .optional()
+               .describe('Include completed prerequisites in issue details. Defaults to false.'),
+         },
+         annotations: { readOnlyHint: true, idempotentHint: true },
+      },
+      ({ objectiveIdentifiers, includeCompleted }) =>
+         run(async () => {
+            const page = await convex.query(api.issues.page, {});
+            return createExecutionPath(
+               page.issues,
+               page.statusOptions,
+               objectiveIdentifiers,
+               includeCompleted
+            );
+         })
+   );
+
+   server.registerTool(
       'triangle_list_issues',
       {
          title: 'List Triangle issues',
          description:
-            'Search issues with combinable project, label, status, age, and activity filters. Date boundaries are ISO 8601 timestamps.',
+            'Search issues with combinable project, label, status, age, and activity filters. Date boundaries are ISO 8601 timestamps. After choosing issues to examine or execute, pass their identifiers to triangle_get_execution_path.',
          inputSchema: {
             projectId: z.string().optional(),
             labelIds: z.array(z.string()).optional(),
@@ -102,7 +139,8 @@ export function createTriangleMcpServer(
       'triangle_get_issue',
       {
          title: 'Get a Triangle issue',
-         description: 'Get an issue by its human-readable identifier, such as CIRC-12 or APP-3.',
+         description:
+            'Get the full history of one issue by its human-readable identifier, such as CIRC-12 or APP-3. For execution context and prerequisites, call triangle_get_execution_path first.',
          inputSchema: { identifier: z.string().min(1) },
          annotations: { readOnlyHint: true },
       },
