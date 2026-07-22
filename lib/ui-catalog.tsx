@@ -199,6 +199,20 @@ export const ArchivedIcon: React.FC = () => {
    );
 };
 
+export const CanceledIcon: React.FC = () => {
+   return (
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+         <circle cx="7" cy="7" r="6" stroke="#ef4444" strokeWidth="2" />
+         <path
+            d="M4.75 4.75L9.25 9.25M9.25 4.75L4.75 9.25"
+            stroke="#ef4444"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+         />
+      </svg>
+   );
+};
+
 interface IconProps extends React.SVGProps<SVGSVGElement> {
    className?: string;
 }

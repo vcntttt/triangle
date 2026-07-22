@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, use, useMemo } from 'react';
-import { archivedStatus, status as baseStatus } from '@/lib/ui-catalog';
+import { archivedStatus, CanceledIcon, status as baseStatus } from '@/lib/ui-catalog';
 import type { ProjectOptionLike } from '@/lib/projects-presentation';
 import type { Status } from '@/lib/models';
 
@@ -31,12 +31,20 @@ function resolveStatusIcon(statusId: string, statusName: string): Status['icon']
    }
 
    const normalizedId = toStatusKey(statusId);
+   if (normalizedId === 'canceled' || normalizedId === 'cancelled') {
+      return CanceledIcon;
+   }
+
    const aliasedId = statusIconAliases[normalizedId];
    if (aliasedId && baseStatusById[aliasedId]) {
       return baseStatusById[aliasedId].icon;
    }
 
    const normalizedName = toStatusKey(statusName);
+   if (normalizedName === 'canceled' || normalizedName === 'cancelled') {
+      return CanceledIcon;
+   }
+
    if (baseStatusById[normalizedName]) {
       return baseStatusById[normalizedName].icon;
    }

@@ -7,6 +7,8 @@ import { listOptions } from './projects';
 
 const nowIso = (value: number) => new Date(value).toISOString();
 const toNullable = <T>(value: T | undefined): T | null => value ?? null;
+const resolvedIssueStatusIds = new Set(['completed', 'archived', 'canceled', 'cancelled']);
+const isResolvedIssueStatus = (statusId: string) => resolvedIssueStatusIds.has(statusId);
 
 async function listStatusOptions(ctx: QueryCtx) {
    const rows = await ctx.db.query('issueStatuses').withIndex('by_position').collect();
@@ -212,7 +214,7 @@ async function assertCanEnterStatus(ctx: MutationCtx, issueId: Id<'issues'>, sta
    const blockers = await Promise.all(
       relations.map((relation) => ctx.db.get(relation.blockerIssueId))
    );
-   const pending = blockers.filter((issue) => issue && issue.status !== 'completed');
+   const pending = blockers.filter((issue) => issue && !isResolvedIssueStatus(issue.status));
    if (pending.length > 0) {
       throw new Error(
          `Issue is blocked by: ${pending.map((issue) => issue!.identifier).join(', ')}. Complete every blocker before starting this issue.`
@@ -735,7 +737,7 @@ export const setStatus = mutation({
 
          await Promise.all(
             children.map(async (child) => {
-               if (child.status === 'completed' || child.status === 'archived') return;
+               if (isResolvedIssueStatus(child.status)) return;
                await transitionIssueStatus(ctx, child, status, now);
             })
          );
@@ -939,7 +941,7 @@ export const addBlocker = mutation({
       ]);
       if (!blocked || !blocker) throw new Error('Issue not found.');
       if (
-         blocker.status !== 'completed' &&
+         !isResolvedIssueStatus(blocker.status) &&
          ['in-progress', 'technical-review', 'completed'].includes(blocked.status)
       )
          throw new Error('Cannot add an incomplete blocker to an issue that has already started.');

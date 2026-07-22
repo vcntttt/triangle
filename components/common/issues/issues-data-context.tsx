@@ -3,6 +3,7 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import type { Issue, LabelInterface, Priority, Project, Status, User } from '@/lib/models';
 import { archivedStatus } from '@/lib/ui-catalog';
+import { isResolvedIssueStatus } from '@/lib/issue-status';
 import { useIssueCommands } from '@/src/data/issues';
 
 interface FilterOptions {
@@ -50,7 +51,7 @@ interface IssuesDataContextValue {
 const IssuesDataContext = createContext<IssuesDataContextValue | null>(null);
 
 const isArchivedIssue = (issue: Issue) => issue.status.id === archivedStatus.id;
-const isDoneStatusId = (statusId: string) => statusId === 'completed' || statusId === 'archived';
+const isDoneStatusId = isResolvedIssueStatus;
 const sortByRankDesc = (issues: Issue[]) => issues.toSorted((a, b) => b.rank.localeCompare(a.rank));
 
 export function IssuesDataProvider({ issues, children }: { issues: Issue[]; children: ReactNode }) {

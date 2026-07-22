@@ -15,16 +15,16 @@ import {
 import { Button } from '@/components/ui/button';
 import type { Issue } from '@/lib/models';
 import { cn } from '@/lib/utils';
+import { isResolvedIssueStatus } from '@/lib/issue-status';
 
 type IssueRelation = Issue['blockedBy'][number];
 
-const isRelationComplete = (relation: IssueRelation) =>
-   relation.status === 'completed' || relation.status === 'archived';
+const isRelationComplete = (relation: IssueRelation) => isResolvedIssueStatus(relation.status);
 
 const isReadyToStartStatus = (statusId: string) => statusId === 'backlog' || statusId === 'to-do';
 
 export function IssueDependencyIndicator({ issue }: { issue: Issue }) {
-   if (issue.status.id === 'completed' || issue.status.id === 'archived') {
+   if (isResolvedIssueStatus(issue.status.id)) {
       return null;
    }
 

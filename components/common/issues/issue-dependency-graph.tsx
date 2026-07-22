@@ -29,6 +29,7 @@ import {
 } from 'react';
 import type { Issue } from '@/lib/models';
 import { sortIssuesByPriority } from '@/lib/ui-catalog';
+import { isResolvedIssueStatus } from '@/lib/issue-status';
 import { cn } from '@/lib/utils';
 import { useViewStore } from '@/store/view-store';
 import { Button } from '@/components/ui/button';
@@ -557,7 +558,7 @@ function useGraphZoom(
    };
 }
 
-const isCompletedStatus = (status: string) => status === 'completed' || status === 'archived';
+const isCompletedStatus = isResolvedIssueStatus;
 const isActiveStatus = (status: string) =>
    status === 'in-progress' || status === 'technical-review';
 
