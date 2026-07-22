@@ -142,6 +142,7 @@ export const IssueGrid = memo(function IssueGrid({
                      }
                   }}
                   role="button"
+                  aria-pressed={isBulkSelected}
                   tabIndex={0}
                   className={cn(
                      'w-full p-3 bg-background rounded-md shadow-xs border border-border/50 cursor-pointer',

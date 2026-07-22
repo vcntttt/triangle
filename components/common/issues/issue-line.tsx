@@ -76,6 +76,7 @@ export const IssueLine = memo(function IssueLine({
                      }
                   }}
                   role="button"
+                  aria-pressed={isBulkSelected}
                   tabIndex={0}
                   className={cn(
                      'w-full flex items-center justify-start min-h-10 px-6 py-1 hover:bg-sidebar/50 cursor-pointer border-l-2 border-transparent',

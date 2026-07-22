@@ -14,6 +14,8 @@ import { useQuery } from '@tanstack/react-query';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import type { ImperativePanelHandle } from 'react-resizable-panels';
+import { Crosshair } from 'lucide-react';
+import { toast } from 'sonner';
 import { IssueListItem } from '@/lib/db/issues';
 import { viewerProfileToUser } from '@/lib/current-user';
 import { toPresentationIssue } from '@/lib/issues-presentation';
@@ -30,6 +32,7 @@ import { useViewStore } from '@/store/view-store';
 import { useViewerProfile } from '@/src/data/viewer';
 import { projectStatusListQuery } from '@/src/data/projects';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
+import { Button } from '@/components/ui/button';
 import { CustomDragLayer } from './issue-grid';
 import { GroupIssues } from './group-issues';
 import { getIssueListRows } from './group-issue-rows';
@@ -278,7 +281,14 @@ function IssuesWorkspaceContent({
    const { issues, filterIssues } = useIssuesData();
    const { isSearchOpen, searchQuery } = useSearchStore();
    const { filters, hasActiveFilters } = useFilterStore();
-   const { hideCompletedIssues, showEmptyStatuses, viewType, listMode } = useViewStore();
+   const {
+      hideCompletedIssues,
+      showEmptyStatuses,
+      viewType,
+      listMode,
+      objectiveIssueIds,
+      setObjectiveIssueIds,
+   } = useViewStore();
    const isDesktopWorkspace = useIsDesktopWorkspace();
    const navigate = useNavigate();
    const [selectedIssueIds, setSelectedIssueIds] = useState<Set<string>>(() => new Set());
@@ -388,6 +398,17 @@ function IssuesWorkspaceContent({
 
       return selectedIssue ? [selectedIssue] : [];
    }, [issues, selectedIssue, selectedIssueIds]);
+   const markSelectedAsObjectives = useCallback(() => {
+      if (selectedIssueIds.size === 0) {
+         return;
+      }
+
+      const nextObjectiveIds = Array.from(new Set([...objectiveIssueIds, ...selectedIssueIds]));
+      setObjectiveIssueIds(nextObjectiveIds);
+      toast.success(
+         `${selectedIssueIds.size} ${selectedIssueIds.size === 1 ? 'issue marcado' : 'issues marcados'} como objetivo${selectedIssueIds.size === 1 ? '' : 's'} del grafo`
+      );
+   }, [objectiveIssueIds, selectedIssueIds, setObjectiveIssueIds]);
 
    useEffect(() => {
       setSelectedIssueIds((current) => {
@@ -461,6 +482,8 @@ function IssuesWorkspaceContent({
                         selectedIssueIds,
                         onSelectIssue: handleListSelectIssue,
                         onToggleIssueSelection: handleListToggleIssueSelection,
+                        onMarkSelectedAsObjectives: markSelectedAsObjectives,
+                        onClearIssueSelection: clearIssueSelection,
                      }}
                      onDeleteOrArchive={navigateToAdjacentIssue}
                      onClearSelectedIssue={handleClearSelectedIssue}
@@ -487,6 +510,8 @@ function IssuesWorkspaceContent({
                      selectedIssueIds={selectedIssueIds}
                      onSelectIssue={handleListSelectIssue}
                      onToggleIssueSelection={handleListToggleIssueSelection}
+                     onMarkSelectedAsObjectives={markSelectedAsObjectives}
+                     onClearIssueSelection={clearIssueSelection}
                   />
                )}
             </div>
@@ -597,6 +622,8 @@ interface IssuesListPanelProps {
    selectedIssueIds: Set<string>;
    onSelectIssue: (issue: Issue) => void;
    onToggleIssueSelection: (issue: Issue) => void;
+   onMarkSelectedAsObjectives: () => void;
+   onClearIssueSelection: () => void;
 }
 
 function DesktopIssuesWorkspace({
@@ -687,8 +714,10 @@ function IssuesListPanel({
    selectedIssueIds,
    onSelectIssue,
    onToggleIssueSelection,
+   onMarkSelectedAsObjectives,
+   onClearIssueSelection,
 }: IssuesListPanelProps) {
-   const { viewType, hideCompletedIssues } = useViewStore();
+   const { viewType, hideCompletedIssues, objectiveIssueIds } = useViewStore();
    const isViewTypeGrid = viewType === 'grid';
    const statuses = useIssuesStatuses();
    const completedStatus = statuses.find((status) => status.id === 'completed');
@@ -721,52 +750,85 @@ function IssuesListPanel({
    const showCompletedSummary = hideCompletedIssues && completedIssuesCount > 0 && completedStatus;
 
    return (
-      <div className="h-full w-full overflow-hidden border-r border-border/60 bg-container">
-         {isSearching ? (
-            <div className="px-6 pb-6 overflow-y-auto h-full">
-               <SearchIssues
-                  issues={searchIssues}
-                  selectedIssueIdentifier={selectedIssueIdentifier}
-                  selectedIssueIds={selectedIssueIds}
-                  onSelectIssue={onSelectIssue}
-                  onToggleIssueSelection={onToggleIssueSelection}
-               />
-            </div>
-         ) : viewType === 'graph' ? (
-            <IssueDependencyGraph
-               issues={displayIssues}
-               selectedIssueIdentifier={selectedIssueIdentifier}
-               onSelectIssue={onSelectIssue}
-            />
-         ) : (
-            <div className={cn('h-full overflow-auto', isViewTypeGrid && 'overflow-x-auto')}>
-               <div className={cn(isViewTypeGrid && 'flex h-full gap-3 px-2 py-2 min-w-max')}>
-                  {displayedStatuses.map((statusItem) => {
-                     const statusIssues = issuesByStatus[statusItem.id] ?? [];
-
-                     return (
-                        <GroupIssues
-                           key={statusItem.id}
-                           status={statusItem}
-                           issues={statusIssues}
-                           count={statusIssues.length}
-                           selectedIssueIdentifier={selectedIssueIdentifier}
-                           selectedIssueIds={selectedIssueIds}
-                           onSelectIssue={onSelectIssue}
-                           onToggleIssueSelection={onToggleIssueSelection}
-                        />
-                     );
-                  })}
-                  {showCompletedSummary && (
-                     <CompletedIssuesSummary
-                        color={completedStatus.color}
-                        count={completedIssuesCount}
-                        isGrid={isViewTypeGrid}
-                     />
-                  )}
+      <div className="flex h-full w-full flex-col overflow-hidden border-r border-border/60 bg-container">
+         {viewType === 'list' && selectedIssueIds.size > 0 && (
+            <div
+               className="flex shrink-0 items-center gap-3 border-b border-primary/15 bg-primary/[0.04] px-6 py-2"
+               role="status"
+               aria-live="polite"
+            >
+               <span className="text-xs font-medium">
+                  {selectedIssueIds.size}{' '}
+                  {selectedIssueIds.size === 1 ? 'issue seleccionado' : 'issues seleccionados'}
+               </span>
+               {objectiveIssueIds.some((issueId) => selectedIssueIds.has(issueId)) && (
+                  <span className="hidden text-[11px] text-muted-foreground sm:inline">
+                     Parte de la selección ya es objetivo
+                  </span>
+               )}
+               <div className="ml-auto flex items-center gap-1.5">
+                  <Button
+                     type="button"
+                     size="xs"
+                     variant="secondary"
+                     onClick={onMarkSelectedAsObjectives}
+                  >
+                     <Crosshair className="size-3.5 text-orange-500" />
+                     Marcar como objetivos
+                  </Button>
+                  <Button type="button" size="xs" variant="ghost" onClick={onClearIssueSelection}>
+                     Limpiar
+                  </Button>
                </div>
             </div>
          )}
+         <div className="min-h-0 flex-1">
+            {isSearching ? (
+               <div className="h-full overflow-y-auto px-6 pb-6">
+                  <SearchIssues
+                     issues={searchIssues}
+                     selectedIssueIdentifier={selectedIssueIdentifier}
+                     selectedIssueIds={selectedIssueIds}
+                     onSelectIssue={onSelectIssue}
+                     onToggleIssueSelection={onToggleIssueSelection}
+                  />
+               </div>
+            ) : viewType === 'graph' ? (
+               <IssueDependencyGraph
+                  issues={displayIssues}
+                  selectedIssueIdentifier={selectedIssueIdentifier}
+                  onSelectIssue={onSelectIssue}
+               />
+            ) : (
+               <div className={cn('h-full overflow-auto', isViewTypeGrid && 'overflow-x-auto')}>
+                  <div className={cn(isViewTypeGrid && 'flex h-full gap-3 px-2 py-2 min-w-max')}>
+                     {displayedStatuses.map((statusItem) => {
+                        const statusIssues = issuesByStatus[statusItem.id] ?? [];
+
+                        return (
+                           <GroupIssues
+                              key={statusItem.id}
+                              status={statusItem}
+                              issues={statusIssues}
+                              count={statusIssues.length}
+                              selectedIssueIdentifier={selectedIssueIdentifier}
+                              selectedIssueIds={selectedIssueIds}
+                              onSelectIssue={onSelectIssue}
+                              onToggleIssueSelection={onToggleIssueSelection}
+                           />
+                        );
+                     })}
+                     {showCompletedSummary && (
+                        <CompletedIssuesSummary
+                           color={completedStatus.color}
+                           count={completedIssuesCount}
+                           isGrid={isViewTypeGrid}
+                        />
+                     )}
+                  </div>
+               </div>
+            )}
+         </div>
       </div>
    );
 }
