@@ -46,7 +46,7 @@ export const toPresentationIssue = (
       createdAt: issue.createdAt,
       cycleId: '',
       project: issue.project
-         ? toPresentationProject(issue.project, undefined, undefined, viewer)
+         ? toPresentationProject(issue.project, undefined, undefined, undefined, viewer)
          : undefined,
       area: issue.area,
       parentIssueId: issue.parentIssueId,

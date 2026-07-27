@@ -18,6 +18,7 @@ import { CreateProjectUpdateDialog } from './create-project-update-dialog';
 import { DeleteProjectDialog } from './delete-project-dialog';
 import { PrioritySelector } from './priority-selector';
 import { StatusWithPercent } from './status-with-percent';
+import { AttentionSelector } from './attention-selector';
 import { health as allHealth } from '@/lib/ui-catalog';
 
 export const ProjectDragType = 'PROJECT';
@@ -28,9 +29,11 @@ interface ProjectBoardCardProps {
    visibleProperties: Record<ProjectDisplayProperty, boolean>;
    statusOptions: ProjectOptionLike[];
    priorityOptions: ProjectOptionLike[];
+   attentionOptions: ProjectOptionLike[];
    onOpenIssues: (project: Project) => void;
    onStatusChange: (projectId: string, statusId: string) => void;
    onPriorityChange: (projectId: string, priorityId: string) => void;
+   onAttentionChange: (projectId: string, attentionId: string) => void;
    onProjectUpdate: (projectId: string, update: ProjectUpdate) => void;
 }
 
@@ -50,9 +53,11 @@ export function ProjectBoardCard({
    visibleProperties,
    statusOptions,
    priorityOptions,
+   attentionOptions,
    onOpenIssues,
    onStatusChange,
    onPriorityChange,
+   onAttentionChange,
    onProjectUpdate,
 }: ProjectBoardCardProps) {
    const { pinnedProjectIds, togglePinnedProject } = usePinnedProjectsStore();
@@ -121,6 +126,16 @@ export function ProjectBoardCard({
                      />
                   ) : null}
 
+                  {groupBy !== 'attention' ? (
+                     <AttentionSelector
+                        attention={project.attention}
+                        options={attentionOptions}
+                        onAttentionChange={(attentionId) =>
+                           onAttentionChange(project.id, attentionId)
+                        }
+                     />
+                  ) : null}
+
                   {visibleProperties.health && (
                      <div className="inline-flex items-center gap-1.5 rounded-md border border-border/50 px-2 py-1 text-xs text-muted-foreground">
                         {(() => {
@@ -171,14 +186,17 @@ export function ProjectBoardCard({
             isPinned={isPinned}
             statusId={project.status.id}
             priorityId={project.priority.id}
+            attentionId={project.attention.id}
             statusOptions={statusOptions}
             priorityOptions={priorityOptions}
+            attentionOptions={attentionOptions}
             onOpenIssues={() => onOpenIssues(project)}
             onNewUpdate={() => setUpdateDialogOpen(true)}
             onTogglePin={() => togglePinnedProject(project.id)}
             onDelete={() => setDeleteDialogOpen(true)}
             onStatusChange={(statusId) => onStatusChange(project.id, statusId)}
             onPriorityChange={(priorityId) => onPriorityChange(project.id, priorityId)}
+            onAttentionChange={(attentionId) => onAttentionChange(project.id, attentionId)}
          />
          <CreateProjectUpdateDialog
             project={project}
@@ -226,6 +244,13 @@ export function ProjectBoardCardPreview({
                <div className="inline-flex items-center gap-1.5 rounded-md border border-border/50 px-2 py-1 text-xs">
                   <span>Priority</span>
                   <span className="text-muted-foreground">{project.priority.name}</span>
+               </div>
+            ) : null}
+
+            {groupBy !== 'attention' ? (
+               <div className="inline-flex items-center gap-1.5 rounded-md border border-border/50 px-2 py-1 text-xs">
+                  <span>Attention</span>
+                  <span className="text-muted-foreground">{project.attention.name}</span>
                </div>
             ) : null}
 

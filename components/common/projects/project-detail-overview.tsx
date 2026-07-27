@@ -14,6 +14,7 @@ import { ProjectAreasSection } from '@/components/common/projects/project-areas-
 import { ProjectIssuesTab } from '@/components/common/projects/project-issues-tab';
 import { PrioritySelector } from '@/components/common/projects/priority-selector';
 import { StatusWithPercent } from '@/components/common/projects/status-with-percent';
+import { AttentionSelector } from '@/components/common/projects/attention-selector';
 import { viewerProfileToUser } from '@/lib/current-user';
 import type { Issue, ProjectArea, ProjectIconConfig, ProjectUpdate } from '@/lib/models';
 import {
@@ -98,6 +99,7 @@ export function ProjectOverview({
    initialProject,
    statusOptions,
    priorityOptions,
+   attentionOptions,
    areas,
    issues,
    activeTab,
@@ -107,6 +109,7 @@ export function ProjectOverview({
    initialProject: ProjectLike;
    statusOptions: ProjectOptionLike[];
    priorityOptions: ProjectOptionLike[];
+   attentionOptions: ProjectOptionLike[];
    areas: ProjectArea[];
    issues: IssueListItem[];
    activeTab: 'overview' | 'issues';
@@ -115,7 +118,7 @@ export function ProjectOverview({
 }) {
    const router = useRouter();
    const { setDefaultProject } = useCreateIssueStore();
-   const { updateProjectFields } = useProjectCommands();
+   const { updateProject, updateProjectFields } = useProjectCommands();
    const viewerProfile = useViewerProfile();
    const viewer = useMemo(() => viewerProfileToUser(viewerProfile), [viewerProfile]);
    const [project, setProject] = useState<ProjectLike>(() => initialProject);
@@ -125,8 +128,9 @@ export function ProjectOverview({
    }));
    const [isSavingDetails, setIsSavingDetails] = useState(false);
    const presentationProject = useMemo(
-      () => toPresentationProject(project, statusOptions, priorityOptions, viewer),
-      [priorityOptions, project, statusOptions, viewer]
+      () =>
+         toPresentationProject(project, statusOptions, priorityOptions, attentionOptions, viewer),
+      [attentionOptions, priorityOptions, project, statusOptions, viewer]
    );
 
    const handleProjectFieldSave = async (
@@ -234,7 +238,7 @@ export function ProjectOverview({
       setProject((current) => ({ ...current, status: statusId }));
 
       try {
-         await persistProjectUpdate(project.id, { status: statusId });
+         await updateProject({ projectId: project.id, status: statusId });
          toast.success('Project status updated');
       } catch (error) {
          console.error('Failed to update project status.', error);
@@ -251,7 +255,7 @@ export function ProjectOverview({
       setProject((current) => ({ ...current, priority: priorityId }));
 
       try {
-         await persistProjectUpdate(project.id, { priority: priorityId });
+         await updateProject({ projectId: project.id, priority: priorityId });
          toast.success('Project priority updated');
       } catch (error) {
          console.error('Failed to update project priority.', error);
@@ -260,8 +264,29 @@ export function ProjectOverview({
       }
    };
 
+   const handleAttentionChange = async (attentionId: string) => {
+      const nextAttention = attentionOptions.find((option) => option.id === attentionId);
+      if (!nextAttention || attentionId === project.attention) return;
+
+      const previous = project;
+      setProject((current) => ({ ...current, attention: attentionId }));
+
+      try {
+         await updateProject({ projectId: project.id, attention: attentionId });
+         toast.success('Project attention updated');
+      } catch (error) {
+         console.error('Failed to update project attention.', error);
+         setProject(previous);
+         toast.error('Project attention could not be updated');
+      }
+   };
+
    const handleProjectUpdate = (_projectId: string, update: ProjectUpdate) => {
-      setProject((current) => ({ ...current, latestUpdate: update }));
+      setProject((current) => ({
+         ...current,
+         attention: update.attention.id,
+         latestUpdate: update,
+      }));
    };
 
    useEffect(() => {
@@ -378,6 +403,13 @@ export function ProjectOverview({
                            priority={presentationProject.priority}
                            options={priorityOptions}
                            onPriorityChange={(priorityId) => void handlePriorityChange(priorityId)}
+                        />
+                        <AttentionSelector
+                           attention={presentationProject.attention}
+                           options={attentionOptions}
+                           onAttentionChange={(attentionId) =>
+                              void handleAttentionChange(attentionId)
+                           }
                         />
                         <span className="text-muted-foreground">Target date</span>
                      </div>
@@ -583,6 +615,16 @@ function LatestUpdateCard({
                      )}
                   >
                      {project.health.name}
+                  </span>
+                  <span
+                     className="inline-flex items-center gap-1.5 font-medium"
+                     style={{ color: project.latestUpdate.attention.color }}
+                  >
+                     <span
+                        className="size-2 rounded-full"
+                        style={{ backgroundColor: project.latestUpdate.attention.color }}
+                     />
+                     {project.latestUpdate.attention.name}
                   </span>
                   <Avatar className="size-5">
                      <AvatarImage src={project.lead.avatarUrl} alt={project.lead.name} />

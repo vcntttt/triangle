@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/sheet';
 import type { ProjectOptionLike } from '@/lib/projects-presentation';
 import {
+   projectAttentionListQuery,
    projectPriorityListQuery,
    projectStatusListQuery,
    useProjectCommands,
@@ -39,7 +40,7 @@ const defaultColors = [
    '#94a3b8',
 ];
 
-type OptionType = 'status' | 'priority';
+type OptionType = 'status' | 'priority' | 'attention';
 type ProjectViewType = 'list' | 'board';
 
 interface SheetState {
@@ -63,6 +64,7 @@ const initialSheetState: SheetState = {
 export function ProjectOptionsSettings() {
    const { data: liveStatuses } = useQuery(projectStatusListQuery());
    const { data: livePriorities } = useQuery(projectPriorityListQuery());
+   const { data: liveAttentions } = useQuery(projectAttentionListQuery());
    const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
    const [draggedId, setDraggedId] = useState<string | null>(null);
    const [isSaving, setIsSaving] = useState(false);
@@ -76,11 +78,21 @@ export function ProjectOptionsSettings() {
       reorderProjectStatuses,
       updateProjectPriority,
       updateProjectStatus,
+      createProjectAttention,
+      deleteProjectAttention,
+      reorderProjectAttentions,
+      updateProjectAttention,
    } = useProjectCommands();
 
    const statuses = liveStatuses ?? [];
    const priorities = livePriorities ?? [];
-   const currentItems = sheetState.type === 'status' ? statuses : priorities;
+   const attentions = liveAttentions ?? [];
+   const currentItems =
+      sheetState.type === 'status'
+         ? statuses
+         : sheetState.type === 'priority'
+           ? priorities
+           : attentions;
    const orderedStatuses = useMemo(() => {
       const statuses = liveStatuses ?? [];
       return {
@@ -95,6 +107,13 @@ export function ProjectOptionsSettings() {
          board: [...priorities].sort((a, b) => a.boardPosition - b.boardPosition),
       };
    }, [livePriorities]);
+   const orderedAttentions = useMemo(() => {
+      const attentions = liveAttentions ?? [];
+      return {
+         list: [...attentions].sort((a, b) => a.listPosition - b.listPosition),
+         board: [...attentions].sort((a, b) => a.boardPosition - b.boardPosition),
+      };
+   }, [liveAttentions]);
 
    const openCreateSheet = (type: OptionType) => {
       setSheetState({
@@ -129,9 +148,12 @@ export function ProjectOptionsSettings() {
          if (type === 'status') {
             await deleteProjectStatus({ id });
             toast.success('Status deleted');
-         } else {
+         } else if (type === 'priority') {
             await deleteProjectPriority({ id });
             toast.success('Priority deleted');
+         } else {
+            await deleteProjectAttention({ id });
+            toast.success('Attention state deleted');
          }
       } catch (error) {
          const message = error instanceof Error ? error.message : 'Option could not be deleted.';
@@ -151,7 +173,12 @@ export function ProjectOptionsSettings() {
          return;
       }
 
-      const options = type === 'status' ? orderedStatuses[view] : orderedPriorities[view];
+      const options =
+         type === 'status'
+            ? orderedStatuses[view]
+            : type === 'priority'
+              ? orderedPriorities[view]
+              : orderedAttentions[view];
       const activeIndex = options.findIndex((item) => item.id === activeId);
       const overIndex = options.findIndex((item) => item.id === overId);
 
@@ -167,10 +194,14 @@ export function ProjectOptionsSettings() {
       try {
          if (type === 'status') {
             await reorderProjectStatuses({ ids: orderedIds, view });
-         } else {
+         } else if (type === 'priority') {
             await reorderProjectPriorities({ ids: orderedIds, view });
+         } else {
+            await reorderProjectAttentions({ ids: orderedIds, view });
          }
-         toast.success(`${type === 'status' ? 'Statuses' : 'Priorities'} reordered`);
+         toast.success(
+            `${type === 'status' ? 'Statuses' : type === 'priority' ? 'Priorities' : 'Attention states'} reordered`
+         );
       } catch (error) {
          const message = error instanceof Error ? error.message : 'Options could not be reordered.';
          toast.error(message);
@@ -203,19 +234,32 @@ export function ProjectOptionsSettings() {
                });
                toast.success('Status updated');
             }
-         } else if (sheetState.mode === 'create') {
+         } else if (sheetState.type === 'priority' && sheetState.mode === 'create') {
             await createProjectPriority({
                name: sheetState.name,
                color: sheetState.color,
             });
             toast.success('Priority created');
-         } else if (sheetState.optionId) {
+         } else if (sheetState.type === 'priority' && sheetState.optionId) {
             await updateProjectPriority({
                id: sheetState.optionId,
                name: sheetState.name,
                color: sheetState.color,
             });
             toast.success('Priority updated');
+         } else if (sheetState.mode === 'create') {
+            await createProjectAttention({
+               name: sheetState.name,
+               color: sheetState.color,
+            });
+            toast.success('Attention state created');
+         } else if (sheetState.optionId) {
+            await updateProjectAttention({
+               id: sheetState.optionId,
+               name: sheetState.name,
+               color: sheetState.color,
+            });
+            toast.success('Attention state updated');
          }
 
          closeSheet();
@@ -235,6 +279,7 @@ export function ProjectOptionsSettings() {
                description="Manage project options and their order in lists, filters, and forms."
                statuses={orderedStatuses.list}
                priorities={orderedPriorities.list}
+               attentions={orderedAttentions.list}
                draggedId={draggedId}
                pendingDeleteId={pendingDeleteId}
                onCreate={openCreateSheet}
@@ -249,9 +294,10 @@ export function ProjectOptionsSettings() {
 
             <ProjectViewOptionsSection
                title="Board view"
-               description="Set the column order used when boards are grouped by status or priority."
+               description="Set the column order used when boards are grouped by status, priority, or attention."
                statuses={orderedStatuses.board}
                priorities={orderedPriorities.board}
+               attentions={orderedAttentions.board}
                draggedId={draggedId}
                pendingDeleteId={pendingDeleteId}
                onDragStart={setDraggedId}
@@ -282,7 +328,13 @@ export function ProjectOptionsSettings() {
                         onChange={(event) =>
                            setSheetState((state) => ({ ...state, name: event.target.value }))
                         }
-                        placeholder={sheetState.type === 'status' ? 'In QA' : 'Critical'}
+                        placeholder={
+                           sheetState.type === 'status'
+                              ? 'In QA'
+                              : sheetState.type === 'priority'
+                                ? 'Critical'
+                                : 'Waiting on'
+                        }
                         maxLength={80}
                      />
                   </div>
@@ -351,6 +403,7 @@ function ProjectViewOptionsSection({
    description,
    statuses,
    priorities,
+   attentions,
    draggedId,
    pendingDeleteId,
    onCreate,
@@ -363,6 +416,7 @@ function ProjectViewOptionsSection({
    description: string;
    statuses: ProjectOptionLike[];
    priorities: ProjectOptionLike[];
+   attentions: ProjectOptionLike[];
    draggedId: string | null;
    pendingDeleteId: string | null;
    onCreate?: (type: OptionType) => void;
@@ -377,7 +431,7 @@ function ProjectViewOptionsSection({
             <h3 className="font-semibold">{title}</h3>
             <p className="mt-1 text-sm text-muted-foreground">{description}</p>
          </div>
-         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
             <OptionListCard
                title="Project statuses"
                description="Order of project statuses."
@@ -403,6 +457,19 @@ function ProjectViewOptionsSection({
                draggedId={draggedId}
                onDragStart={onDragStart}
                onDragEnd={(activeId, overId) => onDragEnd('priority', activeId, overId)}
+            />
+            <OptionListCard
+               title="Project attention"
+               description="How much attention each project needs right now."
+               items={attentions}
+               onCreate={onCreate ? () => onCreate('attention') : undefined}
+               onEdit={onEdit ? (option) => onEdit('attention', option) : undefined}
+               onDelete={onDelete ? (id) => onDelete('attention', id) : undefined}
+               pendingDeleteId={pendingDeleteId}
+               draggable
+               draggedId={draggedId}
+               onDragStart={onDragStart}
+               onDragEnd={(activeId, overId) => onDragEnd('attention', activeId, overId)}
             />
          </div>
       </section>

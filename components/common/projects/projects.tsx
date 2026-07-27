@@ -18,6 +18,7 @@ interface ProjectsProps {
    projects: ProjectLike[];
    statusOptions: ProjectOptionLike[];
    priorityOptions: ProjectOptionLike[];
+   attentionOptions: ProjectOptionLike[];
    databaseError: string | null;
 }
 
@@ -25,6 +26,7 @@ export default function Projects({
    projects,
    statusOptions,
    priorityOptions,
+   attentionOptions,
    databaseError,
 }: ProjectsProps) {
    const { viewType, visibleProperties } = useProjectsViewStore();
@@ -39,9 +41,10 @@ export default function Projects({
    const presentationProjects = projects.map((project) => {
       const latestUpdate = projectUpdates[project.id] ?? project.latestUpdate;
       return toPresentationProject(
-         { ...project, latestUpdate },
+         { ...project, attention: latestUpdate?.attention.id ?? project.attention, latestUpdate },
          statusOptions,
          priorityOptions,
+         attentionOptions,
          viewer
       );
    });
@@ -127,6 +130,7 @@ export default function Projects({
          projects={visibleProjects}
          statusOptions={statusOptions}
          priorityOptions={priorityOptions}
+         attentionOptions={attentionOptions}
       />
    ) : (
       <div className="w-full">
@@ -147,6 +151,9 @@ export default function Projects({
             {visibleProperties.status && (
                <div className="w-[20%] sm:w-[10%] pl-2 shrink-0">Status</div>
             )}
+            {visibleProperties.attention && (
+               <div className="hidden xl:block xl:w-[13%] pl-2 shrink-0">Attention</div>
+            )}
          </div>
 
          <div className="w-full">
@@ -157,6 +164,7 @@ export default function Projects({
                   visibleProperties={visibleProperties}
                   statusOptions={statusOptions}
                   priorityOptions={priorityOptions}
+                  attentionOptions={attentionOptions}
                   onProjectUpdate={handleProjectUpdate}
                />
             ))}

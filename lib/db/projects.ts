@@ -1,9 +1,12 @@
+import type { ProjectAttention } from '@/lib/models';
+
 export type ProjectHealth = 'no-update' | 'off-track' | 'on-track' | 'at-risk';
 
 export interface ProjectLatestUpdate {
    id: string;
    projectId: string;
    health: ProjectHealth;
+   attention: ProjectAttention;
    body: string;
    createdAt: string;
    updatedAt: string;
@@ -27,6 +30,7 @@ export interface ProjectListItem {
    iconValue: string;
    status: string;
    priority: string;
+   attention?: string;
    latestUpdate: ProjectLatestUpdate | null;
    createdAt: string;
    updatedAt: string;
@@ -62,6 +66,13 @@ export interface ProjectsPageData {
    projects: ProjectListItem[];
    statusOptions: ProjectStatusOption[];
    priorityOptions: ProjectPriorityOption[];
+   attentionOptions: Array<{
+      id: string;
+      name: string;
+      color: string;
+      listPosition: number;
+      boardPosition: number;
+   }>;
    databaseError: string | null;
    isConnected: boolean;
 }
@@ -81,11 +92,13 @@ export interface CreateProjectInput {
    iconValue?: string;
    status: string;
    priority?: string;
+   attention?: string;
 }
 
 export interface UpdateProjectInput {
    status?: string;
    priority?: string;
+   attention?: string;
 }
 
 export interface UpdateProjectDetailsInput {
@@ -99,6 +112,7 @@ export interface UpdateProjectDetailsInput {
 export interface CreateProjectUpdateInput {
    projectId: string;
    health: ProjectHealth;
+   attention: string;
    body: string;
    areaMentions?: Array<{ areaId: string; start: number; end: number }>;
 }

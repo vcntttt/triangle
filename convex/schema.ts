@@ -42,6 +42,20 @@ export default defineSchema({
       .index('by_name', ['name'])
       .index('by_list_position', ['listPosition'])
       .index('by_board_position', ['boardPosition']),
+   projectAttentions: defineTable({
+      id: v.string(),
+      name: v.string(),
+      color: v.string(),
+      listPosition: v.optional(v.number()),
+      boardPosition: v.optional(v.number()),
+      position: v.optional(v.number()),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+   })
+      .index('by_option_id', ['id'])
+      .index('by_name', ['name'])
+      .index('by_list_position', ['listPosition'])
+      .index('by_board_position', ['boardPosition']),
    projects: defineTable({
       name: v.string(),
       slug: v.string(),
@@ -51,6 +65,7 @@ export default defineSchema({
       iconValue: v.string(),
       status: v.string(),
       priority: v.string(),
+      attention: v.optional(v.string()),
       createdAt: v.number(),
       updatedAt: v.number(),
    })
@@ -60,6 +75,7 @@ export default defineSchema({
    projectUpdates: defineTable({
       projectId: v.id('projects'),
       health: v.string(),
+      attention: v.optional(v.string()),
       body: v.string(),
       areaMentions: v.optional(
          v.array(
@@ -149,7 +165,12 @@ export default defineSchema({
       }),
       projectView: v.object({
          viewType: v.union(v.literal('list'), v.literal('board')),
-         groupBy: v.union(v.literal('status'), v.literal('priority'), v.literal('health')),
+         groupBy: v.union(
+            v.literal('status'),
+            v.literal('priority'),
+            v.literal('attention'),
+            v.literal('health')
+         ),
          showEmptyGroups: v.boolean(),
          visibleProperties: v.object({
             health: v.boolean(),
@@ -157,6 +178,7 @@ export default defineSchema({
             lead: v.boolean(),
             targetDate: v.boolean(),
             status: v.boolean(),
+            attention: v.optional(v.boolean()),
          }),
       }),
       projectFilters: v.object({

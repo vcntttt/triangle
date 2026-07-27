@@ -32,8 +32,16 @@ export const Route = createFileRoute('/projects/$projectSlug')({
 function ProjectPage() {
    const { projectSlug } = Route.useParams();
    const { data } = useSuspenseQuery(projectDetailQuery(projectSlug));
-   const { project, statusOptions, priorityOptions, areas, issues, databaseError, isConnected } =
-      data;
+   const {
+      project,
+      statusOptions,
+      priorityOptions,
+      attentionOptions,
+      areas,
+      issues,
+      databaseError,
+      isConnected,
+   } = data;
    const { tab = 'overview', issue } = Route.useSearch();
 
    if (databaseError) {
@@ -73,6 +81,7 @@ function ProjectPage() {
          initialProject={project}
          statusOptions={statusOptions}
          priorityOptions={priorityOptions}
+         attentionOptions={attentionOptions}
          areas={areas}
          issues={issues}
          activeTab={tab}

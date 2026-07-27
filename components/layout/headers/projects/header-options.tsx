@@ -14,7 +14,14 @@ import {
    ProjectViewType,
    useProjectsViewStore,
 } from '@/store/projects-view-store';
-import { BarChart3, HeartPulse, LayoutGrid, LayoutList, SlidersHorizontal } from 'lucide-react';
+import {
+   BarChart3,
+   Clock3,
+   HeartPulse,
+   LayoutGrid,
+   LayoutList,
+   SlidersHorizontal,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const propertyLabels: Record<ProjectDisplayProperty, string> = {
@@ -23,17 +30,20 @@ const propertyLabels: Record<ProjectDisplayProperty, string> = {
    lead: 'Lead',
    targetDate: 'Target date',
    status: 'Status',
+   attention: 'Attention',
 };
 
 const boardGroupLabels: Record<ProjectBoardGroupBy, string> = {
    status: 'Status',
    priority: 'Priority',
+   attention: 'Attention',
    health: 'Health',
 };
 
 const boardGroupIcons: Record<ProjectBoardGroupBy, typeof BarChart3> = {
    status: LayoutGrid,
    priority: BarChart3,
+   attention: Clock3,
    health: HeartPulse,
 };
 

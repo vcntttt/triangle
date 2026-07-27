@@ -29,8 +29,11 @@ import { useProjectOptions } from '@/hooks/use-project-options';
 import type { Health, Project, ProjectUpdate } from '@/lib/models';
 import { health as healthOptions } from '@/lib/ui-catalog';
 import { cn } from '@/lib/utils';
-import { useProjectCommands } from '@/src/data/projects';
-import { projectAreasQuery } from '@/src/data/projects';
+import {
+   projectAreasQuery,
+   projectAttentionListQuery,
+   useProjectCommands,
+} from '@/src/data/projects';
 import {
    adjustAreaMentions,
    getAreaMentionContext,
@@ -40,7 +43,7 @@ import {
 import { ProjectIconGlyph } from './project-icon';
 
 interface CreateProjectUpdateDialogProps {
-   project?: Pick<Project, 'id' | 'name' | 'health'>;
+   project?: Pick<Project, 'id' | 'name' | 'health' | 'attention'>;
    open?: boolean;
    onOpenChange?: (open: boolean) => void;
    trigger?: ReactNode;
@@ -59,12 +62,15 @@ export function CreateProjectUpdateDialog({
    const [internalOpen, setInternalOpen] = useState(false);
    const [projectPickerOpen, setProjectPickerOpen] = useState(false);
    const [healthPickerOpen, setHealthPickerOpen] = useState(false);
+   const [attentionPickerOpen, setAttentionPickerOpen] = useState(false);
    const projectListId = useId();
    const healthListId = useId();
+   const attentionListId = useId();
    const [projectId, setProjectId] = useState(project?.id ?? '');
    const [selectedHealth, setSelectedHealth] = useState<Health['id']>(
       project?.health.id === 'no-update' || !project ? 'on-track' : project.health.id
    );
+   const [selectedAttention, setSelectedAttention] = useState('a-su-ritmo');
    const [body, setBody] = useState('');
    const [areaMentions, setAreaMentions] = useState<
       Array<{ areaId: string; start: number; end: number }>
@@ -84,23 +90,28 @@ export function CreateProjectUpdateDialog({
       ...projectAreasQuery(targetProjectId),
       enabled: Boolean(targetProjectId),
    });
+   const { data: attentionOptions = [] } = useQuery(projectAttentionListQuery());
    const areaSuggestion = useMemo(
       () => getAreaMentionContext(body, cursor, areas),
       [areas, body, cursor]
    );
    const selectedHealthOption =
       healthOptions.find((item) => item.id === selectedHealth) ?? healthOptions[0];
+   const selectedAttentionOption =
+      attentionOptions.find((item) => item.id === selectedAttention) ?? attentionOptions[0];
 
    const resetForm = () => {
       setProjectId(project?.id ?? '');
       setSelectedHealth(
          project?.health.id && project.health.id !== 'no-update' ? project.health.id : 'on-track'
       );
+      setSelectedAttention(project?.attention.id ?? 'a-su-ritmo');
       setBody('');
       setAreaMentions([]);
       setCursor(0);
       setProjectPickerOpen(false);
       setHealthPickerOpen(false);
+      setAttentionPickerOpen(false);
    };
 
    if (isOpen !== previousOpen) {
@@ -140,6 +151,7 @@ export function CreateProjectUpdateDialog({
          const update = await createProjectUpdate({
             projectId: targetProjectId,
             health: selectedHealth,
+            attention: selectedAttention,
             body: trimmed.body,
             areaMentions: trimmed.mentions,
          });
@@ -299,6 +311,7 @@ export function CreateProjectUpdateDialog({
                                              value={`${item.name} ${item.id}`}
                                              onSelect={() => {
                                                 setProjectId(item.id);
+                                                setSelectedAttention(item.attention.id);
                                                 setAreaMentions([]);
                                                 setProjectPickerOpen(false);
                                              }}
@@ -367,6 +380,58 @@ export function CreateProjectUpdateDialog({
                                           </CommandItem>
                                        )
                                     )}
+                                 </CommandGroup>
+                              </CommandList>
+                           </Command>
+                        </PopoverContent>
+                     </Popover>
+
+                     <Popover open={attentionPickerOpen} onOpenChange={setAttentionPickerOpen}>
+                        <PopoverTrigger asChild>
+                           <Button
+                              type="button"
+                              size="xs"
+                              variant="secondary"
+                              className="gap-1.5"
+                              role="combobox"
+                              aria-expanded={attentionPickerOpen}
+                              aria-controls={attentionListId}
+                           >
+                              <span
+                                 className="size-2 rounded-full"
+                                 style={{ backgroundColor: selectedAttentionOption?.color }}
+                              />
+                              {selectedAttentionOption?.name ?? 'Attention'}
+                           </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-56 p-0" align="start">
+                           <Command>
+                              <CommandInput placeholder="Set attention..." />
+                              <CommandList id={attentionListId}>
+                                 <CommandEmpty>No attention state found.</CommandEmpty>
+                                 <CommandGroup>
+                                    {attentionOptions.map((item) => (
+                                       <CommandItem
+                                          key={item.id}
+                                          value={`${item.id} ${item.name}`}
+                                          onSelect={() => {
+                                             setSelectedAttention(item.id);
+                                             setAttentionPickerOpen(false);
+                                          }}
+                                          className="flex items-center justify-between"
+                                       >
+                                          <span className="flex items-center gap-2">
+                                             <span
+                                                className="size-2 rounded-full"
+                                                style={{ backgroundColor: item.color }}
+                                             />
+                                             {item.name}
+                                          </span>
+                                          {selectedAttention === item.id ? (
+                                             <CheckIcon className="ml-auto size-4" />
+                                          ) : null}
+                                       </CommandItem>
+                                    ))}
                                  </CommandGroup>
                               </CommandList>
                            </Command>

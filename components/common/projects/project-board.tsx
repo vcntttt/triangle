@@ -29,6 +29,7 @@ interface ProjectBoardProps {
    projects: Project[];
    statusOptions: ProjectOptionLike[];
    priorityOptions: ProjectOptionLike[];
+   attentionOptions: ProjectOptionLike[];
 }
 
 interface ProjectGroup {
@@ -47,7 +48,12 @@ const healthIconMap = {
    'at-risk': CircleDashed,
 };
 
-export function ProjectBoard({ projects, statusOptions, priorityOptions }: ProjectBoardProps) {
+export function ProjectBoard({
+   projects,
+   statusOptions,
+   priorityOptions,
+   attentionOptions,
+}: ProjectBoardProps) {
    const { groupBy, showEmptyGroups, visibleProperties } = useProjectsViewStore();
    const navigate = useNavigate();
    const [projectOverrides, setProjectOverrides] = useState<Record<string, Partial<Project>>>({});
@@ -58,7 +64,12 @@ export function ProjectBoard({ projects, statusOptions, priorityOptions }: Proje
    );
 
    const groups = useMemo(() => {
-      const definitions = getGroupDefinitions(groupBy, statusOptions, priorityOptions);
+      const definitions = getGroupDefinitions(
+         groupBy,
+         statusOptions,
+         priorityOptions,
+         attentionOptions
+      );
       const grouped = new Map<string, Project[]>();
 
       definitions.forEach((group) => grouped.set(group.id, []));
@@ -89,7 +100,7 @@ export function ProjectBoard({ projects, statusOptions, priorityOptions }: Proje
          const projects = grouped.get(group.id) ?? [];
          return showEmptyGroups || projects.length > 0 ? [{ ...group, projects }] : [];
       });
-   }, [boardProjects, groupBy, priorityOptions, showEmptyGroups, statusOptions]);
+   }, [attentionOptions, boardProjects, groupBy, priorityOptions, showEmptyGroups, statusOptions]);
 
    const handleStatusChange = async (projectId: string, statusId: string) => {
       await updateLocalProjectField(projectId, 'status', statusId, 'Project status updated');
@@ -97,6 +108,15 @@ export function ProjectBoard({ projects, statusOptions, priorityOptions }: Proje
 
    const handlePriorityChange = async (projectId: string, priorityId: string) => {
       await updateLocalProjectField(projectId, 'priority', priorityId, 'Project priority updated');
+   };
+
+   const handleAttentionChange = async (projectId: string, attentionId: string) => {
+      await updateLocalProjectField(
+         projectId,
+         'attention',
+         attentionId,
+         'Project attention updated'
+      );
    };
 
    const handleProjectUpdate = (projectId: string, update: ProjectUpdate) => {
@@ -108,6 +128,7 @@ export function ProjectBoard({ projects, statusOptions, priorityOptions }: Proje
             ...overrides[projectId],
             latestUpdate: update,
             health: nextHealth,
+            attention: update.attention,
          },
       }));
    };
@@ -122,8 +143,14 @@ export function ProjectBoard({ projects, statusOptions, priorityOptions }: Proje
          return;
       }
 
-      const field = groupBy === 'status' ? 'status' : 'priority';
-      const currentValue = field === 'status' ? project.status.id : project.priority.id;
+      const field =
+         groupBy === 'status' ? 'status' : groupBy === 'priority' ? 'priority' : 'attention';
+      const currentValue =
+         field === 'status'
+            ? project.status.id
+            : field === 'priority'
+              ? project.priority.id
+              : project.attention.id;
 
       if (currentValue === targetGroupId) {
          return;
@@ -133,13 +160,17 @@ export function ProjectBoard({ projects, statusOptions, priorityOptions }: Proje
          projectId,
          field,
          targetGroupId,
-         field === 'status' ? 'Project status updated' : 'Project priority updated'
+         field === 'status'
+            ? 'Project status updated'
+            : field === 'priority'
+              ? 'Project priority updated'
+              : 'Project attention updated'
       );
    };
 
    async function updateLocalProjectField(
       projectId: string,
-      field: 'status' | 'priority',
+      field: 'status' | 'priority' | 'attention',
       value: string,
       successMessage: string
    ) {
@@ -160,15 +191,28 @@ export function ProjectBoard({ projects, statusOptions, priorityOptions }: Proje
                        project.status.name,
                  },
               }
-            : {
-                 priority: {
-                    ...project.priority,
-                    id: value,
-                    name:
-                       priorityOptions.find((option) => option.id === value)?.name ??
-                       project.priority.name,
-                 },
-              };
+            : field === 'priority'
+              ? {
+                   priority: {
+                      ...project.priority,
+                      id: value,
+                      name:
+                         priorityOptions.find((option) => option.id === value)?.name ??
+                         project.priority.name,
+                   },
+                }
+              : {
+                   attention: {
+                      ...project.attention,
+                      id: value,
+                      name:
+                         attentionOptions.find((option) => option.id === value)?.name ??
+                         project.attention.name,
+                      color:
+                         attentionOptions.find((option) => option.id === value)?.color ??
+                         project.attention.color,
+                   },
+                };
 
       setProjectOverrides((overrides) => ({
          ...overrides,
@@ -178,7 +222,11 @@ export function ProjectBoard({ projects, statusOptions, priorityOptions }: Proje
       try {
          await updateProject({
             projectId,
-            ...(field === 'status' ? { status: value } : { priority: value }),
+            ...(field === 'status'
+               ? { status: value }
+               : field === 'priority'
+                 ? { priority: value }
+                 : { attention: value }),
          });
          toast.success(successMessage);
       } catch (error) {
@@ -206,10 +254,12 @@ export function ProjectBoard({ projects, statusOptions, priorityOptions }: Proje
                         visibleProperties={visibleProperties}
                         statusOptions={statusOptions}
                         priorityOptions={priorityOptions}
+                        attentionOptions={attentionOptions}
                         isReadOnly={groupBy === 'health'}
                         onOpenIssues={handleOpenIssues}
                         onStatusChange={handleStatusChange}
                         onPriorityChange={handlePriorityChange}
+                        onAttentionChange={handleAttentionChange}
                         onProjectUpdate={handleProjectUpdate}
                         onMoveProject={handleMoveProject}
                      />
@@ -272,13 +322,18 @@ function getProjectGroupId(project: Project, groupBy: ProjectBoardGroupBy) {
       return project.priority.id;
    }
 
+   if (groupBy === 'attention') {
+      return project.attention.id;
+   }
+
    return project.health.id;
 }
 
 function getGroupDefinitions(
    groupBy: ProjectBoardGroupBy,
    statusOptions: ProjectOptionLike[],
-   priorityOptions: ProjectOptionLike[]
+   priorityOptions: ProjectOptionLike[],
+   attentionOptions: ProjectOptionLike[]
 ): ProjectGroup[] {
    if (groupBy === 'status') {
       return statusOptions
@@ -299,6 +354,17 @@ function getGroupDefinitions(
             name: option.name,
             color: option.color,
             icon: priorityIconMap[option.id] ?? priorities[0].icon,
+         }));
+   }
+
+   if (groupBy === 'attention') {
+      return attentionOptions
+         .toSorted((a, b) => (a.boardPosition ?? 0) - (b.boardPosition ?? 0))
+         .map((option) => ({
+            id: option.id,
+            name: option.name,
+            color: option.color,
+            icon: CircleDashed,
          }));
    }
 

@@ -19,7 +19,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { health as healthOptions } from '@/lib/ui-catalog';
 import { ProjectIconGlyph } from './project-icon';
-import { useProjectCommands } from '@/src/data/projects';
+import { projectAttentionListQuery, useProjectCommands } from '@/src/data/projects';
+import { useQuery } from '@tanstack/react-query';
 
 const updateDateFormatter = new Intl.DateTimeFormat('en-US', {
    timeZone: 'UTC',
@@ -48,11 +49,14 @@ export function HealthPopover({ project, onProjectUpdate }: HealthPopoverProps) 
    const [isComposing, setIsComposing] = useState(false);
    const defaultHealth = project.health.id === 'no-update' ? 'on-track' : project.health.id;
    const [draftHealth, setDraftHealth] = useState<Project['health']['id'] | null>(null);
+   const [draftAttention, setDraftAttention] = useState<string | null>(null);
    const selectedHealth = draftHealth ?? defaultHealth;
+   const selectedAttention = draftAttention ?? project.attention.id;
    const [body, setBody] = useState('');
    const [isSubmitting, setIsSubmitting] = useState(false);
    const { createProjectUpdate } = useProjectCommands();
    const isMobile = useIsMobile();
+   const { data: attentionOptions = [] } = useQuery(projectAttentionListQuery());
 
    const latestUpdateDate = project.latestUpdate
       ? updateDateFormatter.format(new Date(project.latestUpdate.createdAt))
@@ -72,12 +76,14 @@ export function HealthPopover({ project, onProjectUpdate }: HealthPopoverProps) 
          const update = await createProjectUpdate({
             projectId: project.id,
             health: selectedHealth,
+            attention: selectedAttention,
             body: trimmedBody,
          });
 
          onProjectUpdate?.(project.id, update);
          setBody('');
          setDraftHealth(null);
+         setDraftAttention(null);
          setIsComposing(false);
          toast.success('Project update posted');
       } catch (error) {
@@ -174,6 +180,24 @@ export function HealthPopover({ project, onProjectUpdate }: HealthPopoverProps) 
                                  </SelectItem>
                               )
                            )}
+                        </SelectContent>
+                     </Select>
+                     <Select value={selectedAttention} onValueChange={setDraftAttention}>
+                        <SelectTrigger className="h-8">
+                           <SelectValue placeholder="Attention" />
+                        </SelectTrigger>
+                        <SelectContent>
+                           {attentionOptions.map((item) => (
+                              <SelectItem key={item.id} value={item.id}>
+                                 <span className="flex items-center gap-2">
+                                    <span
+                                       className="size-2 rounded-full"
+                                       style={{ backgroundColor: item.color }}
+                                    />
+                                    {item.name}
+                                 </span>
+                              </SelectItem>
+                           ))}
                         </SelectContent>
                      </Select>
                      <Textarea

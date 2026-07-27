@@ -9,10 +9,12 @@ import { useProjectCommands } from '@/src/data/projects';
 export function useProjectFieldUpdates(
    project: Project,
    statusOptions: ProjectOptionLike[],
-   priorityOptions: ProjectOptionLike[]
+   priorityOptions: ProjectOptionLike[],
+   attentionOptions: ProjectOptionLike[]
 ) {
    const [currentStatus, setCurrentStatus] = useState(project.status);
    const [currentPriority, setCurrentPriority] = useState(project.priority);
+   const [currentAttention, setCurrentAttention] = useState(project.attention);
    const { updateProject } = useProjectCommands();
 
    const handleStatusChange = async (statusId: string) => {
@@ -61,10 +63,40 @@ export function useProjectFieldUpdates(
       }
    };
 
+   const handleAttentionChange = async (attentionId: string) => {
+      if (attentionId === currentAttention.id) {
+         return;
+      }
+
+      const nextAttention = attentionOptions.find((option) => option.id === attentionId);
+      if (!nextAttention) {
+         return;
+      }
+
+      const previousAttention = currentAttention;
+      setCurrentAttention((state) => ({
+         ...state,
+         id: attentionId,
+         name: nextAttention.name,
+         color: nextAttention.color,
+      }));
+
+      try {
+         await updateProject({ projectId: project.id, attention: attentionId });
+         toast.success('Project attention updated');
+      } catch (error) {
+         console.error('Failed to update project attention.', error);
+         setCurrentAttention(previousAttention);
+         toast.error('Project attention could not be updated');
+      }
+   };
+
    return {
       currentStatus,
       currentPriority,
+      currentAttention,
       handleStatusChange,
       handlePriorityChange,
+      handleAttentionChange,
    };
 }

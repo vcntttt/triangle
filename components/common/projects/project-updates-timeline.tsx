@@ -251,6 +251,16 @@ export function ProjectUpdatesTimeline({
                                  </Avatar>
                                  {viewer.name}
                               </span>
+                              <span
+                                 className="inline-flex items-center gap-1.5"
+                                 style={{ color: update.attention.color }}
+                              >
+                                 <span
+                                    className="size-2 rounded-full"
+                                    style={{ backgroundColor: update.attention.color }}
+                                 />
+                                 {update.attention.name}
+                              </span>
                               <span className="text-muted-foreground">
                                  {getRelativeDate(update.createdAt)}
                               </span>

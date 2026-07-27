@@ -72,6 +72,12 @@ export interface Health {
    description: string;
 }
 
+export interface ProjectAttention {
+   id: string;
+   name: string;
+   color: string;
+}
+
 export interface Project {
    id: string;
    name: string;
@@ -84,6 +90,7 @@ export interface Project {
    startDate: string;
    lead: User;
    priority: Priority;
+   attention: ProjectAttention;
    health: Health;
    latestUpdate: ProjectUpdate | null;
 }
@@ -92,6 +99,7 @@ export interface ProjectUpdate {
    id: string;
    projectId: string;
    health: Health['id'];
+   attention: ProjectAttention;
    body: string;
    areaMentions: ProjectUpdateAreaMention[];
    createdAt: string;

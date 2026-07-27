@@ -9,13 +9,14 @@ export const Route = createFileRoute('/projects/')({
 
 function ProjectsIndexPage() {
    const { data } = useSuspenseQuery(projectsPageQuery());
-   const { projects, statusOptions, priorityOptions, databaseError } = data;
+   const { projects, statusOptions, priorityOptions, attentionOptions, databaseError } = data;
 
    return (
       <Projects
          projects={projects}
          statusOptions={statusOptions}
          priorityOptions={priorityOptions}
+         attentionOptions={attentionOptions}
          databaseError={databaseError}
       />
    );

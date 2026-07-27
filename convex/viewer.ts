@@ -49,6 +49,7 @@ const defaultPreferences = {
          lead: true,
          targetDate: true,
          status: true,
+         attention: true,
       },
    },
    projectFilters: {
@@ -90,7 +91,14 @@ const issueFiltersPatchValidator = v.object({
 
 const projectViewPatchValidator = v.object({
    viewType: v.optional(v.union(v.literal('list'), v.literal('board'))),
-   groupBy: v.optional(v.union(v.literal('status'), v.literal('priority'), v.literal('health'))),
+   groupBy: v.optional(
+      v.union(
+         v.literal('status'),
+         v.literal('priority'),
+         v.literal('attention'),
+         v.literal('health')
+      )
+   ),
    showEmptyGroups: v.optional(v.boolean()),
    visibleProperties: v.optional(
       v.object({
@@ -99,6 +107,7 @@ const projectViewPatchValidator = v.object({
          lead: v.optional(v.boolean()),
          targetDate: v.optional(v.boolean()),
          status: v.optional(v.boolean()),
+         attention: v.optional(v.boolean()),
       })
    ),
 });
@@ -143,8 +152,18 @@ function serializePreferences(preferences: Doc<'viewerPreferences'> | null) {
          ...defaultPreferences.issueFilters,
          ...preferences.issueFilters,
       },
-      projectView: preferences.projectView,
-      projectFilters: preferences.projectFilters,
+      projectView: {
+         ...defaultPreferences.projectView,
+         ...preferences.projectView,
+         visibleProperties: {
+            ...defaultPreferences.projectView.visibleProperties,
+            ...preferences.projectView.visibleProperties,
+         },
+      },
+      projectFilters: {
+         ...defaultPreferences.projectFilters,
+         ...preferences.projectFilters,
+      },
       pinnedProjectIds: preferences.pinnedProjectIds,
       sidebarOpen: preferences.sidebarOpen,
    };

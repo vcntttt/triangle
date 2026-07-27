@@ -1,8 +1,14 @@
 import { useViewerCommands, useViewerPreferences } from '@/src/data/viewer';
 
-export type ProjectDisplayProperty = 'health' | 'priority' | 'lead' | 'targetDate' | 'status';
+export type ProjectDisplayProperty =
+   | 'health'
+   | 'priority'
+   | 'lead'
+   | 'targetDate'
+   | 'status'
+   | 'attention';
 export type ProjectViewType = 'list' | 'board';
-export type ProjectBoardGroupBy = 'status' | 'priority' | 'health';
+export type ProjectBoardGroupBy = 'status' | 'priority' | 'attention' | 'health';
 
 const defaultProjectView = {
    viewType: 'list' as ProjectViewType,
@@ -14,6 +20,7 @@ const defaultProjectView = {
       lead: true,
       targetDate: true,
       status: true,
+      attention: true,
    },
 };
 

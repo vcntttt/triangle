@@ -3,7 +3,7 @@ import type { Doc, Id } from './_generated/dataModel';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 
 type ProjectHealth = 'no-update' | 'off-track' | 'on-track' | 'at-risk';
-type ProjectOptionTable = 'projectStatuses' | 'projectPriorities';
+type ProjectOptionTable = 'projectStatuses' | 'projectPriorities' | 'projectAttentions';
 
 const defaultProjectStatuses = [
    { id: 'backlog', name: 'Backlog', color: '#ec4899', listPosition: 0, boardPosition: 0 },
@@ -27,6 +27,14 @@ const defaultProjectPriorities = [
    { id: 'medium', name: 'Medium', color: '#facc15', listPosition: 3, boardPosition: 3 },
    { id: 'low', name: 'Low', color: '#22c55e', listPosition: 4, boardPosition: 4 },
 ];
+
+const defaultProjectAttentions = [
+   { id: 'a-su-ritmo', name: 'A su ritmo', color: '#38bdf8', listPosition: 0, boardPosition: 0 },
+   { id: 'a-la-espera', name: 'A la espera', color: '#94a3b8', listPosition: 1, boardPosition: 1 },
+   { id: 'en-foco', name: 'En foco', color: '#ef4444', listPosition: 2, boardPosition: 2 },
+];
+
+const defaultProjectAttentionId = defaultProjectAttentions[0].id;
 
 const projectHealthValues = ['no-update', 'off-track', 'on-track', 'at-risk'] as const;
 
@@ -82,6 +90,10 @@ function toProjectHealth(value: string): ProjectHealth {
       : 'no-update';
 }
 
+function getProjectAttentionId(project: Pick<Doc<'projects'>, 'attention'>): string {
+   return project.attention ?? defaultProjectAttentionId;
+}
+
 async function serializeProject(
    ctx: QueryCtx | MutationCtx,
    project: Doc<'projects'>,
@@ -97,6 +109,7 @@ async function serializeProject(
       iconValue: project.iconValue,
       status: project.status,
       priority: project.priority,
+      attention: getProjectAttentionId(project),
       latestUpdate: latestUpdate ? await serializeProjectUpdate(ctx, latestUpdate) : null,
       createdAt: nowIso(project.createdAt),
       updatedAt: nowIso(project.updatedAt),
@@ -104,16 +117,24 @@ async function serializeProject(
 }
 
 async function serializeProjectUpdate(ctx: QueryCtx | MutationCtx, update: Doc<'projectUpdates'>) {
-   const areaMentions = await Promise.all(
-      (update.areaMentions ?? []).map(async (mention) => {
-         const area = await ctx.db.get(mention.areaId);
-         return area ? { ...mention, name: area.name, color: area.color } : mention;
-      })
-   );
+   const [areaMentions, attentionOption] = await Promise.all([
+      Promise.all(
+         (update.areaMentions ?? []).map(async (mention) => {
+            const area = await ctx.db.get(mention.areaId);
+            return area ? { ...mention, name: area.name, color: area.color } : mention;
+         })
+      ),
+      findOptionById(ctx, 'projectAttentions', update.attention ?? defaultProjectAttentionId),
+   ]);
+   const attention = attentionOption
+      ? serializeOption(attentionOption)
+      : defaultProjectAttentions.find((option) => option.id === defaultProjectAttentionId)!;
+
    return {
       id: update._id,
       projectId: update.projectId,
       health: toProjectHealth(update.health),
+      attention,
       body: update.body,
       areaMentions,
       createdAt: nowIso(update.createdAt),
@@ -301,7 +322,9 @@ async function listProjectIssues(ctx: QueryCtx, projectId: Id<'projects'>) {
    return Array.from(issuesMap.values());
 }
 
-function serializeOption(option: Doc<'projectStatuses'> | Doc<'projectPriorities'>) {
+function serializeOption(
+   option: Doc<'projectStatuses'> | Doc<'projectPriorities'> | Doc<'projectAttentions'>
+) {
    const legacyPosition = option.position ?? 0;
 
    return {
@@ -315,7 +338,12 @@ function serializeOption(option: Doc<'projectStatuses'> | Doc<'projectPriorities
 
 export async function listOptions(ctx: QueryCtx, table: ProjectOptionTable) {
    const rows = await ctx.db.query(table).collect();
-   const defaults = table === 'projectStatuses' ? defaultProjectStatuses : defaultProjectPriorities;
+   const defaults =
+      table === 'projectStatuses'
+         ? defaultProjectStatuses
+         : table === 'projectPriorities'
+           ? defaultProjectPriorities
+           : defaultProjectAttentions;
 
    const values = new Map(defaults.map((item) => [item.id, { ...item }]));
    for (const row of rows) {
@@ -418,7 +446,12 @@ async function saveOption(
    }
 
    const rows = await ctx.db.query(table).collect();
-   const defaults = table === 'projectStatuses' ? defaultProjectStatuses : defaultProjectPriorities;
+   const defaults =
+      table === 'projectStatuses'
+         ? defaultProjectStatuses
+         : table === 'projectPriorities'
+           ? defaultProjectPriorities
+           : defaultProjectAttentions;
    const currentOptions = new Map(defaults.map((option) => [option.id, option]));
    for (const row of rows) {
       currentOptions.set(row.id, serializeOption(row));
@@ -465,7 +498,11 @@ async function updateOption(
 
    if (!existing) {
       const defaultOption = (
-         table === 'projectStatuses' ? defaultProjectStatuses : defaultProjectPriorities
+         table === 'projectStatuses'
+            ? defaultProjectStatuses
+            : table === 'projectPriorities'
+              ? defaultProjectPriorities
+              : defaultProjectAttentions
       ).find((option) => option.id === input.id);
       const optionId = await ctx.db.insert(table, {
          id: input.id,
@@ -493,6 +530,22 @@ async function deleteOption(ctx: MutationCtx, table: ProjectOptionTable, id: str
    if (existing) {
       await ctx.db.delete(existing._id);
    }
+
+   if (table === 'projectAttentions') {
+      const projects = await ctx.db.query('projects').collect();
+      const projectPatches: Array<Promise<void>> = [];
+      for (const project of projects) {
+         if (getProjectAttentionId(project) === id) {
+            projectPatches.push(
+               ctx.db.patch(project._id, {
+                  attention: defaultProjectAttentionId,
+                  updatedAt: Date.now(),
+               })
+            );
+         }
+      }
+      await Promise.all(projectPatches);
+   }
 }
 
 export const options = query({
@@ -510,19 +563,26 @@ export const priorityList = query({
    handler: async (ctx) => listOptions(ctx, 'projectPriorities'),
 });
 
+export const attentionList = query({
+   args: {},
+   handler: async (ctx) => listOptions(ctx, 'projectAttentions'),
+});
+
 export const page = query({
    args: {},
    handler: async (ctx) => {
-      const [projects, statusOptions, priorityOptions] = await Promise.all([
+      const [projects, statusOptions, priorityOptions, attentionOptions] = await Promise.all([
          listProjects(ctx),
          listOptions(ctx, 'projectStatuses'),
          listOptions(ctx, 'projectPriorities'),
+         listOptions(ctx, 'projectAttentions'),
       ]);
 
       return {
          projects,
          statusOptions,
          priorityOptions,
+         attentionOptions,
          databaseError: null,
          isConnected: true,
       };
@@ -532,9 +592,10 @@ export const page = query({
 export const bySlug = query({
    args: { projectSlug: v.string() },
    handler: async (ctx, { projectSlug }) => {
-      const [statusOptions, priorityOptions, project] = await Promise.all([
+      const [statusOptions, priorityOptions, attentionOptions, project] = await Promise.all([
          listOptions(ctx, 'projectStatuses'),
          listOptions(ctx, 'projectPriorities'),
+         listOptions(ctx, 'projectAttentions'),
          findProjectBySlugOrId(ctx, projectSlug),
       ]);
       const latestUpdate = project ? await getLatestProjectUpdate(ctx, project._id) : null;
@@ -543,6 +604,7 @@ export const bySlug = query({
          project: project ? await serializeProject(ctx, project, latestUpdate) : null,
          statusOptions,
          priorityOptions,
+         attentionOptions,
          databaseError: null,
          isConnected: true,
       };
@@ -552,9 +614,10 @@ export const bySlug = query({
 export const detail = query({
    args: { projectSlug: v.string() },
    handler: async (ctx, { projectSlug }) => {
-      const [statusOptions, priorityOptions, project] = await Promise.all([
+      const [statusOptions, priorityOptions, attentionOptions, project] = await Promise.all([
          listOptions(ctx, 'projectStatuses'),
          listOptions(ctx, 'projectPriorities'),
+         listOptions(ctx, 'projectAttentions'),
          findProjectBySlugOrId(ctx, projectSlug),
       ]);
       const [latestUpdate, areas, issues] = project
@@ -569,6 +632,7 @@ export const detail = query({
          project: project ? await serializeProject(ctx, project, latestUpdate) : null,
          statusOptions,
          priorityOptions,
+         attentionOptions,
          areas,
          issues,
          databaseError: null,
@@ -635,6 +699,7 @@ export const create = mutation({
       iconValue: v.optional(v.string()),
       status: v.string(),
       priority: v.optional(v.string()),
+      attention: v.optional(v.string()),
    },
    handler: async (ctx, input) => {
       const slug = toOptionId(input.name);
@@ -679,6 +744,7 @@ export const create = mutation({
          iconValue: input.iconValue ?? 'box',
          status: input.status,
          priority: input.priority ?? 'no-priority',
+         attention: input.attention ?? defaultProjectAttentionId,
          createdAt: now,
          updatedAt: now,
       });
@@ -692,6 +758,7 @@ export const update = mutation({
       projectId: v.string(),
       status: v.optional(v.string()),
       priority: v.optional(v.string()),
+      attention: v.optional(v.string()),
    },
    handler: async (ctx, { projectId, ...input }) => {
       const id = projectId as Id<'projects'>;
@@ -701,6 +768,7 @@ export const update = mutation({
       await ctx.db.patch(id, {
          ...(input.status !== undefined ? { status: input.status } : {}),
          ...(input.priority !== undefined ? { priority: input.priority } : {}),
+         ...(input.attention !== undefined ? { attention: input.attention } : {}),
          updatedAt: Date.now(),
       });
 
@@ -798,6 +866,7 @@ export const createUpdate = mutation({
    args: {
       projectId: v.string(),
       health: v.string(),
+      attention: v.optional(v.string()),
       body: v.string(),
       areaMentions: v.optional(
          v.array(v.object({ areaId: v.string(), start: v.number(), end: v.number() }))
@@ -835,15 +904,17 @@ export const createUpdate = mutation({
       );
 
       const now = Date.now();
+      const attention = input.attention ?? getProjectAttentionId(project);
       const updateId = await ctx.db.insert('projectUpdates', {
          projectId,
          health: input.health,
+         attention,
          body: input.body,
          areaMentions,
          createdAt: now,
          updatedAt: now,
       });
-      await ctx.db.patch(projectId, { updatedAt: now });
+      await ctx.db.patch(projectId, { attention, updatedAt: now });
 
       return serializeProjectUpdate(ctx, (await ctx.db.get(updateId))!);
    },
@@ -1061,6 +1132,64 @@ export const reorderPriorities = mutation({
             const defaultOption = defaults.get(id);
             if (defaultOption) {
                await ctx.db.insert('projectPriorities', {
+                  ...defaultOption,
+                  [view === 'list' ? 'listPosition' : 'boardPosition']: position,
+                  createdAt: now,
+                  updatedAt: now,
+               });
+            }
+         })
+      );
+      return { ok: true };
+   },
+});
+
+export const createAttention = mutation({
+   args: { name: v.string(), color: v.string() },
+   handler: async (ctx, input) => saveOption(ctx, 'projectAttentions', input),
+});
+
+export const updateAttention = mutation({
+   args: { id: v.string(), name: v.string(), color: v.string() },
+   handler: async (ctx, input) => updateOption(ctx, 'projectAttentions', input),
+});
+
+export const deleteAttention = mutation({
+   args: { id: v.string() },
+   handler: async (ctx, { id }) => {
+      await deleteOption(ctx, 'projectAttentions', id);
+      return { ok: true };
+   },
+});
+
+export const reorderAttentions = mutation({
+   args: {
+      ids: v.array(v.string()),
+      view: v.union(v.literal('list'), v.literal('board')),
+   },
+   handler: async (ctx, { ids, view }) => {
+      const now = Date.now();
+      const defaults = new Map(defaultProjectAttentions.map((option) => [option.id, option]));
+      await Promise.all(
+         ids.map(async (id, position) => {
+            const existing = await findOptionById(ctx, 'projectAttentions', id);
+            if (existing) {
+               await ctx.db.patch(existing._id, {
+                  listPosition: existing.listPosition ?? existing.position ?? position,
+                  boardPosition:
+                     existing.boardPosition ??
+                     existing.listPosition ??
+                     existing.position ??
+                     position,
+                  [view === 'list' ? 'listPosition' : 'boardPosition']: position,
+                  updatedAt: now,
+               });
+               return;
+            }
+
+            const defaultOption = defaults.get(id);
+            if (defaultOption) {
+               await ctx.db.insert('projectAttentions', {
                   ...defaultOption,
                   [view === 'list' ? 'listPosition' : 'boardPosition']: position,
                   createdAt: now,

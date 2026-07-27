@@ -23,10 +23,12 @@ interface ProjectBoardColumnProps {
    visibleProperties: Record<ProjectDisplayProperty, boolean>;
    statusOptions: ProjectOptionLike[];
    priorityOptions: ProjectOptionLike[];
+   attentionOptions: ProjectOptionLike[];
    isReadOnly: boolean;
    onOpenIssues: (project: Project) => void;
    onStatusChange: (projectId: string, statusId: string) => void;
    onPriorityChange: (projectId: string, priorityId: string) => void;
+   onAttentionChange: (projectId: string, attentionId: string) => void;
    onProjectUpdate: (projectId: string, update: ProjectUpdate) => void;
    onMoveProject: (projectId: string, targetGroupId: string) => void;
 }
@@ -38,10 +40,12 @@ export function ProjectBoardColumn({
    visibleProperties,
    statusOptions,
    priorityOptions,
+   attentionOptions,
    isReadOnly,
    onOpenIssues,
    onStatusChange,
    onPriorityChange,
+   onAttentionChange,
    onProjectUpdate,
    onMoveProject,
 }: ProjectBoardColumnProps) {
@@ -105,9 +109,11 @@ export function ProjectBoardColumn({
                         visibleProperties={visibleProperties}
                         statusOptions={statusOptions}
                         priorityOptions={priorityOptions}
+                        attentionOptions={attentionOptions}
                         onOpenIssues={onOpenIssues}
                         onStatusChange={onStatusChange}
                         onPriorityChange={onPriorityChange}
+                        onAttentionChange={onAttentionChange}
                         onProjectUpdate={onProjectUpdate}
                      />
                   ))}

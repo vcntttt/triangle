@@ -1,5 +1,10 @@
 import { currentUser } from '@/lib/current-user';
-import type { ProjectIconType, User } from '@/lib/models';
+import type {
+   ProjectAttention,
+   ProjectIconType,
+   ProjectUpdateAreaMention,
+   User,
+} from '@/lib/models';
 import {
    health,
    priorities,
@@ -26,12 +31,15 @@ export interface ProjectLike {
    iconValue?: string;
    status: string;
    priority?: string;
+   attention?: string;
    description?: string | null;
    latestUpdate?: {
       id: string;
       projectId: string;
       health: PresentationProject['health']['id'];
+      attention: ProjectAttention;
       body: string;
+      areaMentions: ProjectUpdateAreaMention[];
       createdAt: string;
       updatedAt: string;
    } | null;
@@ -42,6 +50,11 @@ export type Project = PresentationProject;
 
 const fallbackStatus = status.find((item) => item.id === 'backlog') ?? status[0];
 const fallbackPriority = priorities.find((item) => item.id === 'no-priority') ?? priorities[0];
+const fallbackAttention: ProjectAttention = {
+   id: 'a-su-ritmo',
+   name: 'A su ritmo',
+   color: '#38bdf8',
+};
 
 const statusIconMap: Record<string, Status['icon']> = Object.fromEntries(
    status.map((item) => [item.id, item.icon])
@@ -83,10 +96,29 @@ function resolvePriority(
    };
 }
 
+function resolveAttention(
+   attentionId: string | undefined,
+   attentionOptions?: ProjectOptionLike[]
+): ProjectAttention {
+   const selectedAttentionId = attentionId ?? fallbackAttention.id;
+   const option = attentionOptions?.find((item) => item.id === selectedAttentionId);
+
+   return {
+      id: selectedAttentionId,
+      name:
+         option?.name ??
+         (selectedAttentionId === fallbackAttention.id
+            ? fallbackAttention.name
+            : selectedAttentionId),
+      color: option?.color ?? fallbackAttention.color,
+   };
+}
+
 export const toPresentationProject = (
    project: ProjectLike,
    statusOptions?: ProjectOptionLike[],
    priorityOptions?: ProjectOptionLike[],
+   attentionOptions?: ProjectOptionLike[],
    viewer: User = currentUser
 ): PresentationProject => {
    const resolvedStatus = resolveStatus(project.status, statusOptions);
@@ -106,6 +138,7 @@ export const toPresentationProject = (
       startDate: project.createdAt,
       lead: viewer,
       priority: resolvePriority(project.priority, priorityOptions),
+      attention: resolveAttention(project.attention, attentionOptions),
       health: project.latestUpdate
          ? (health.find((item) => item.id === project.latestUpdate?.health) ?? health[0])
          : noUpdateHealth,

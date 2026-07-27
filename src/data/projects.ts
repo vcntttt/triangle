@@ -18,6 +18,10 @@ export function projectPriorityListQuery() {
    return convexQuery(api.projects.priorityList, {});
 }
 
+export function projectAttentionListQuery() {
+   return convexQuery(api.projects.attentionList, {});
+}
+
 export function projectDetailQuery(projectSlug: string) {
    return convexQuery(api.projects.detail, { projectSlug });
 }
@@ -48,6 +52,10 @@ export function useProjectCommands() {
    const updateProjectPriority = useMutation(api.projects.updatePriority);
    const deleteProjectPriority = useMutation(api.projects.deletePriority);
    const reorderProjectPriorities = useMutation(api.projects.reorderPriorities);
+   const createProjectAttention = useMutation(api.projects.createAttention);
+   const updateProjectAttention = useMutation(api.projects.updateAttention);
+   const deleteProjectAttention = useMutation(api.projects.deleteAttention);
+   const reorderProjectAttentions = useMutation(api.projects.reorderAttentions);
 
    return {
       createProject,
@@ -67,5 +75,9 @@ export function useProjectCommands() {
       updateProjectPriority,
       deleteProjectPriority,
       reorderProjectPriorities,
+      createProjectAttention,
+      updateProjectAttention,
+      deleteProjectAttention,
+      reorderProjectAttentions,
    };
 }

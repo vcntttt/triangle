@@ -10,6 +10,7 @@ import {
 import {
    projectOptionsQuery,
    projectPriorityListQuery,
+   projectAttentionListQuery,
    projectStatusListQuery,
 } from '@/src/data/projects';
 import { useViewerProfile } from '@/src/data/viewer';
@@ -19,6 +20,7 @@ export function useProjectOptions() {
    const { data: projects = [] } = useQuery(projectOptionsQuery());
    const { data: statuses = [] } = useQuery(projectStatusListQuery());
    const { data: priorities = [] } = useQuery(projectPriorityListQuery());
+   const { data: attentions = [] } = useQuery(projectAttentionListQuery());
    const viewer = viewerProfileToUser(useViewerProfile());
 
    return (projects as ProjectLike[]).map((project) =>
@@ -26,6 +28,7 @@ export function useProjectOptions() {
          project,
          statuses as ProjectOptionLike[],
          priorities as ProjectOptionLike[],
+         attentions as ProjectOptionLike[],
          viewer
       )
    ) satisfies Project[];
