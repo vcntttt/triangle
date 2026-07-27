@@ -40,6 +40,7 @@ export function useProjectCommands() {
    const updateProjectFields = useMutation(api.projects.updateFields);
    const deleteProject = useMutation(api.projects.deleteProject);
    const createProjectUpdate = useMutation(api.projects.createUpdate);
+   const updateProjectUpdate = useMutation(api.projects.updateProjectUpdate);
    const createProjectArea = useMutation(api.projects.createArea);
    const updateProjectArea = useMutation(api.projects.updateArea);
    const deleteProjectArea = useMutation(api.projects.deleteArea);
@@ -63,6 +64,7 @@ export function useProjectCommands() {
       updateProjectFields,
       deleteProject,
       createProjectUpdate,
+      updateProjectUpdate,
       createProjectArea,
       updateProjectArea,
       deleteProjectArea,

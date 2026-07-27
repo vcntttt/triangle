@@ -48,6 +48,7 @@ interface CreateProjectUpdateDialogProps {
    onOpenChange?: (open: boolean) => void;
    trigger?: ReactNode;
    onProjectUpdate?: (projectId: string, update: ProjectUpdate) => void;
+   update?: ProjectUpdate;
 }
 
 export function CreateProjectUpdateDialog({
@@ -56,6 +57,7 @@ export function CreateProjectUpdateDialog({
    onOpenChange,
    trigger,
    onProjectUpdate,
+   update,
 }: CreateProjectUpdateDialogProps) {
    const router = useRouter();
    const projects = useProjectOptions();
@@ -66,12 +68,13 @@ export function CreateProjectUpdateDialog({
    const projectListId = useId();
    const healthListId = useId();
    const attentionListId = useId();
-   const [projectId, setProjectId] = useState(project?.id ?? '');
+   const [projectId, setProjectId] = useState(update?.projectId ?? project?.id ?? '');
    const [selectedHealth, setSelectedHealth] = useState<Health['id']>(
-      project?.health.id === 'no-update' || !project ? 'on-track' : project.health.id
+      update?.health ??
+         (project?.health.id === 'no-update' || !project ? 'on-track' : project.health.id)
    );
-   const [selectedAttention, setSelectedAttention] = useState('a-su-ritmo');
-   const [body, setBody] = useState('');
+   const [selectedAttention, setSelectedAttention] = useState(update?.attention.id ?? 'a-su-ritmo');
+   const [body, setBody] = useState(update?.body ?? '');
    const [areaMentions, setAreaMentions] = useState<
       Array<{ areaId: string; start: number; end: number }>
    >([]);
@@ -79,7 +82,7 @@ export function CreateProjectUpdateDialog({
    const [activeAreaIndex, setActiveAreaIndex] = useState(0);
    const textareaRef = useRef<HTMLTextAreaElement>(null);
    const [isSubmitting, setIsSubmitting] = useState(false);
-   const { createProjectUpdate } = useProjectCommands();
+   const { createProjectUpdate, updateProjectUpdate } = useProjectCommands();
 
    const isOpen = open ?? internalOpen;
    const setIsOpen = onOpenChange ?? setInternalOpen;
@@ -101,13 +104,16 @@ export function CreateProjectUpdateDialog({
       attentionOptions.find((item) => item.id === selectedAttention) ?? attentionOptions[0];
 
    const resetForm = () => {
-      setProjectId(project?.id ?? '');
+      setProjectId(update?.projectId ?? project?.id ?? '');
       setSelectedHealth(
-         project?.health.id && project.health.id !== 'no-update' ? project.health.id : 'on-track'
+         update?.health ??
+            (project?.health.id && project.health.id !== 'no-update'
+               ? project.health.id
+               : 'on-track')
       );
-      setSelectedAttention(project?.attention.id ?? 'a-su-ritmo');
-      setBody('');
-      setAreaMentions([]);
+      setSelectedAttention(update?.attention.id ?? project?.attention.id ?? 'a-su-ritmo');
+      setBody(update?.body ?? '');
+      setAreaMentions(update?.areaMentions ?? []);
       setCursor(0);
       setProjectPickerOpen(false);
       setHealthPickerOpen(false);
@@ -148,21 +154,31 @@ export function CreateProjectUpdateDialog({
       setIsSubmitting(true);
 
       try {
-         const update = await createProjectUpdate({
-            projectId: targetProjectId,
-            health: selectedHealth,
-            attention: selectedAttention,
-            body: trimmed.body,
-            areaMentions: trimmed.mentions,
-         });
+         const savedUpdate = update
+            ? await updateProjectUpdate({
+                 updateId: update.id,
+                 health: selectedHealth,
+                 attention: selectedAttention,
+                 body: trimmed.body,
+                 areaMentions: trimmed.mentions,
+              })
+            : await createProjectUpdate({
+                 projectId: targetProjectId,
+                 health: selectedHealth,
+                 attention: selectedAttention,
+                 body: trimmed.body,
+                 areaMentions: trimmed.mentions,
+              });
 
-         onProjectUpdate?.(targetProjectId, update);
+         onProjectUpdate?.(targetProjectId, savedUpdate);
          await router.invalidate();
          setIsOpen(false);
-         toast.success('Project update posted');
+         toast.success(update ? 'Project update updated' : 'Project update posted');
       } catch (error) {
-         console.error('Failed to create project update.', error);
-         toast.error('Project update could not be posted');
+         console.error('Failed to save project update.', error);
+         toast.error(
+            update ? 'Project update could not be updated' : 'Project update could not be posted'
+         );
       } finally {
          setIsSubmitting(false);
       }
@@ -206,7 +222,7 @@ export function CreateProjectUpdateDialog({
          <DialogContent className="w-full p-0 shadow-xl sm:max-w-[750px] top-[30%]">
             <DialogHeader className="px-4 pt-4 pb-0">
                <DialogTitle className="text-2xl font-medium leading-tight">
-                  New project update
+                  {update ? 'Edit project update' : 'New project update'}
                </DialogTitle>
             </DialogHeader>
 
@@ -447,11 +463,15 @@ export function CreateProjectUpdateDialog({
                      disabled={isSubmitting || (!project && !projectId)}
                   >
                      {isSubmitting ? (
-                        'Posting...'
+                        update ? (
+                           'Saving...'
+                        ) : (
+                           'Posting...'
+                        )
                      ) : (
                         <>
                            <Send className="size-4" />
-                           Post update
+                           {update ? 'Save changes' : 'Post update'}
                         </>
                      )}
                   </Button>

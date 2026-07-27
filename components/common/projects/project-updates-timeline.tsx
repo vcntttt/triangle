@@ -9,6 +9,7 @@ import {
    CircleAlert,
    CircleHelp,
    MoreHorizontal,
+   Pencil,
    Layers2,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -24,7 +25,9 @@ import {
    DropdownMenuCheckboxItem,
    DropdownMenuContent,
    DropdownMenuTrigger,
+   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu';
+import { CreateProjectUpdateDialog } from './create-project-update-dialog';
 
 interface ProjectUpdatesTimelineProps {
    updates: ProjectTimelineUpdate[];
@@ -99,6 +102,7 @@ export function ProjectUpdatesTimeline({
    const viewer = viewerProfileToUser(useViewerProfile());
    const [activeFilter, setActiveFilter] = useState<TimelineFilter>('recent');
    const [selectedAreaIds, setSelectedAreaIds] = useState<string[]>([]);
+   const [editingUpdate, setEditingUpdate] = useState<ProjectTimelineUpdate | null>(null);
    const selectedAreaIdSet = useMemo(() => new Set(selectedAreaIds), [selectedAreaIds]);
    const availableAreas = useMemo(
       () =>
@@ -218,13 +222,23 @@ export function ProjectUpdatesTimeline({
                      <article key={update.id} className="group grid grid-cols-[56px_1fr] gap-4">
                         <div />
                         <div className="relative">
-                           <Button
-                              variant="ghost"
-                              size="icon"
-                              className="absolute right-0 top-0 size-7 text-muted-foreground opacity-70"
-                           >
-                              <MoreHorizontal className="size-4" />
-                           </Button>
+                           <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                 <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="absolute right-0 top-0 size-7 text-muted-foreground opacity-70"
+                                 >
+                                    <MoreHorizontal className="size-4" />
+                                 </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                 <DropdownMenuItem onClick={() => setEditingUpdate(update)}>
+                                    <Pencil className="size-4" />
+                                    Edit update
+                                 </DropdownMenuItem>
+                              </DropdownMenuContent>
+                           </DropdownMenu>
 
                            <Link
                               to="/projects/$projectSlug"
@@ -278,6 +292,21 @@ export function ProjectUpdatesTimeline({
                </div>
             </div>
          )}
+         {editingUpdate ? (
+            <CreateProjectUpdateDialog
+               project={{
+                  id: editingUpdate.project.id,
+                  name: editingUpdate.project.name,
+                  health: { id: editingUpdate.health, name: '', color: '', description: '' },
+                  attention: editingUpdate.attention,
+               }}
+               update={editingUpdate}
+               open
+               onOpenChange={(open) => {
+                  if (!open) setEditingUpdate(null);
+               }}
+            />
+         ) : null}
       </div>
    );
 }

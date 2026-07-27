@@ -920,6 +920,62 @@ export const createUpdate = mutation({
    },
 });
 
+export const updateProjectUpdate = mutation({
+   args: {
+      updateId: v.string(),
+      health: v.string(),
+      attention: v.optional(v.string()),
+      body: v.string(),
+      areaMentions: v.optional(
+         v.array(v.object({ areaId: v.string(), start: v.number(), end: v.number() }))
+      ),
+   },
+   handler: async (ctx, input) => {
+      const updateId = input.updateId as Id<'projectUpdates'>;
+      const update = await ctx.db.get(updateId);
+      if (!update) throw new Error('Project update does not exist.');
+
+      const areaMentions = await Promise.all(
+         (input.areaMentions ?? []).map(async (mention) => {
+            const area = await ctx.db.get(mention.areaId as Id<'projectAreas'>);
+            if (!area || area.projectId !== update.projectId) {
+               throw new Error('Mentioned area does not belong to this project.');
+            }
+            if (
+               mention.start < 0 ||
+               mention.end <= mention.start ||
+               mention.end > input.body.length ||
+               input.body.slice(mention.start, mention.end) !== `@${toOptionId(area.name)}`
+            ) {
+               throw new Error('Area mention has an invalid text range.');
+            }
+            return {
+               areaId: area._id,
+               start: mention.start,
+               end: mention.end,
+               name: area.name,
+               color: area.color,
+            };
+         })
+      );
+
+      const now = Date.now();
+      await ctx.db.patch(updateId, {
+         health: input.health,
+         attention: input.attention ?? update.attention,
+         body: input.body,
+         areaMentions,
+         updatedAt: now,
+      });
+      await ctx.db.patch(update.projectId, {
+         attention: input.attention ?? update.attention,
+         updatedAt: now,
+      });
+
+      return serializeProjectUpdate(ctx, (await ctx.db.get(updateId))!);
+   },
+});
+
 export const createArea = mutation({
    args: { projectId: v.string(), name: v.string(), color: v.string() },
    handler: async (ctx, input) => {
