@@ -31,6 +31,7 @@ import { useSearchStore } from '@/store/search-store';
 import { useViewStore } from '@/store/view-store';
 import { useViewerProfile } from '@/src/data/viewer';
 import { projectStatusListQuery } from '@/src/data/projects';
+import { usePersistentStringSet } from '@/hooks/use-persistent-string-set';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Button } from '@/components/ui/button';
 import { CustomDragLayer } from './issue-grid';
@@ -66,6 +67,8 @@ interface IssuesWorkspaceProps {
 }
 
 const desktopWorkspaceQuery = '(min-width: 768px)';
+const collapsedParentStorageKey = 'triangle:issues:collapsed-parent-ids';
+const collapsedStatusStorageKey = 'triangle:issues:collapsed-status-ids';
 
 function subscribeToDesktopWorkspace(callback: () => void) {
    const mediaQuery = window.matchMedia(desktopWorkspaceQuery);
@@ -292,8 +295,10 @@ function IssuesWorkspaceContent({
    const isDesktopWorkspace = useIsDesktopWorkspace();
    const navigate = useNavigate();
    const [selectedIssueIds, setSelectedIssueIds] = useState<Set<string>>(() => new Set());
-   const [collapsedParentIds, setCollapsedParentIds] = useState<Set<string>>(() => new Set());
-   const [collapsedStatusIds, setCollapsedStatusIds] = useState<Set<string>>(() => new Set());
+   const [collapsedParentIds, setCollapsedParentIds] =
+      usePersistentStringSet(collapsedParentStorageKey);
+   const [collapsedStatusIds, setCollapsedStatusIds] =
+      usePersistentStringSet(collapsedStatusStorageKey);
    const [issueAction, setIssueAction] = useState<IssueActionKind | null>(null);
    const [selectionOverride, setSelectionOverride] = useState<{
       identifier?: string;
@@ -313,32 +318,38 @@ function IssuesWorkspaceContent({
          return next;
       });
    }, []);
-   const toggleParentCollapse = useCallback((issueId: string) => {
-      setCollapsedParentIds((current) => {
-         const next = new Set(current);
+   const toggleParentCollapse = useCallback(
+      (issueId: string) => {
+         setCollapsedParentIds((current) => {
+            const next = new Set(current);
 
-         if (next.has(issueId)) {
-            next.delete(issueId);
-         } else {
-            next.add(issueId);
-         }
+            if (next.has(issueId)) {
+               next.delete(issueId);
+            } else {
+               next.add(issueId);
+            }
 
-         return next;
-      });
-   }, []);
-   const toggleStatusCollapse = useCallback((statusId: string) => {
-      setCollapsedStatusIds((current) => {
-         const next = new Set(current);
+            return next;
+         });
+      },
+      [setCollapsedParentIds]
+   );
+   const toggleStatusCollapse = useCallback(
+      (statusId: string) => {
+         setCollapsedStatusIds((current) => {
+            const next = new Set(current);
 
-         if (next.has(statusId)) {
-            next.delete(statusId);
-         } else {
-            next.add(statusId);
-         }
+            if (next.has(statusId)) {
+               next.delete(statusId);
+            } else {
+               next.add(statusId);
+            }
 
-         return next;
-      });
-   }, []);
+            return next;
+         });
+      },
+      [setCollapsedStatusIds]
+   );
    const selectIssueHandlerRef = useRef(handleSelectIssue);
    useEffect(() => {
       selectIssueHandlerRef.current = handleSelectIssue;

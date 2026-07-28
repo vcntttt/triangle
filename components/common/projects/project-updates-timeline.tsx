@@ -103,6 +103,7 @@ export function ProjectUpdatesTimeline({
    const [activeFilter, setActiveFilter] = useState<TimelineFilter>('recent');
    const [selectedAreaIds, setSelectedAreaIds] = useState<string[]>([]);
    const [editingUpdate, setEditingUpdate] = useState<ProjectTimelineUpdate | null>(null);
+   const [savedUpdates, setSavedUpdates] = useState<Record<string, ProjectTimelineUpdate>>({});
    const selectedAreaIdSet = useMemo(() => new Set(selectedAreaIds), [selectedAreaIds]);
    const availableAreas = useMemo(
       () =>
@@ -113,16 +114,20 @@ export function ProjectUpdatesTimeline({
    );
 
    const visibleUpdates = useMemo(() => {
+      const currentUpdates = updates.map((update) => {
+         const savedUpdate = savedUpdates[update.id];
+         return savedUpdate && savedUpdate.updatedAt > update.updatedAt ? savedUpdate : update;
+      });
       const filtered =
          selectedAreaIdSet.size === 0
-            ? updates
-            : updates.filter((update) =>
+            ? currentUpdates
+            : currentUpdates.filter((update) =>
                  update.areaMentions.some((mention) => selectedAreaIdSet.has(mention.areaId))
               );
       return activeFilter === 'popular'
          ? filtered.toSorted((a, b) => a.project.name.localeCompare(b.project.name))
          : filtered;
-   }, [activeFilter, selectedAreaIdSet, updates]);
+   }, [activeFilter, savedUpdates, selectedAreaIdSet, updates]);
 
    if (databaseError) {
       return (
@@ -302,6 +307,15 @@ export function ProjectUpdatesTimeline({
                }}
                update={editingUpdate}
                open
+               onProjectUpdate={(_, savedUpdate) => {
+                  setSavedUpdates((current) => ({
+                     ...current,
+                     [savedUpdate.id]: {
+                        ...savedUpdate,
+                        project: editingUpdate.project,
+                     },
+                  }));
+               }}
                onOpenChange={(open) => {
                   if (!open) setEditingUpdate(null);
                }}

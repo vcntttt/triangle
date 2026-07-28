@@ -143,7 +143,7 @@ export function ProjectIconPicker({
                <ProjectIcon icon={value} />
             </Button>
          </PopoverTrigger>
-         <PopoverContent className="w-[310px] p-0" align="start">
+         <PopoverContent portal={false} className="w-[310px] p-0" align="start">
             <Tabs defaultValue="icons" className="gap-0">
                <TabsList className="h-9 w-full justify-start rounded-none border-b bg-transparent p-0 px-2">
                   <TabsTrigger value="icons" className="h-8 rounded-none px-3">
@@ -164,7 +164,7 @@ export function ProjectIconPicker({
                         className="h-8 pl-7"
                      />
                   </div>
-                  <div className="mt-3 grid max-h-64 grid-cols-8 gap-1 overflow-y-auto pr-1">
+                  <div className="mt-3 grid max-h-64 grid-cols-8 gap-1 overflow-y-auto overscroll-contain pr-1">
                      {visibleLucideIcons.map((iconName) => (
                         <button
                            key={iconName}
