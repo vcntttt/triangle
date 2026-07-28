@@ -40,7 +40,7 @@ issue's comments, artifacts, resolution, or other detailed history is needed.
 ## Run locally
 
 ```bash
-pnpm mcp
+bun run mcp
 ```
 
 The script loads `.env.local`; `CONVEX_SELF_HOSTED_URL` or `VITE_CONVEX_URL` must point to the Convex deployment. The same server is mounted at `/mcp` using Streamable HTTP.

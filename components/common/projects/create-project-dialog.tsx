@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
-import { Plus } from 'lucide-react';
+import { CircleDashed, CircleMinus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
    Dialog,
@@ -16,9 +16,16 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { ProjectIconPicker } from '@/components/common/projects/project-icon-picker';
 import type { ProjectIconConfig } from '@/lib/models';
+import {
+   priorities,
+   status as projectStatuses,
+   type Priority,
+   type Status,
+} from '@/lib/ui-catalog';
 import { toast } from 'sonner';
 import {
    projectPriorityListQuery,
@@ -35,7 +42,7 @@ const normalizeProjectKey = (value: string) =>
       .toUpperCase()
       .trim()
       .replace(/[^A-Z0-9]+/g, '')
-      .slice(0, 3);
+      .slice(0, 5);
 
 const createProjectKeyFromName = (name: string) => {
    const words = name
@@ -54,6 +61,26 @@ const createProjectKeyFromName = (name: string) => {
    return normalizeProjectKey(name);
 };
 
+const projectStatusIconMap: Record<string, Status['icon']> = Object.fromEntries(
+   projectStatuses.map((item) => [item.id, item.icon])
+);
+const projectPriorityIconMap: Record<string, Priority['icon']> = Object.fromEntries(
+   priorities.map((item) => [item.id, item.icon])
+);
+const fallbackStatusIcon =
+   projectStatuses.find((item) => item.id === 'backlog')?.icon ?? CircleDashed;
+const fallbackPriorityIcon = priorities[0]?.icon ?? CircleMinus;
+
+function StatusOptionIcon({ id }: { id: string }) {
+   const Icon = projectStatusIconMap[id] ?? fallbackStatusIcon;
+   return <Icon />;
+}
+
+function PriorityOptionIcon({ id, color }: { id: string; color?: string }) {
+   const Icon = projectPriorityIconMap[id] ?? fallbackPriorityIcon;
+   return <Icon className="size-4" style={color ? { color } : undefined} />;
+}
+
 export function CreateProjectDialog({ disabled = false }: CreateProjectDialogProps) {
    const router = useRouter();
    const [open, setOpen] = useState(false);
@@ -61,6 +88,8 @@ export function CreateProjectDialog({ disabled = false }: CreateProjectDialogPro
    const [error, setError] = useState<string | null>(null);
    const [projectKey, setProjectKey] = useState('');
    const [keyTouched, setKeyTouched] = useState(false);
+   const [selectedStatusId, setSelectedStatusId] = useState('');
+   const [selectedPriorityId, setSelectedPriorityId] = useState('');
    const [iconConfig, setIconConfig] = useState<ProjectIconConfig>({
       type: 'lucide',
       value: 'box',
@@ -69,6 +98,10 @@ export function CreateProjectDialog({ disabled = false }: CreateProjectDialogPro
    const { data: priorityOptions = [] } = useQuery(projectPriorityListQuery());
    const { createProject: createProjectMutation } = useProjectCommands();
    const formRef = useRef<HTMLFormElement>(null);
+   const selectedStatus =
+      statusOptions.find((option) => option.id === selectedStatusId) ?? statusOptions[0];
+   const selectedPriority =
+      priorityOptions.find((option) => option.id === selectedPriorityId) ?? priorityOptions[0];
 
    const handleOpenChange = (nextOpen: boolean) => {
       setOpen(nextOpen);
@@ -77,7 +110,7 @@ export function CreateProjectDialog({ disabled = false }: CreateProjectDialogPro
       }
    };
 
-   const projectKeyIsValid = /^[A-Z][A-Z0-9]{1,2}$/.test(projectKey);
+   const projectKeyIsValid = /^[A-Z][A-Z0-9]{1,4}$/.test(projectKey);
 
    const createProject = async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -91,8 +124,8 @@ export function CreateProjectDialog({ disabled = false }: CreateProjectDialogPro
             name: String(formData.get('name') ?? ''),
             key: projectKey,
             description: String(formData.get('description') ?? ''),
-            status: String(formData.get('status') ?? ''),
-            priority: String(formData.get('priority') ?? 'no-priority'),
+            status: selectedStatus?.id ?? 'backlog',
+            priority: selectedPriority?.id ?? 'no-priority',
             iconType: iconConfig.type,
             iconValue: iconConfig.value,
          });
@@ -100,6 +133,8 @@ export function CreateProjectDialog({ disabled = false }: CreateProjectDialogPro
          formRef.current?.reset();
          setProjectKey('');
          setKeyTouched(false);
+         setSelectedStatusId('');
+         setSelectedPriorityId('');
          setIconConfig({ type: 'lucide', value: 'box' });
          setOpen(false);
          await router.invalidate();
@@ -155,7 +190,7 @@ export function CreateProjectDialog({ disabled = false }: CreateProjectDialogPro
                      name="key"
                      placeholder="APP"
                      value={projectKey}
-                     maxLength={3}
+                     maxLength={5}
                      required
                      onChange={(event) => {
                         setKeyTouched(true);
@@ -163,7 +198,7 @@ export function CreateProjectDialog({ disabled = false }: CreateProjectDialogPro
                      }}
                   />
                   <p className="text-xs text-muted-foreground">
-                     Use 2-3 uppercase letters or numbers. This prefixes issue IDs like{' '}
+                     Use 2-5 uppercase letters or numbers. This prefixes issue IDs like{' '}
                      {projectKeyIsValid ? `${projectKey}-1` : 'APP-1'}.
                   </p>
                </div>
@@ -180,36 +215,60 @@ export function CreateProjectDialog({ disabled = false }: CreateProjectDialogPro
 
                <div className="space-y-2">
                   <Label htmlFor="status">Initial status</Label>
-                  <select
-                     id="status"
-                     name="status"
-                     aria-label="Initial status"
-                     defaultValue={statusOptions[0]?.id ?? 'backlog'}
-                     className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors outline-none"
+                  <Select
+                     value={selectedStatus?.id}
+                     onValueChange={setSelectedStatusId}
+                     disabled={isCreating}
                   >
-                     {statusOptions.map((statusOption) => (
-                        <option key={statusOption.id} value={statusOption.id}>
-                           {statusOption.name}
-                        </option>
-                     ))}
-                  </select>
+                     <SelectTrigger id="status" aria-label="Initial status">
+                        <span className="flex items-center gap-2">
+                           <StatusOptionIcon id={selectedStatus?.id ?? 'backlog'} />
+                           <span>{selectedStatus?.name ?? 'Select a status'}</span>
+                        </span>
+                     </SelectTrigger>
+                     <SelectContent>
+                        {statusOptions.map((statusOption) => (
+                           <SelectItem key={statusOption.id} value={statusOption.id}>
+                              <span className="flex items-center gap-2">
+                                 <StatusOptionIcon id={statusOption.id} />
+                                 <span>{statusOption.name}</span>
+                              </span>
+                           </SelectItem>
+                        ))}
+                     </SelectContent>
+                  </Select>
                </div>
 
                <div className="space-y-2">
                   <Label htmlFor="priority">Priority</Label>
-                  <select
-                     id="priority"
-                     name="priority"
-                     aria-label="Priority"
-                     defaultValue={priorityOptions[0]?.id ?? 'no-priority'}
-                     className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors outline-none"
+                  <Select
+                     value={selectedPriority?.id}
+                     onValueChange={setSelectedPriorityId}
+                     disabled={isCreating}
                   >
-                     {priorityOptions.map((priorityOption) => (
-                        <option key={priorityOption.id} value={priorityOption.id}>
-                           {priorityOption.name}
-                        </option>
-                     ))}
-                  </select>
+                     <SelectTrigger id="priority" aria-label="Priority">
+                        <span className="flex items-center gap-2">
+                           <PriorityOptionIcon
+                              id={selectedPriority?.id ?? 'no-priority'}
+                              color={selectedPriority?.color}
+                           />
+                           <span>{selectedPriority?.name ?? 'Select a priority'}</span>
+                        </span>
+                     </SelectTrigger>
+                     <SelectContent>
+                        {priorityOptions.map((priorityOption) => (
+                           <SelectItem key={priorityOption.id} value={priorityOption.id}>
+                              <span className="flex items-center gap-2">
+                                 <PriorityOptionIcon
+                                    id={priorityOption.id}
+                                    color={priorityOption.color}
+                                 />
+                                 <span>{priorityOption.name}</span>
+                              </span>
+                           </SelectItem>
+                        ))}
+                     </SelectContent>
+                  </Select>
                </div>
 
                {error && <p className="text-sm text-destructive">{error}</p>}

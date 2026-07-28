@@ -22,8 +22,8 @@ Este proyecto espera un deployment Convex configurado mediante variables de ento
 Comandos principales:
 
 ```bash
-pnpm install
-pnpm dev
+bun install
+bun run dev
 ```
 
 ## Estado actual

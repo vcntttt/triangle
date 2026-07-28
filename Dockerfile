@@ -1,10 +1,4 @@
-FROM node:20-bookworm-slim AS base
-
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
-
-RUN corepack enable
-RUN corepack prepare pnpm@10.33.0 --activate
+FROM oven/bun:1.3.14 AS base
 
 WORKDIR /app
 
@@ -12,9 +6,9 @@ FROM base AS deps
 
 ENV HUSKY=0
 
-COPY package.json pnpm-lock.yaml ./
+COPY package.json bun.lock ./
 
-RUN pnpm install --frozen-lockfile
+RUN bun install --frozen-lockfile
 
 FROM base AS builder
 
@@ -26,7 +20,7 @@ ENV VITE_CONVEX_SITE_URL=${VITE_CONVEX_SITE_URL}
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-RUN pnpm build
+RUN bun run build
 
 FROM base AS runtime
 
@@ -40,4 +34,4 @@ COPY package.json ./
 
 EXPOSE 3000
 
-CMD ["pnpm", "start:docker"]
+CMD ["bun", "run", "start:docker"]

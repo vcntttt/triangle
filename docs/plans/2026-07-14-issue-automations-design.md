@@ -26,4 +26,4 @@ Invalid or stale references are rejected by server validation. User-facing mutat
 
 ## Verification
 
-Verify creation, editing, toggling, and deletion in Settings. Verify matching and non-matching transitions, wildcard sources, exact sources, cascading subissues, completion through each server mutation, idempotent label removal, and disabled rules. The repository validation path is `pnpm build && pnpm lint`, followed by React Doctor.
+Verify creation, editing, toggling, and deletion in Settings. Verify matching and non-matching transitions, wildcard sources, exact sources, cascading subissues, completion through each server mutation, idempotent label removal, and disabled rules. The repository validation path is `bun run build && bun run lint`, followed by React Doctor.

@@ -4,7 +4,7 @@ import type { Issue, Status } from '@/lib/models';
 import { useIssuesData } from '@/components/common/issues/issues-data-context';
 import { useViewStore } from '@/store/view-store';
 import { cn } from '@/lib/utils';
-import { Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus } from 'lucide-react';
 import { FC, useRef } from 'react';
 import { useDrop } from 'react-dnd';
 import { Button } from '../../ui/button';
@@ -23,8 +23,12 @@ interface GroupIssuesProps {
    count: number;
    selectedIssueIdentifier?: string;
    selectedIssueIds?: Set<string>;
+   collapsedParentIds?: ReadonlySet<string>;
+   isCollapsed?: boolean;
    onSelectIssue?: (issue: Issue) => void;
    onToggleIssueSelection?: (issue: Issue) => void;
+   onToggleParentCollapse?: (issueId: string) => void;
+   onToggleStatusCollapse?: () => void;
 }
 
 export function GroupIssues({
@@ -33,20 +37,30 @@ export function GroupIssues({
    count,
    selectedIssueIdentifier,
    selectedIssueIds,
+   collapsedParentIds,
+   isCollapsed = false,
    onSelectIssue,
    onToggleIssueSelection,
+   onToggleParentCollapse,
+   onToggleStatusCollapse,
 }: GroupIssuesProps) {
    const { viewType, listMode } = useViewStore();
    const isViewTypeGrid = viewType === 'grid';
    const { openModal } = useCreateIssueStore();
-   const listRows = useMemo(() => getIssueListRows(issues, listMode), [issues, listMode]);
+   const listRows = useMemo(
+      () => getIssueListRows(issues, listMode, collapsedParentIds),
+      [collapsedParentIds, issues, listMode]
+   );
 
    return (
       <div
          className={cn(
             'bg-conainer',
             isViewTypeGrid
-               ? 'overflow-hidden rounded-md h-full flex-shrink-0 w-[348px] flex flex-col'
+               ? cn(
+                    'overflow-hidden rounded-md flex-shrink-0 w-[348px] flex flex-col',
+                    isCollapsed ? 'h-fit' : 'h-full'
+                 )
                : ''
          )}
       >
@@ -66,6 +80,26 @@ export function GroupIssues({
                }}
             >
                <div className="flex items-center gap-2">
+                  <Button
+                     type="button"
+                     className="size-6"
+                     size="icon"
+                     variant="ghost"
+                     aria-expanded={!isCollapsed}
+                     aria-label={
+                        isCollapsed
+                           ? `Expandir estado ${status.name}`
+                           : `Colapsar estado ${status.name}`
+                     }
+                     title={isCollapsed ? 'Expandir estado' : 'Colapsar estado'}
+                     onClick={onToggleStatusCollapse}
+                  >
+                     {isCollapsed ? (
+                        <ChevronRight className="size-4" />
+                     ) : (
+                        <ChevronDown className="size-4" />
+                     )}
+                  </Button>
                   <status.icon />
                   <span className="text-sm font-normal">{status.name}</span>
                   <span className="text-sm leading-none text-muted-foreground">{count}</span>
@@ -85,7 +119,7 @@ export function GroupIssues({
             </div>
          </div>
 
-         {viewType === 'list' ? (
+         {!isCollapsed && viewType === 'list' ? (
             <div className="space-y-0">
                {listRows.map(({ issue, nestingLevel, childrenCount, completedChildrenCount }) => (
                   <IssueLine
@@ -97,12 +131,14 @@ export function GroupIssues({
                      nestingLevel={nestingLevel}
                      childrenCount={childrenCount}
                      completedChildrenCount={completedChildrenCount}
+                     isCollapsed={collapsedParentIds?.has(issue.id) ?? false}
                      onSelect={onSelectIssue}
                      onToggleSelection={onToggleIssueSelection}
+                     onToggleCollapse={onToggleParentCollapse}
                   />
                ))}
             </div>
-         ) : (
+         ) : !isCollapsed ? (
             <IssueGridList
                issues={issues}
                status={status}
@@ -111,7 +147,7 @@ export function GroupIssues({
                onSelectIssue={onSelectIssue}
                onToggleIssueSelection={onToggleIssueSelection}
             />
-         )}
+         ) : null}
       </div>
    );
 }

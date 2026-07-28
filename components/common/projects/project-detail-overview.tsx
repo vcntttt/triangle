@@ -359,13 +359,13 @@ export function ProjectOverview({
                         <InlineEditableText
                            value={project.key}
                            placeholder="ID"
-                           maxLength={10}
+                           maxLength={5}
                            disabled={isSavingDetails}
                            transformValue={(value) =>
                               value
                                  .toUpperCase()
                                  .replace(/[^A-Z0-9]+/g, '')
-                                 .slice(0, 10)
+                                 .slice(0, 5)
                            }
                            displayClassName="rounded px-1.5 py-0.5 font-medium text-foreground hover:bg-muted/60"
                            inputClassName="h-7 w-28 px-2 text-sm font-medium uppercase"

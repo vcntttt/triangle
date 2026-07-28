@@ -9,55 +9,30 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as PulseRouteImport } from './routes/pulse'
-import { Route as ProjectsRouteImport } from './routes/projects'
-import { Route as McpRouteImport } from './routes/mcp'
-import { Route as IssuesRouteImport } from './routes/issues'
-import { Route as InboxRouteImport } from './routes/inbox'
-import { Route as OrgIdRouteImport } from './routes/$orgId'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ProjectsIndexRouteImport } from './routes/projects.index'
-import { Route as IssuesIndexRouteImport } from './routes/issues.index'
-import { Route as ProjectsProjectSlugRouteImport } from './routes/projects.$projectSlug'
-import { Route as IssuesIssueIdentifierRouteImport } from './routes/issues.$issueIdentifier'
-import { Route as OrgIdTeamsRouteImport } from './routes/$orgId.teams'
-import { Route as OrgIdSettingsRouteImport } from './routes/$orgId.settings'
-import { Route as OrgIdProjectsRouteImport } from './routes/$orgId.projects'
-import { Route as OrgIdMembersRouteImport } from './routes/$orgId.members'
-import { Route as OrgIdIssuesRouteImport } from './routes/$orgId.issues'
+import { Route as OrgIdRouteImport } from './routes/$orgId'
+import { Route as InboxRouteImport } from './routes/inbox'
+import { Route as IssuesRouteImport } from './routes/issues'
+import { Route as McpRouteImport } from './routes/mcp'
+import { Route as ProjectsRouteImport } from './routes/projects'
+import { Route as PulseRouteImport } from './routes/pulse'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as OrgIdInboxRouteImport } from './routes/$orgId.inbox'
+import { Route as OrgIdIssuesRouteImport } from './routes/$orgId.issues'
+import { Route as OrgIdMembersRouteImport } from './routes/$orgId.members'
+import { Route as OrgIdProjectsRouteImport } from './routes/$orgId.projects'
+import { Route as OrgIdSettingsRouteImport } from './routes/$orgId.settings'
+import { Route as OrgIdTeamsRouteImport } from './routes/$orgId.teams'
+import { Route as IssuesIndexRouteImport } from './routes/issues.index'
+import { Route as IssuesIssueIdentifierRouteImport } from './routes/issues.$issueIdentifier'
+import { Route as ProjectsIndexRouteImport } from './routes/projects.index'
+import { Route as ProjectsProjectSlugRouteImport } from './routes/projects.$projectSlug'
 import { Route as OrgIdIssuesIssueIdentifierRouteImport } from './routes/$orgId.issues.$issueIdentifier'
 import { Route as OrgIdTeamTeamIdAllRouteImport } from './routes/$orgId.team.$teamId.all'
 
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PulseRoute = PulseRouteImport.update({
-  id: '/pulse',
-  path: '/pulse',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProjectsRoute = ProjectsRouteImport.update({
-  id: '/projects',
-  path: '/projects',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const McpRoute = McpRouteImport.update({
-  id: '/mcp',
-  path: '/mcp',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const IssuesRoute = IssuesRouteImport.update({
-  id: '/issues',
-  path: '/issues',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InboxRoute = InboxRouteImport.update({
-  id: '/inbox',
-  path: '/inbox',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OrgIdRoute = OrgIdRouteImport.update({
@@ -65,49 +40,39 @@ const OrgIdRoute = OrgIdRouteImport.update({
   path: '/$orgId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const InboxRoute = InboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ProjectsIndexRoute = ProjectsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ProjectsRoute,
+const IssuesRoute = IssuesRouteImport.update({
+  id: '/issues',
+  path: '/issues',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const IssuesIndexRoute = IssuesIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => IssuesRoute,
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const ProjectsProjectSlugRoute = ProjectsProjectSlugRouteImport.update({
-  id: '/$projectSlug',
-  path: '/$projectSlug',
-  getParentRoute: () => ProjectsRoute,
-} as any)
-const IssuesIssueIdentifierRoute = IssuesIssueIdentifierRouteImport.update({
-  id: '/$issueIdentifier',
-  path: '/$issueIdentifier',
-  getParentRoute: () => IssuesRoute,
-} as any)
-const OrgIdTeamsRoute = OrgIdTeamsRouteImport.update({
-  id: '/teams',
-  path: '/teams',
-  getParentRoute: () => OrgIdRoute,
-} as any)
-const OrgIdSettingsRoute = OrgIdSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => OrgIdRoute,
-} as any)
-const OrgIdProjectsRoute = OrgIdProjectsRouteImport.update({
+const ProjectsRoute = ProjectsRouteImport.update({
   id: '/projects',
   path: '/projects',
-  getParentRoute: () => OrgIdRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-const OrgIdMembersRoute = OrgIdMembersRouteImport.update({
-  id: '/members',
-  path: '/members',
+const PulseRoute = PulseRouteImport.update({
+  id: '/pulse',
+  path: '/pulse',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrgIdInboxRoute = OrgIdInboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
   getParentRoute: () => OrgIdRoute,
 } as any)
 const OrgIdIssuesRoute = OrgIdIssuesRouteImport.update({
@@ -115,10 +80,45 @@ const OrgIdIssuesRoute = OrgIdIssuesRouteImport.update({
   path: '/issues',
   getParentRoute: () => OrgIdRoute,
 } as any)
-const OrgIdInboxRoute = OrgIdInboxRouteImport.update({
-  id: '/inbox',
-  path: '/inbox',
+const OrgIdMembersRoute = OrgIdMembersRouteImport.update({
+  id: '/members',
+  path: '/members',
   getParentRoute: () => OrgIdRoute,
+} as any)
+const OrgIdProjectsRoute = OrgIdProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
+  getParentRoute: () => OrgIdRoute,
+} as any)
+const OrgIdSettingsRoute = OrgIdSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => OrgIdRoute,
+} as any)
+const OrgIdTeamsRoute = OrgIdTeamsRouteImport.update({
+  id: '/teams',
+  path: '/teams',
+  getParentRoute: () => OrgIdRoute,
+} as any)
+const IssuesIndexRoute = IssuesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => IssuesRoute,
+} as any)
+const IssuesIssueIdentifierRoute = IssuesIssueIdentifierRouteImport.update({
+  id: '/$issueIdentifier',
+  path: '/$issueIdentifier',
+  getParentRoute: () => IssuesRoute,
+} as any)
+const ProjectsIndexRoute = ProjectsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ProjectsRoute,
+} as any)
+const ProjectsProjectSlugRoute = ProjectsProjectSlugRouteImport.update({
+  id: '/$projectSlug',
+  path: '/$projectSlug',
+  getParentRoute: () => ProjectsRoute,
 } as any)
 const OrgIdIssuesIssueIdentifierRoute =
   OrgIdIssuesIssueIdentifierRouteImport.update({
@@ -277,46 +277,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/pulse': {
-      id: '/pulse'
-      path: '/pulse'
-      fullPath: '/pulse'
-      preLoaderRoute: typeof PulseRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/projects': {
-      id: '/projects'
-      path: '/projects'
-      fullPath: '/projects'
-      preLoaderRoute: typeof ProjectsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/mcp': {
-      id: '/mcp'
-      path: '/mcp'
-      fullPath: '/mcp'
-      preLoaderRoute: typeof McpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/issues': {
-      id: '/issues'
-      path: '/issues'
-      fullPath: '/issues'
-      preLoaderRoute: typeof IssuesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/inbox': {
-      id: '/inbox'
-      path: '/inbox'
-      fullPath: '/inbox'
-      preLoaderRoute: typeof InboxRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/$orgId': {
@@ -326,67 +291,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrgIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/inbox': {
+      id: '/inbox'
+      path: '/inbox'
+      fullPath: '/inbox'
+      preLoaderRoute: typeof InboxRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/projects/': {
-      id: '/projects/'
-      path: '/'
-      fullPath: '/projects/'
-      preLoaderRoute: typeof ProjectsIndexRouteImport
-      parentRoute: typeof ProjectsRoute
+    '/issues': {
+      id: '/issues'
+      path: '/issues'
+      fullPath: '/issues'
+      preLoaderRoute: typeof IssuesRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/issues/': {
-      id: '/issues/'
-      path: '/'
-      fullPath: '/issues/'
-      preLoaderRoute: typeof IssuesIndexRouteImport
-      parentRoute: typeof IssuesRoute
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/projects/$projectSlug': {
-      id: '/projects/$projectSlug'
-      path: '/$projectSlug'
-      fullPath: '/projects/$projectSlug'
-      preLoaderRoute: typeof ProjectsProjectSlugRouteImport
-      parentRoute: typeof ProjectsRoute
-    }
-    '/issues/$issueIdentifier': {
-      id: '/issues/$issueIdentifier'
-      path: '/$issueIdentifier'
-      fullPath: '/issues/$issueIdentifier'
-      preLoaderRoute: typeof IssuesIssueIdentifierRouteImport
-      parentRoute: typeof IssuesRoute
-    }
-    '/$orgId/teams': {
-      id: '/$orgId/teams'
-      path: '/teams'
-      fullPath: '/$orgId/teams'
-      preLoaderRoute: typeof OrgIdTeamsRouteImport
-      parentRoute: typeof OrgIdRoute
-    }
-    '/$orgId/settings': {
-      id: '/$orgId/settings'
-      path: '/settings'
-      fullPath: '/$orgId/settings'
-      preLoaderRoute: typeof OrgIdSettingsRouteImport
-      parentRoute: typeof OrgIdRoute
-    }
-    '/$orgId/projects': {
-      id: '/$orgId/projects'
+    '/projects': {
+      id: '/projects'
       path: '/projects'
-      fullPath: '/$orgId/projects'
-      preLoaderRoute: typeof OrgIdProjectsRouteImport
-      parentRoute: typeof OrgIdRoute
+      fullPath: '/projects'
+      preLoaderRoute: typeof ProjectsRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/$orgId/members': {
-      id: '/$orgId/members'
-      path: '/members'
-      fullPath: '/$orgId/members'
-      preLoaderRoute: typeof OrgIdMembersRouteImport
+    '/pulse': {
+      id: '/pulse'
+      path: '/pulse'
+      fullPath: '/pulse'
+      preLoaderRoute: typeof PulseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/$orgId/inbox': {
+      id: '/$orgId/inbox'
+      path: '/inbox'
+      fullPath: '/$orgId/inbox'
+      preLoaderRoute: typeof OrgIdInboxRouteImport
       parentRoute: typeof OrgIdRoute
     }
     '/$orgId/issues': {
@@ -396,12 +347,61 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrgIdIssuesRouteImport
       parentRoute: typeof OrgIdRoute
     }
-    '/$orgId/inbox': {
-      id: '/$orgId/inbox'
-      path: '/inbox'
-      fullPath: '/$orgId/inbox'
-      preLoaderRoute: typeof OrgIdInboxRouteImport
+    '/$orgId/members': {
+      id: '/$orgId/members'
+      path: '/members'
+      fullPath: '/$orgId/members'
+      preLoaderRoute: typeof OrgIdMembersRouteImport
       parentRoute: typeof OrgIdRoute
+    }
+    '/$orgId/projects': {
+      id: '/$orgId/projects'
+      path: '/projects'
+      fullPath: '/$orgId/projects'
+      preLoaderRoute: typeof OrgIdProjectsRouteImport
+      parentRoute: typeof OrgIdRoute
+    }
+    '/$orgId/settings': {
+      id: '/$orgId/settings'
+      path: '/settings'
+      fullPath: '/$orgId/settings'
+      preLoaderRoute: typeof OrgIdSettingsRouteImport
+      parentRoute: typeof OrgIdRoute
+    }
+    '/$orgId/teams': {
+      id: '/$orgId/teams'
+      path: '/teams'
+      fullPath: '/$orgId/teams'
+      preLoaderRoute: typeof OrgIdTeamsRouteImport
+      parentRoute: typeof OrgIdRoute
+    }
+    '/issues/': {
+      id: '/issues/'
+      path: '/'
+      fullPath: '/issues/'
+      preLoaderRoute: typeof IssuesIndexRouteImport
+      parentRoute: typeof IssuesRoute
+    }
+    '/issues/$issueIdentifier': {
+      id: '/issues/$issueIdentifier'
+      path: '/$issueIdentifier'
+      fullPath: '/issues/$issueIdentifier'
+      preLoaderRoute: typeof IssuesIssueIdentifierRouteImport
+      parentRoute: typeof IssuesRoute
+    }
+    '/projects/': {
+      id: '/projects/'
+      path: '/'
+      fullPath: '/projects/'
+      preLoaderRoute: typeof ProjectsIndexRouteImport
+      parentRoute: typeof ProjectsRoute
+    }
+    '/projects/$projectSlug': {
+      id: '/projects/$projectSlug'
+      path: '/$projectSlug'
+      fullPath: '/projects/$projectSlug'
+      preLoaderRoute: typeof ProjectsProjectSlugRouteImport
+      parentRoute: typeof ProjectsRoute
     }
     '/$orgId/issues/$issueIdentifier': {
       id: '/$orgId/issues/$issueIdentifier'

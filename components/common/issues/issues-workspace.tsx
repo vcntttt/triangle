@@ -292,6 +292,8 @@ function IssuesWorkspaceContent({
    const isDesktopWorkspace = useIsDesktopWorkspace();
    const navigate = useNavigate();
    const [selectedIssueIds, setSelectedIssueIds] = useState<Set<string>>(() => new Set());
+   const [collapsedParentIds, setCollapsedParentIds] = useState<Set<string>>(() => new Set());
+   const [collapsedStatusIds, setCollapsedStatusIds] = useState<Set<string>>(() => new Set());
    const [issueAction, setIssueAction] = useState<IssueActionKind | null>(null);
    const [selectionOverride, setSelectionOverride] = useState<{
       identifier?: string;
@@ -306,6 +308,32 @@ function IssuesWorkspaceContent({
             next.delete(issueId);
          } else {
             next.add(issueId);
+         }
+
+         return next;
+      });
+   }, []);
+   const toggleParentCollapse = useCallback((issueId: string) => {
+      setCollapsedParentIds((current) => {
+         const next = new Set(current);
+
+         if (next.has(issueId)) {
+            next.delete(issueId);
+         } else {
+            next.add(issueId);
+         }
+
+         return next;
+      });
+   }, []);
+   const toggleStatusCollapse = useCallback((statusId: string) => {
+      setCollapsedStatusIds((current) => {
+         const next = new Set(current);
+
+         if (next.has(statusId)) {
+            next.delete(statusId);
+         } else {
+            next.add(statusId);
          }
 
          return next;
@@ -374,15 +402,23 @@ function IssuesWorkspaceContent({
       }
 
       return statusIds.flatMap((statusId) => {
+         if (viewType !== 'graph' && collapsedStatusIds.has(statusId)) {
+            return [];
+         }
+
          const statusIssues = issuesByStatus[statusId] ?? [];
 
          if (viewType === 'grid' || viewType === 'graph') {
             return sortIssuesByPriority(statusIssues);
          }
 
-         return getIssueListRows(statusIssues, listMode).map((row) => row.issue);
+         return getIssueListRows(statusIssues, listMode, collapsedParentIds).map(
+            (row) => row.issue
+         );
       });
    }, [
+      collapsedParentIds,
+      collapsedStatusIds,
       displayIssues,
       initialStatuses,
       isSearching,
@@ -484,6 +520,10 @@ function IssuesWorkspaceContent({
                         onToggleIssueSelection: handleListToggleIssueSelection,
                         onMarkSelectedAsObjectives: markSelectedAsObjectives,
                         onClearIssueSelection: clearIssueSelection,
+                        collapsedParentIds,
+                        collapsedStatusIds,
+                        onToggleParentCollapse: toggleParentCollapse,
+                        onToggleStatusCollapse: toggleStatusCollapse,
                      }}
                      onDeleteOrArchive={navigateToAdjacentIssue}
                      onClearSelectedIssue={handleClearSelectedIssue}
@@ -512,6 +552,10 @@ function IssuesWorkspaceContent({
                      onToggleIssueSelection={handleListToggleIssueSelection}
                      onMarkSelectedAsObjectives={markSelectedAsObjectives}
                      onClearIssueSelection={clearIssueSelection}
+                     collapsedParentIds={collapsedParentIds}
+                     collapsedStatusIds={collapsedStatusIds}
+                     onToggleParentCollapse={toggleParentCollapse}
+                     onToggleStatusCollapse={toggleStatusCollapse}
                   />
                )}
             </div>
@@ -624,6 +668,10 @@ interface IssuesListPanelProps {
    onToggleIssueSelection: (issue: Issue) => void;
    onMarkSelectedAsObjectives: () => void;
    onClearIssueSelection: () => void;
+   collapsedParentIds: ReadonlySet<string>;
+   collapsedStatusIds: ReadonlySet<string>;
+   onToggleParentCollapse: (issueId: string) => void;
+   onToggleStatusCollapse: (statusId: string) => void;
 }
 
 function DesktopIssuesWorkspace({
@@ -716,6 +764,10 @@ function IssuesListPanel({
    onToggleIssueSelection,
    onMarkSelectedAsObjectives,
    onClearIssueSelection,
+   collapsedParentIds,
+   collapsedStatusIds,
+   onToggleParentCollapse,
+   onToggleStatusCollapse,
 }: IssuesListPanelProps) {
    const { viewType, hideCompletedIssues, objectiveIssueIds } = useViewStore();
    const isViewTypeGrid = viewType === 'grid';
@@ -815,6 +867,10 @@ function IssuesListPanel({
                               selectedIssueIds={selectedIssueIds}
                               onSelectIssue={onSelectIssue}
                               onToggleIssueSelection={onToggleIssueSelection}
+                              collapsedParentIds={collapsedParentIds}
+                              isCollapsed={collapsedStatusIds.has(statusItem.id)}
+                              onToggleParentCollapse={onToggleParentCollapse}
+                              onToggleStatusCollapse={() => onToggleStatusCollapse(statusItem.id)}
                            />
                         );
                      })}

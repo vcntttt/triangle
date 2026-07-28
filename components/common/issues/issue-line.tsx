@@ -2,7 +2,7 @@
 
 import type { Issue } from '@/lib/models';
 import { format } from 'date-fns';
-import { GitBranchPlus } from 'lucide-react';
+import { ChevronDown, ChevronRight, GitBranchPlus } from 'lucide-react';
 import { AssigneeUser } from './assignee-user';
 import { LabelBadge } from './label-badge';
 import { PrioritySelector } from './priority-selector';
@@ -38,8 +38,10 @@ export const IssueLine = memo(function IssueLine({
    nestingLevel = 0,
    childrenCount = 0,
    completedChildrenCount = 0,
+   isCollapsed = false,
    onSelect,
    onToggleSelection,
+   onToggleCollapse,
 }: {
    issue: Issue;
    layoutId?: boolean;
@@ -48,8 +50,10 @@ export const IssueLine = memo(function IssueLine({
    nestingLevel?: number;
    childrenCount?: number;
    completedChildrenCount?: number;
+   isCollapsed?: boolean;
    onSelect?: (issue: Issue) => void;
    onToggleSelection?: (issue: Issue) => void;
+   onToggleCollapse?: (issueId: string) => void;
 }) {
    const { visibleProperties } = useViewStore();
    const createdAtLabel = format(new Date(issue.createdAt), 'MMM dd');
@@ -94,6 +98,33 @@ export const IssueLine = memo(function IssueLine({
                      className="flex items-center gap-0.5"
                      onMouseDownCapture={(event) => event.stopPropagation()}
                   >
+                     <span className="flex size-5 shrink-0 items-center justify-center">
+                        {childrenCount > 0 ? (
+                           <button
+                              type="button"
+                              className="inline-flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
+                              aria-expanded={!isCollapsed}
+                              aria-label={
+                                 isCollapsed
+                                    ? `Expandir issue padre ${issue.identifier}`
+                                    : `Colapsar issue padre ${issue.identifier}`
+                              }
+                              title={
+                                 isCollapsed ? 'Expandir issues hijas' : 'Colapsar issues hijas'
+                              }
+                              onClick={(event) => {
+                                 event.stopPropagation();
+                                 onToggleCollapse?.(issue.id);
+                              }}
+                           >
+                              {isCollapsed ? (
+                                 <ChevronRight className="size-3.5" />
+                              ) : (
+                                 <ChevronDown className="size-3.5" />
+                              )}
+                           </button>
+                        ) : null}
+                     </span>
                      <PrioritySelector priority={issue.priority} issueId={issue.id} />
                      <StatusSelector status={issue.status} issueId={issue.id} />
                   </div>

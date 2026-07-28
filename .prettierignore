@@ -1,7 +1,7 @@
 .next
 node_modules
 public
-pnpm-lock.yaml
+bun.lock
 .github
 build
 dist

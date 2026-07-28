@@ -49,14 +49,14 @@ function toOptionId(value: string): string {
       .replace(/^-+|-+$/g, '');
 }
 
-const projectKeyPattern = /^[A-Z][A-Z0-9]{1,2}$/;
+const projectKeyPattern = /^[A-Z][A-Z0-9]{1,4}$/;
 
 function normalizeProjectKey(value: string): string {
    return value
       .toUpperCase()
       .trim()
       .replace(/[^A-Z0-9]+/g, '')
-      .slice(0, 3);
+      .slice(0, 5);
 }
 
 function createProjectKeyFromName(name: string): string {
@@ -79,7 +79,7 @@ function createProjectKeyFromName(name: string): string {
 function assertValidProjectKey(key: string): void {
    if (!projectKeyPattern.test(key)) {
       throw new Error(
-         'Project key must be 2-3 uppercase letters or numbers and start with a letter.'
+         'Project key must be 2-5 uppercase letters or numbers and start with a letter.'
       );
    }
 }

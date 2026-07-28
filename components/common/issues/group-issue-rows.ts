@@ -10,7 +10,8 @@ export type IssueListRow = {
 
 export function getIssueListRows(
    issues: Issue[],
-   listMode: 'hierarchy' | 'flat' = 'hierarchy'
+   listMode: 'hierarchy' | 'flat' = 'hierarchy',
+   collapsedParentIds: ReadonlySet<string> = new Set()
 ): IssueListRow[] {
    const sortedIssues = sortIssuesByPriority(issues);
 
@@ -49,6 +50,14 @@ export function getIssueListRows(
          ).length,
       });
       seen.add(issue.id);
+
+      if (collapsedParentIds.has(issue.id)) {
+         for (const child of visibleChildren) {
+            seen.add(child.id);
+         }
+
+         continue;
+      }
 
       for (const child of visibleChildren) {
          rows.push({
