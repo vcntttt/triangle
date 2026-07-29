@@ -1,5 +1,7 @@
 import type { ElementType, ReactNode } from 'react';
 
+const tableDividerCellPattern = /^:?-{3,}:?$/;
+
 function renderInline(text: string): ReactNode[] {
    const tokenPattern =
       /(`[^`]+`|\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_|\[[^\]]+\]\([^\s)]+\))/g;
@@ -39,6 +41,16 @@ function renderInline(text: string): ReactNode[] {
       }
       return token;
    });
+}
+
+function parseTableRow(line: string): string[] {
+   const trimmed = line.trim().replace(/^\|/, '').replace(/\|$/, '');
+   return trimmed.split('|').map((cell) => cell.trim());
+}
+
+function isTableDivider(line: string, columnCount: number): boolean {
+   const cells = parseTableRow(line);
+   return cells.length === columnCount && cells.every((cell) => tableDividerCellPattern.test(cell));
 }
 
 export function MarkdownContent({ content }: { content: string }) {
@@ -86,15 +98,61 @@ export function MarkdownContent({ content }: { content: string }) {
       list = null;
    };
 
-   lines.forEach((line) => {
+   for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+      const line = lines[lineIndex];
       const trimmed = line.trim();
       const heading = trimmed.match(/^(#{1,6})\s+(.+)$/);
       const unordered = trimmed.match(/^[-*+]\s+(.+)$/);
       const ordered = trimmed.match(/^\d+[.)]\s+(.+)$/);
+      const tableHeader = parseTableRow(trimmed);
+      const hasTable =
+         trimmed.includes('|') &&
+         lineIndex + 1 < lines.length &&
+         isTableDivider(lines[lineIndex + 1], tableHeader.length);
 
       if (!trimmed) {
          flushParagraph();
          flushList();
+      } else if (hasTable) {
+         flushParagraph();
+         flushList();
+
+         const rows: string[][] = [];
+         lineIndex += 2;
+         while (lineIndex < lines.length && lines[lineIndex].trim().includes('|')) {
+            const row = parseTableRow(lines[lineIndex]);
+            if (row.length !== tableHeader.length) break;
+            rows.push(row);
+            lineIndex += 1;
+         }
+         lineIndex -= 1;
+
+         blocks.push(
+            <div key={`table-${blocks.length}`} className="overflow-x-auto">
+               <table className="w-full border-collapse text-left text-sm">
+                  <thead>
+                     <tr className="border-b border-border">
+                        {tableHeader.map((cell, index) => (
+                           <th key={index} className="px-3 py-2 font-semibold first:pl-0">
+                              {renderInline(cell)}
+                           </th>
+                        ))}
+                     </tr>
+                  </thead>
+                  <tbody>
+                     {rows.map((row, rowIndex) => (
+                        <tr key={rowIndex} className="border-b border-border/60 last:border-0">
+                           {row.map((cell, cellIndex) => (
+                              <td key={cellIndex} className="px-3 py-2 align-top first:pl-0">
+                                 {renderInline(cell)}
+                              </td>
+                           ))}
+                        </tr>
+                     ))}
+                  </tbody>
+               </table>
+            </div>
+         );
       } else if (heading) {
          flushParagraph();
          flushList();
@@ -112,11 +170,15 @@ export function MarkdownContent({ content }: { content: string }) {
             list = { ordered: isOrdered, items: [] };
          }
          list.items.push((unordered ?? ordered)![1]);
+      } else if (/^ {0,3}([-*_])(?:\s*\1){2,}\s*$/.test(line)) {
+         flushParagraph();
+         flushList();
+         blocks.push(<hr key={`separator-${blocks.length}`} className="border-border" />);
       } else {
          flushList();
          paragraph.push(trimmed);
       }
-   });
+   }
 
    flushParagraph();
    flushList();
