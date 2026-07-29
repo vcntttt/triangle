@@ -109,6 +109,7 @@ async function serializeProject(
       iconValue: project.iconValue,
       status: project.status,
       priority: project.priority,
+      health: toProjectHealth(project.health ?? latestUpdate?.health ?? 'no-update'),
       attention: getProjectAttentionId(project),
       latestUpdate: latestUpdate ? await serializeProjectUpdate(ctx, latestUpdate) : null,
       createdAt: nowIso(project.createdAt),
@@ -700,6 +701,7 @@ export const create = mutation({
       iconValue: v.optional(v.string()),
       status: v.string(),
       priority: v.optional(v.string()),
+      health: v.optional(v.string()),
       attention: v.optional(v.string()),
    },
    handler: async (ctx, input) => {
@@ -745,6 +747,7 @@ export const create = mutation({
          iconValue: input.iconValue ?? 'box',
          status: input.status,
          priority: input.priority ?? 'no-priority',
+         health: input.health ?? 'no-update',
          attention: input.attention ?? defaultProjectAttentionId,
          createdAt: now,
          updatedAt: now,
@@ -759,6 +762,7 @@ export const update = mutation({
       projectId: v.string(),
       status: v.optional(v.string()),
       priority: v.optional(v.string()),
+      health: v.optional(v.string()),
       attention: v.optional(v.string()),
    },
    handler: async (ctx, { projectId, ...input }) => {
@@ -769,6 +773,7 @@ export const update = mutation({
       await ctx.db.patch(id, {
          ...(input.status !== undefined ? { status: input.status } : {}),
          ...(input.priority !== undefined ? { priority: input.priority } : {}),
+         ...(input.health !== undefined ? { health: input.health } : {}),
          ...(input.attention !== undefined ? { attention: input.attention } : {}),
          updatedAt: Date.now(),
       });
@@ -915,7 +920,7 @@ export const createUpdate = mutation({
          createdAt: now,
          updatedAt: now,
       });
-      await ctx.db.patch(projectId, { attention, updatedAt: now });
+      await ctx.db.patch(projectId, { health: input.health, attention, updatedAt: now });
 
       return serializeProjectUpdate(ctx, (await ctx.db.get(updateId))!);
    },
@@ -969,6 +974,7 @@ export const updateProjectUpdate = mutation({
          updatedAt: now,
       });
       await ctx.db.patch(update.projectId, {
+         health: input.health,
          attention: input.attention ?? update.attention,
          updatedAt: now,
       });

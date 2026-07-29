@@ -284,6 +284,7 @@ export function ProjectOverview({
    const handleProjectUpdate = (_projectId: string, update: ProjectUpdate) => {
       setProject((current) => ({
          ...current,
+         health: update.health,
          attention: update.attention.id,
          latestUpdate: update,
       }));

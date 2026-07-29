@@ -31,6 +31,7 @@ export interface ProjectLike {
    iconValue?: string;
    status: string;
    priority?: string;
+   health?: PresentationProject['health']['id'];
    attention?: string;
    description?: string | null;
    latestUpdate?: {
@@ -139,9 +140,7 @@ export const toPresentationProject = (
       lead: viewer,
       priority: resolvePriority(project.priority, priorityOptions),
       attention: resolveAttention(project.attention, attentionOptions),
-      health: project.latestUpdate
-         ? (health.find((item) => item.id === project.latestUpdate?.health) ?? health[0])
-         : noUpdateHealth,
+      health: health.find((item) => item.id === (project.health ?? 'no-update')) ?? noUpdateHealth,
       latestUpdate: project.latestUpdate ?? null,
    };
 };

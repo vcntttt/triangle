@@ -64,13 +64,12 @@ export function ProjectBoardCard({
    const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
    const isPinned = pinnedProjectIds.includes(project.id);
-   const isReadOnly = groupBy === 'health';
    const startDateLabel = format(new Date(project.startDate), 'MMM dd, yyyy');
 
    const [{ isDragging }, drag, preview] = useDrag(() => ({
       type: ProjectDragType,
       item: project,
-      canDrag: !isReadOnly,
+      canDrag: true,
       collect: (monitor) => ({
          isDragging: monitor.isDragging(),
       }),
@@ -90,8 +89,7 @@ export function ProjectBoardCard({
                   'group rounded-md border border-border/60 bg-background p-3 shadow-xs transition-colors',
                   'hover:border-border hover:bg-accent/20',
                   isDragging && 'opacity-50',
-                  isReadOnly && 'cursor-default',
-                  !isReadOnly && 'cursor-grab active:cursor-grabbing'
+                  'cursor-grab active:cursor-grabbing'
                )}
             >
                <button
@@ -174,12 +172,6 @@ export function ProjectBoardCard({
                      </div>
                   )}
                </div>
-
-               {isReadOnly && (
-                  <p className="mt-3 text-[11px] text-muted-foreground">
-                     Health is set by project updates, so this board is read only.
-                  </p>
-               )}
             </m.div>
          </ContextMenuTrigger>
          <ProjectContextMenu

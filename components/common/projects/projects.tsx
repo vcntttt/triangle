@@ -32,16 +32,27 @@ export default function Projects({
    const { viewType, visibleProperties } = useProjectsViewStore();
    const { filters, sort } = useProjectsFilterStore();
    const [projectUpdates, setProjectUpdates] = useState<Record<string, ProjectUpdate>>({});
+   const [projectFieldOverrides, setProjectFieldOverrides] = useState<
+      Record<string, Pick<ProjectLike, 'health' | 'attention'>>
+   >({});
    const viewer = viewerProfileToUser(useViewerProfile());
 
    const handleProjectUpdate = (projectId: string, update: ProjectUpdate) => {
       setProjectUpdates((updates) => ({ ...updates, [projectId]: update }));
+      setProjectFieldOverrides((overrides) => ({
+         ...overrides,
+         [projectId]: { health: update.health, attention: update.attention.id },
+      }));
    };
 
    const presentationProjects = projects.map((project) => {
       const latestUpdate = projectUpdates[project.id] ?? project.latestUpdate;
       return toPresentationProject(
-         { ...project, attention: latestUpdate?.attention.id ?? project.attention, latestUpdate },
+         {
+            ...project,
+            ...projectFieldOverrides[project.id],
+            latestUpdate,
+         },
          statusOptions,
          priorityOptions,
          attentionOptions,
@@ -131,6 +142,18 @@ export default function Projects({
          statusOptions={statusOptions}
          priorityOptions={priorityOptions}
          attentionOptions={attentionOptions}
+         onProjectAttentionChange={(projectId, attentionId) => {
+            setProjectFieldOverrides((overrides) => ({
+               ...overrides,
+               [projectId]: { ...overrides[projectId], attention: attentionId },
+            }));
+         }}
+         onProjectHealthChange={(projectId, healthId) => {
+            setProjectFieldOverrides((overrides) => ({
+               ...overrides,
+               [projectId]: { ...overrides[projectId], health: healthId },
+            }));
+         }}
       />
    ) : (
       <div className="w-full">

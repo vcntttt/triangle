@@ -30,6 +30,8 @@ interface ProjectBoardProps {
    statusOptions: ProjectOptionLike[];
    priorityOptions: ProjectOptionLike[];
    attentionOptions: ProjectOptionLike[];
+   onProjectAttentionChange?: (projectId: string, attentionId: string) => void;
+   onProjectHealthChange?: (projectId: string, healthId: string) => void;
 }
 
 interface ProjectGroup {
@@ -53,6 +55,8 @@ export function ProjectBoard({
    statusOptions,
    priorityOptions,
    attentionOptions,
+   onProjectAttentionChange,
+   onProjectHealthChange,
 }: ProjectBoardProps) {
    const { groupBy, showEmptyGroups, visibleProperties } = useProjectsViewStore();
    const navigate = useNavigate();
@@ -134,23 +138,27 @@ export function ProjectBoard({
    };
 
    const handleMoveProject = async (projectId: string, targetGroupId: string) => {
-      if (groupBy === 'health') {
-         return;
-      }
-
       const project = boardProjects.find((item) => item.id === projectId);
       if (!project) {
          return;
       }
 
       const field =
-         groupBy === 'status' ? 'status' : groupBy === 'priority' ? 'priority' : 'attention';
+         groupBy === 'status'
+            ? 'status'
+            : groupBy === 'priority'
+              ? 'priority'
+              : groupBy === 'attention'
+                ? 'attention'
+                : 'health';
       const currentValue =
          field === 'status'
             ? project.status.id
             : field === 'priority'
               ? project.priority.id
-              : project.attention.id;
+              : field === 'attention'
+                ? project.attention.id
+                : project.health.id;
 
       if (currentValue === targetGroupId) {
          return;
@@ -164,13 +172,15 @@ export function ProjectBoard({
             ? 'Project status updated'
             : field === 'priority'
               ? 'Project priority updated'
-              : 'Project attention updated'
+              : field === 'attention'
+                ? 'Project attention updated'
+                : 'Project health updated'
       );
    };
 
    async function updateLocalProjectField(
       projectId: string,
-      field: 'status' | 'priority' | 'attention',
+      field: 'status' | 'priority' | 'health' | 'attention',
       value: string,
       successMessage: string
    ) {
@@ -201,18 +211,22 @@ export function ProjectBoard({
                          project.priority.name,
                    },
                 }
-              : {
-                   attention: {
-                      ...project.attention,
-                      id: value,
-                      name:
-                         attentionOptions.find((option) => option.id === value)?.name ??
-                         project.attention.name,
-                      color:
-                         attentionOptions.find((option) => option.id === value)?.color ??
-                         project.attention.color,
-                   },
-                };
+              : field === 'health'
+                ? {
+                     health: allHealth.find((item) => item.id === value) ?? project.health,
+                  }
+                : {
+                     attention: {
+                        ...project.attention,
+                        id: value,
+                        name:
+                           attentionOptions.find((option) => option.id === value)?.name ??
+                           project.attention.name,
+                        color:
+                           attentionOptions.find((option) => option.id === value)?.color ??
+                           project.attention.color,
+                     },
+                  };
 
       setProjectOverrides((overrides) => ({
          ...overrides,
@@ -226,8 +240,15 @@ export function ProjectBoard({
                ? { status: value }
                : field === 'priority'
                  ? { priority: value }
-                 : { attention: value }),
+                 : field === 'health'
+                   ? { health: value }
+                   : { attention: value }),
          });
+         if (field === 'health') {
+            onProjectHealthChange?.(projectId, value);
+         } else if (field === 'attention') {
+            onProjectAttentionChange?.(projectId, value);
+         }
          toast.success(successMessage);
       } catch (error) {
          console.error(`Failed to update project ${field}.`, error);
@@ -255,7 +276,7 @@ export function ProjectBoard({
                         statusOptions={statusOptions}
                         priorityOptions={priorityOptions}
                         attentionOptions={attentionOptions}
-                        isReadOnly={groupBy === 'health'}
+                        isReadOnly={false}
                         onOpenIssues={handleOpenIssues}
                         onStatusChange={handleStatusChange}
                         onPriorityChange={handlePriorityChange}

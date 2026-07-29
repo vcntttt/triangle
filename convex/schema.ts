@@ -65,6 +65,7 @@ export default defineSchema({
       iconValue: v.string(),
       status: v.string(),
       priority: v.string(),
+      health: v.optional(v.string()),
       attention: v.optional(v.string()),
       createdAt: v.number(),
       updatedAt: v.number(),

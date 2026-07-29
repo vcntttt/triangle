@@ -30,6 +30,7 @@ export interface ProjectListItem {
    iconValue: string;
    status: string;
    priority: string;
+   health?: ProjectHealth;
    attention?: string;
    latestUpdate: ProjectLatestUpdate | null;
    createdAt: string;
@@ -92,12 +93,14 @@ export interface CreateProjectInput {
    iconValue?: string;
    status: string;
    priority?: string;
+   health?: ProjectHealth;
    attention?: string;
 }
 
 export interface UpdateProjectInput {
    status?: string;
    priority?: string;
+   health?: ProjectHealth;
    attention?: string;
 }
 
