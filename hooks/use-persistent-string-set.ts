@@ -1,40 +1,138 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useMemo, useSyncExternalStore, type SetStateAction } from 'react';
+
+const emptySerializedValue = '[]';
+const serverSnapshot = emptySerializedValue;
+
+interface PersistentSetStore {
+   serializedValue: string;
+   listeners: Set<() => void>;
+   storageListener?: (event: StorageEvent) => void;
+}
+
+const stores = new Map<string, PersistentSetStore>();
+
+function subscribeToHydration() {
+   return () => {};
+}
+
+function getClientHydrationSnapshot() {
+   return true;
+}
+
+function getServerHydrationSnapshot() {
+   return false;
+}
+
+function getStoredValue(storageKey: string) {
+   if (typeof window === 'undefined') {
+      return emptySerializedValue;
+   }
+
+   try {
+      return window.localStorage.getItem(storageKey) ?? emptySerializedValue;
+   } catch {
+      return emptySerializedValue;
+   }
+}
+
+function getStore(storageKey: string) {
+   const existingStore = stores.get(storageKey);
+
+   if (existingStore) {
+      return existingStore;
+   }
+
+   const store: PersistentSetStore = {
+      serializedValue: getStoredValue(storageKey),
+      listeners: new Set(),
+   };
+   stores.set(storageKey, store);
+
+   return store;
+}
+
+function notifyStore(store: PersistentSetStore) {
+   store.listeners.forEach((listener) => listener());
+}
+
+function subscribeToStore(storageKey: string, listener: () => void) {
+   const store = getStore(storageKey);
+   store.listeners.add(listener);
+
+   if (store.listeners.size === 1 && typeof window !== 'undefined') {
+      store.storageListener = (event) => {
+         if (event.key !== null && event.key !== storageKey) {
+            return;
+         }
+
+         const nextSerializedValue = event.newValue ?? emptySerializedValue;
+
+         if (store.serializedValue === nextSerializedValue) {
+            return;
+         }
+
+         store.serializedValue = nextSerializedValue;
+         notifyStore(store);
+      };
+      window.addEventListener('storage', store.storageListener);
+   }
+
+   return () => {
+      store.listeners.delete(listener);
+
+      if (store.listeners.size === 0 && store.storageListener && typeof window !== 'undefined') {
+         window.removeEventListener('storage', store.storageListener);
+         delete store.storageListener;
+      }
+   };
+}
+
+function parseSerializedSet(serializedValue: string) {
+   try {
+      const parsedValue: unknown = JSON.parse(serializedValue);
+
+      return new Set(
+         Array.isArray(parsedValue)
+            ? parsedValue.filter((value): value is string => typeof value === 'string')
+            : []
+      );
+   } catch {
+      return new Set<string>();
+   }
+}
 
 export function usePersistentStringSet(storageKey: string) {
-   const [values, setValues] = useState<Set<string>>(() => new Set());
-   const [isHydrated, setIsHydrated] = useState(false);
+   const subscribe = useCallback(
+      (listener: () => void) => subscribeToStore(storageKey, listener),
+      [storageKey]
+   );
+   const getSnapshot = useCallback(() => getStore(storageKey).serializedValue, [storageKey]);
+   const serializedValue = useSyncExternalStore(subscribe, getSnapshot, () => serverSnapshot);
+   const values = useMemo(() => parseSerializedSet(serializedValue), [serializedValue]);
+   const isReady = useSyncExternalStore(
+      subscribeToHydration,
+      getClientHydrationSnapshot,
+      getServerHydrationSnapshot
+   );
+   const setValues = useCallback(
+      (update: SetStateAction<Set<string>>) => {
+         const store = getStore(storageKey);
+         const currentValues = parseSerializedSet(store.serializedValue);
+         const nextValues = typeof update === 'function' ? update(currentValues) : update;
+         const nextSerializedValue = JSON.stringify(Array.from(nextValues));
 
-   useEffect(() => {
-      try {
-         const storedValue = window.localStorage.getItem(storageKey);
+         store.serializedValue = nextSerializedValue;
 
-         if (storedValue) {
-            const parsedValue: unknown = JSON.parse(storedValue);
-
-            if (Array.isArray(parsedValue)) {
-               setValues(
-                  new Set(parsedValue.filter((value): value is string => typeof value === 'string'))
-               );
-            }
+         try {
+            window.localStorage.setItem(storageKey, nextSerializedValue);
+         } catch {
+            // Ignorar errores de almacenamiento para no bloquear la vista de issues.
          }
-      } catch {
-         // localStorage puede estar deshabilitado o contener datos inválidos.
-      } finally {
-         setIsHydrated(true);
-      }
-   }, [storageKey]);
 
-   useEffect(() => {
-      if (!isHydrated) {
-         return;
-      }
+         notifyStore(store);
+      },
+      [storageKey]
+   );
 
-      try {
-         window.localStorage.setItem(storageKey, JSON.stringify(Array.from(values)));
-      } catch {
-         // Ignorar errores de almacenamiento para no bloquear la vista de issues.
-      }
-   }, [isHydrated, storageKey, values]);
-
-   return [values, setValues] as const;
+   return [values, setValues, isReady] as const;
 }

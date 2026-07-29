@@ -295,9 +295,9 @@ function IssuesWorkspaceContent({
    const isDesktopWorkspace = useIsDesktopWorkspace();
    const navigate = useNavigate();
    const [selectedIssueIds, setSelectedIssueIds] = useState<Set<string>>(() => new Set());
-   const [collapsedParentIds, setCollapsedParentIds] =
+   const [collapsedParentIds, setCollapsedParentIds, parentCollapseStateReady] =
       usePersistentStringSet(collapsedParentStorageKey);
-   const [collapsedStatusIds, setCollapsedStatusIds] =
+   const [collapsedStatusIds, setCollapsedStatusIds, statusCollapseStateReady] =
       usePersistentStringSet(collapsedStatusStorageKey);
    const [issueAction, setIssueAction] = useState<IssueActionKind | null>(null);
    const [selectionOverride, setSelectionOverride] = useState<{
@@ -500,6 +500,10 @@ function IssuesWorkspaceContent({
             </div>
          </div>
       );
+   }
+
+   if (!parentCollapseStateReady || !statusCollapseStateReady) {
+      return <div className="h-full w-full bg-container" aria-busy="true" />;
    }
 
    return (
