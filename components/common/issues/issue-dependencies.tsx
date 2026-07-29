@@ -176,6 +176,10 @@ export function IssueDependencyFlow({
    onRemoveBlocker: (blockedIssueId: string, blockerIssueId: string) => void;
    compact?: boolean;
 }) {
+   if (issue.blockedBy.length === 0 && issue.blocks.length === 0) {
+      return null;
+   }
+
    const pendingBlockers = issue.blockedBy.filter((relation) => !isRelationComplete(relation));
    const pendingBlocks = issue.blocks.filter((relation) => !isRelationComplete(relation));
    const isBlocked = pendingBlockers.length > 0;
