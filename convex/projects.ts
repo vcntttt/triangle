@@ -128,7 +128,8 @@ async function serializeProjectUpdate(ctx: QueryCtx | MutationCtx, update: Doc<'
    ]);
    const attention = attentionOption
       ? serializeOption(attentionOption)
-      : defaultProjectAttentions.find((option) => option.id === defaultProjectAttentionId)!;
+      : (defaultProjectAttentions.find((option) => option.id === update.attention) ??
+        defaultProjectAttentions.find((option) => option.id === defaultProjectAttentionId)!);
 
    return {
       id: update._id,
