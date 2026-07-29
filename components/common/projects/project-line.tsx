@@ -88,6 +88,11 @@ function ProjectLineContent({
                      <span className="font-medium truncate w-full hover:underline">
                         {project.name}
                      </span>
+                     {project.subtitle ? (
+                        <span className="w-full truncate text-xs text-muted-foreground">
+                           {project.subtitle}
+                        </span>
+                     ) : null}
                   </button>
                </div>
 

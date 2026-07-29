@@ -100,9 +100,9 @@ export function ProjectBoardCard({
                   <h3 className="text-sm font-medium leading-5 line-clamp-2 group-hover:underline">
                      {project.name}
                   </h3>
-                  {project.description ? (
+                  {project.subtitle ? (
                      <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
-                        {project.description}
+                        {project.subtitle}
                      </p>
                   ) : null}
                </button>
@@ -215,9 +215,9 @@ export function ProjectBoardCardPreview({
          <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
                <h3 className="text-sm font-medium leading-5 line-clamp-2">{project.name}</h3>
-               {project.description ? (
+               {project.subtitle ? (
                   <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
-                     {project.description}
+                     {project.subtitle}
                   </p>
                ) : null}
             </div>

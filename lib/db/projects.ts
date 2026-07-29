@@ -25,6 +25,7 @@ export interface ProjectListItem {
    name: string;
    slug: string;
    key: string;
+   subtitle: string | null;
    description: string | null;
    iconType: string;
    iconValue: string;
@@ -88,6 +89,7 @@ export interface ProjectUpdatesPageData {
 export interface CreateProjectInput {
    name: string;
    key?: string;
+   subtitle?: string;
    description?: string;
    iconType?: string;
    iconValue?: string;
@@ -107,6 +109,7 @@ export interface UpdateProjectInput {
 export interface UpdateProjectDetailsInput {
    name?: string;
    key?: string;
+   subtitle?: string | null;
    description?: string | null;
    iconType?: string;
    iconValue?: string;

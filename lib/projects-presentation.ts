@@ -33,6 +33,7 @@ export interface ProjectLike {
    priority?: string;
    health?: PresentationProject['health']['id'];
    attention?: string;
+   subtitle?: string | null;
    description?: string | null;
    latestUpdate?: {
       id: string;
@@ -128,6 +129,7 @@ export const toPresentationProject = (
       id: project.id,
       name: project.name,
       slug: project.slug,
+      subtitle: project.subtitle ?? null,
       description: project.description ?? null,
       key: project.key,
       iconConfig: {

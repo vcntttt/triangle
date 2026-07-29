@@ -60,6 +60,7 @@ export default defineSchema({
       name: v.string(),
       slug: v.string(),
       key: v.string(),
+      subtitle: v.optional(v.string()),
       description: v.optional(v.string()),
       iconType: v.string(),
       iconValue: v.string(),
