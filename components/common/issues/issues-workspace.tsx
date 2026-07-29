@@ -57,6 +57,7 @@ interface IssuesWorkspaceProps {
    databaseError: string | null;
    selectedIssueIdentifier?: string;
    projectFilterId?: string;
+   applyIssueFilters?: boolean;
    onSelectIssue?: (issue: Issue) => void | Promise<void>;
    onClearSelectedIssue?: () => void | Promise<void>;
    onSelectAdjacentIssue?: (issue: Issue) => void | Promise<void>;
@@ -236,6 +237,7 @@ export function IssuesWorkspace({
    databaseError,
    selectedIssueIdentifier,
    projectFilterId,
+   applyIssueFilters,
    onSelectIssue,
    onClearSelectedIssue,
    onSelectAdjacentIssue,
@@ -261,6 +263,7 @@ export function IssuesWorkspace({
                databaseError={databaseError}
                selectedIssueIdentifier={selectedIssueIdentifier}
                projectFilterId={projectFilterId}
+               applyIssueFilters={applyIssueFilters}
                onSelectIssue={onSelectIssue}
                onClearSelectedIssue={onClearSelectedIssue}
                onSelectAdjacentIssue={onSelectAdjacentIssue}
@@ -276,6 +279,7 @@ function IssuesWorkspaceContent({
    databaseError,
    selectedIssueIdentifier,
    projectFilterId,
+   applyIssueFilters = true,
    onSelectIssue,
    onClearSelectedIssue,
    onSelectAdjacentIssue,
@@ -372,7 +376,7 @@ function IssuesWorkspaceContent({
    );
 
    const isSearching = isSearchOpen && searchQuery.trim() !== '';
-   const isFiltering = hasActiveFilters();
+   const isFiltering = applyIssueFilters && hasActiveFilters();
    const visibleIssues = issues.filter((issue) => issue.status.id !== archivedStatus.id);
    const storeFilteredIssues = isFiltering ? filterIssues(filters) : visibleIssues;
    const filteredIssues = projectFilterId
