@@ -1,0 +1,19 @@
+{
+   "name": "Triangle",
+   "short_name": "Triangle",
+   "description": "Gestiona tus proyectos e issues desde cualquier lugar.",
+   "start_url": "/projects",
+   "scope": "/",
+   "display": "standalone",
+   "orientation": "portrait",
+   "background_color": "#101116",
+   "theme_color": "#101116",
+   "icons": [
+      {
+         "src": "/triangle.png",
+         "sizes": "1024x1024",
+         "type": "image/png",
+         "purpose": "any maskable"
+      }
+   ]
+}
