@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { HeadContent, Outlet, Scripts, createRootRoute, Link } from '@tanstack/react-router';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import '@fontsource/inter/400.css';
 import '@fontsource/inter/500.css';
@@ -15,8 +16,21 @@ import { GlobalShortcuts } from '@/components/common/shortcuts/global-shortcuts'
 import { ShortcutsHelpProvider } from '@/components/common/shortcuts/shortcuts-help-provider';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/sonner';
+import {
+   projectAttentionListQuery,
+   projectOptionsQuery,
+   projectPriorityListQuery,
+   projectStatusListQuery,
+} from '@/src/data/projects';
 
 export const Route = createRootRoute({
+   loader: ({ context }) =>
+      Promise.all([
+         context.queryClient.ensureQueryData(projectOptionsQuery()),
+         context.queryClient.ensureQueryData(projectStatusListQuery()),
+         context.queryClient.ensureQueryData(projectPriorityListQuery()),
+         context.queryClient.ensureQueryData(projectAttentionListQuery()),
+      ]),
    head: () => ({
       meta: [
          { charSet: 'utf-8' },
@@ -40,10 +54,14 @@ export const Route = createRootRoute({
 });
 
 function RootComponent() {
+   const queryClient = Route.useRouteContext({ select: (context) => context.queryClient });
+
    return (
-      <RootDocument>
-         <Outlet />
-      </RootDocument>
+      <QueryClientProvider client={queryClient}>
+         <RootDocument>
+            <Outlet />
+         </RootDocument>
+      </QueryClientProvider>
    );
 }
 

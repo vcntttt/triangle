@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { FolderOpen, PinOff, Radio, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { FolderOpen, Radio, Trash2 } from 'lucide-react';
 import {
    ContextMenu,
    ContextMenuContent,
@@ -14,68 +14,67 @@ import {
    SidebarMenu,
    SidebarMenuButton,
    SidebarMenuItem,
+   SidebarMenuSub,
+   SidebarMenuSubButton,
+   SidebarMenuSubItem,
 } from '@/components/ui/sidebar';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
 import { CreateProjectUpdateDialog } from '@/components/common/projects/create-project-update-dialog';
 import { DeleteProjectDialog } from '@/components/common/projects/delete-project-dialog';
 import { ProjectIconGlyph } from '@/components/common/projects/project-icon';
 import { workspaceItems } from '@/lib/ui-catalog';
 import type { Project } from '@/lib/projects-presentation';
 import { useProjectOptions } from '@/hooks/use-project-options';
-import { usePinnedProjectsStore } from '@/store/pinned-projects-store';
 
 export function NavWorkspace() {
    const projects = useProjectOptions();
-   const { pinnedProjectIds } = usePinnedProjectsStore();
-   const pinnedProjectIdSet = useMemo(() => new Set(pinnedProjectIds), [pinnedProjectIds]);
-
-   const pinnedProjects = projects.filter((project) => pinnedProjectIdSet.has(project.id));
+   const pathname = useRouterState({ select: (state) => state.location.pathname });
 
    return (
       <SidebarGroup className="group-data-[collapsible=icon]:hidden">
          <SidebarGroupLabel>Workspace</SidebarGroupLabel>
          <SidebarMenu>
-            {workspaceItems.map((item) => (
-               <SidebarMenuItem key={item.name}>
-                  <SidebarMenuButton asChild>
-                     <Link to={item.url}>
-                        <item.icon />
-                        <span>{item.name}</span>
-                     </Link>
-                  </SidebarMenuButton>
-               </SidebarMenuItem>
-            ))}
-         </SidebarMenu>
+            {workspaceItems.map((item) => {
+               const isProjectsItem = item.name === 'Projects';
 
-         <div className="mt-3">
-            <div className="px-2 mb-2 flex items-center justify-between">
-               <span className="text-xs font-normal text-muted-foreground">Pinned projects</span>
-            </div>
-
-            <SidebarMenu>
-               {pinnedProjects.map((project) => (
-                  <PinnedProjectMenuItem key={project.id} project={project} />
-               ))}
-
-               {pinnedProjects.length === 0 && (
-                  <SidebarMenuItem>
-                     <SidebarMenuButton className="pointer-events-none opacity-70">
-                        <PinOff className="size-4" />
-                        <span>No pinned projects</span>
+               return (
+                  <SidebarMenuItem key={item.name}>
+                     <SidebarMenuButton
+                        asChild
+                        isActive={
+                           pathname === item.url ||
+                           (isProjectsItem && pathname.startsWith(`${item.url}/`))
+                        }
+                     >
+                        <Link to={item.url}>
+                           <item.icon />
+                           <span>{item.name}</span>
+                        </Link>
                      </SidebarMenuButton>
+
+                     {isProjectsItem && (
+                        <SidebarMenuSub>
+                           {projects.map((project) => (
+                              <ProjectMenuItem
+                                 key={project.id}
+                                 project={project}
+                                 isActive={pathname === `/projects/${project.slug ?? project.id}`}
+                              />
+                           ))}
+                        </SidebarMenuSub>
+                     )}
                   </SidebarMenuItem>
-               )}
-            </SidebarMenu>
-         </div>
+               );
+            })}
+         </SidebarMenu>
       </SidebarGroup>
    );
 }
 
-function PinnedProjectMenuItem({ project }: { project: Project }) {
+function ProjectMenuItem({ project, isActive }: { project: Project; isActive: boolean }) {
    const navigate = useNavigate();
    const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-   const { togglePinnedProject } = usePinnedProjectsStore();
 
    const handleOpenProject = () => {
       void navigate({
@@ -89,8 +88,8 @@ function PinnedProjectMenuItem({ project }: { project: Project }) {
       <>
          <ContextMenu>
             <ContextMenuTrigger asChild>
-               <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
+               <SidebarMenuSubItem>
+                  <SidebarMenuSubButton asChild isActive={isActive}>
                      <Link
                         to="/projects/$projectSlug"
                         params={{ projectSlug: project.slug ?? project.id }}
@@ -99,8 +98,8 @@ function PinnedProjectMenuItem({ project }: { project: Project }) {
                         <ProjectIconGlyph icon={project.iconConfig} className="size-4" />
                         <span className="truncate">{project.name}</span>
                      </Link>
-                  </SidebarMenuButton>
-               </SidebarMenuItem>
+                  </SidebarMenuSubButton>
+               </SidebarMenuSubItem>
             </ContextMenuTrigger>
             <ContextMenuContent className="w-56">
                <ContextMenuItem onSelect={handleOpenProject}>
@@ -110,10 +109,6 @@ function PinnedProjectMenuItem({ project }: { project: Project }) {
                <ContextMenuItem onSelect={() => setUpdateDialogOpen(true)}>
                   <Radio className="size-4" />
                   New update
-               </ContextMenuItem>
-               <ContextMenuItem onSelect={() => togglePinnedProject(project.id)}>
-                  <PinOff className="size-4" />
-                  Unpin project
                </ContextMenuItem>
                <ContextMenuItem onSelect={() => setDeleteDialogOpen(true)} variant="destructive">
                   <Trash2 className="size-4" />
