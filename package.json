@@ -13,8 +13,8 @@
       "mcp": "bun --env-file=.env.local mcp/server.ts",
       "convex:dev": "convex dev --env-file .env.local",
       "convex:push": "convex dev --once --env-file .env.local",
-      "convex:deploy": "convex deploy --env-file .env.local",
-      "deploy": "bun run convex:deploy && bash ../dokploy/scripts/deploy.sh circle",
+      "convex:deploy": "homelab-dokploy-deploy triangle --export-env .env.local && bunx convex deploy --env-file .env.local",
+      "deploy": "bun run convex:deploy && homelab-dokploy-deploy triangle",
       "lint": "eslint .",
       "format": "prettier --write .",
       "prepare": "husky"
