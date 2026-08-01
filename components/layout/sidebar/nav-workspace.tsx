@@ -39,13 +39,7 @@ export function NavWorkspace() {
 
                return (
                   <SidebarMenuItem key={item.name}>
-                     <SidebarMenuButton
-                        asChild
-                        isActive={
-                           pathname === item.url ||
-                           (isProjectsItem && pathname.startsWith(`${item.url}/`))
-                        }
-                     >
+                     <SidebarMenuButton asChild isActive={pathname === item.url}>
                         <Link to={item.url}>
                            <item.icon />
                            <span>{item.name}</span>
