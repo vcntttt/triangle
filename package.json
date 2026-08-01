@@ -18,10 +18,9 @@
       "secrets:audit": "secrets-sync audit dev",
       "secrets:export": "secrets-sync export dev",
       "secrets:publish": "secrets-sync export dev --apply",
-      "convex:deploy": "deploy triangle --export-env .env.production && bunx convex deploy --env-file .env.production",
       "deploy:dry-run": "deploy triangle --dry-run --yes",
       "deploy:sync-only": "deploy triangle --sync-only",
-      "deploy": "bun run convex:deploy && deploy triangle --skip-env-check",
+      "deploy": "deploy triangle --with-convex",
       "lint": "eslint .",
       "format": "prettier --write .",
       "prepare": "husky"
