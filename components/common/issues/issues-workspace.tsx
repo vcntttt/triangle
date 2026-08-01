@@ -57,6 +57,7 @@ interface IssuesWorkspaceProps {
    databaseError: string | null;
    selectedIssueIdentifier?: string;
    projectFilterId?: string;
+   applyIssueFilters?: boolean;
    onSelectIssue?: (issue: Issue) => void | Promise<void>;
    onClearSelectedIssue?: () => void | Promise<void>;
    onSelectAdjacentIssue?: (issue: Issue) => void | Promise<void>;
@@ -236,6 +237,7 @@ export function IssuesWorkspace({
    databaseError,
    selectedIssueIdentifier,
    projectFilterId,
+   applyIssueFilters,
    onSelectIssue,
    onClearSelectedIssue,
    onSelectAdjacentIssue,
@@ -261,6 +263,7 @@ export function IssuesWorkspace({
                databaseError={databaseError}
                selectedIssueIdentifier={selectedIssueIdentifier}
                projectFilterId={projectFilterId}
+               applyIssueFilters={applyIssueFilters}
                onSelectIssue={onSelectIssue}
                onClearSelectedIssue={onClearSelectedIssue}
                onSelectAdjacentIssue={onSelectAdjacentIssue}
@@ -276,6 +279,7 @@ function IssuesWorkspaceContent({
    databaseError,
    selectedIssueIdentifier,
    projectFilterId,
+   applyIssueFilters = true,
    onSelectIssue,
    onClearSelectedIssue,
    onSelectAdjacentIssue,
@@ -295,9 +299,9 @@ function IssuesWorkspaceContent({
    const isDesktopWorkspace = useIsDesktopWorkspace();
    const navigate = useNavigate();
    const [selectedIssueIds, setSelectedIssueIds] = useState<Set<string>>(() => new Set());
-   const [collapsedParentIds, setCollapsedParentIds] =
+   const [collapsedParentIds, setCollapsedParentIds, parentCollapseStateReady] =
       usePersistentStringSet(collapsedParentStorageKey);
-   const [collapsedStatusIds, setCollapsedStatusIds] =
+   const [collapsedStatusIds, setCollapsedStatusIds, statusCollapseStateReady] =
       usePersistentStringSet(collapsedStatusStorageKey);
    const [issueAction, setIssueAction] = useState<IssueActionKind | null>(null);
    const [selectionOverride, setSelectionOverride] = useState<{
@@ -372,7 +376,7 @@ function IssuesWorkspaceContent({
    );
 
    const isSearching = isSearchOpen && searchQuery.trim() !== '';
-   const isFiltering = hasActiveFilters();
+   const isFiltering = applyIssueFilters && hasActiveFilters();
    const visibleIssues = issues.filter((issue) => issue.status.id !== archivedStatus.id);
    const storeFilteredIssues = isFiltering ? filterIssues(filters) : visibleIssues;
    const filteredIssues = projectFilterId
@@ -500,6 +504,10 @@ function IssuesWorkspaceContent({
             </div>
          </div>
       );
+   }
+
+   if (!parentCollapseStateReady || !statusCollapseStateReady) {
+      return <div className="h-full w-full bg-container" aria-busy="true" />;
    }
 
    return (

@@ -104,6 +104,7 @@ async function serializeProject(
       name: project.name,
       slug: project.slug,
       key: project.key,
+      subtitle: toNullable(project.subtitle),
       description: toNullable(project.description),
       iconType: project.iconType,
       iconValue: project.iconValue,
@@ -165,6 +166,7 @@ function serializeProjectForIssue(project: Doc<'projects'>) {
       iconType: project.iconType,
       iconValue: project.iconValue,
       status: project.status,
+      subtitle: toNullable(project.subtitle),
       description: toNullable(project.description),
       createdAt: nowIso(project.createdAt),
       updatedAt: nowIso(project.updatedAt),
@@ -696,6 +698,7 @@ export const create = mutation({
    args: {
       name: v.string(),
       key: v.optional(v.string()),
+      subtitle: v.optional(v.string()),
       description: v.optional(v.string()),
       iconType: v.optional(v.string()),
       iconValue: v.optional(v.string()),
@@ -742,6 +745,7 @@ export const create = mutation({
          name: input.name,
          slug,
          key,
+         subtitle: input.subtitle || undefined,
          description: input.description || undefined,
          iconType: input.iconType ?? 'lucide',
          iconValue: input.iconValue ?? 'box',
@@ -787,6 +791,7 @@ export const updateDetails = mutation({
       projectId: v.string(),
       name: v.optional(v.string()),
       key: v.optional(v.string()),
+      subtitle: v.optional(v.union(v.string(), v.null())),
       description: v.optional(v.union(v.string(), v.null())),
       iconType: v.optional(v.string()),
       iconValue: v.optional(v.string()),
@@ -813,6 +818,7 @@ export const updateDetails = mutation({
       await ctx.db.patch(id, {
          ...(input.name !== undefined ? { name: input.name } : {}),
          ...(key !== undefined ? { key } : {}),
+         ...(input.subtitle !== undefined ? { subtitle: input.subtitle ?? undefined } : {}),
          ...(input.description !== undefined
             ? { description: input.description ?? undefined }
             : {}),
@@ -830,6 +836,7 @@ export const updateFields = mutation({
       projectId: v.string(),
       name: v.optional(v.string()),
       key: v.optional(v.string()),
+      subtitle: v.optional(v.union(v.string(), v.null())),
       description: v.optional(v.union(v.string(), v.null())),
       iconType: v.optional(v.string()),
       iconValue: v.optional(v.string()),
@@ -856,6 +863,7 @@ export const updateFields = mutation({
       await ctx.db.patch(id, {
          ...(input.name !== undefined ? { name: input.name } : {}),
          ...(key !== undefined ? { key } : {}),
+         ...(input.subtitle !== undefined ? { subtitle: input.subtitle ?? undefined } : {}),
          ...(input.description !== undefined
             ? { description: input.description ?? undefined }
             : {}),

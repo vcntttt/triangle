@@ -38,6 +38,7 @@ export interface IssueListItem {
       iconType: string;
       iconValue: string;
       status: string;
+      subtitle: string | null;
       description: string | null;
       createdAt: string;
       updatedAt: string;

@@ -83,6 +83,7 @@ export interface Project {
    name: string;
    slug?: string;
    key?: string;
+   subtitle?: string | null;
    description?: string | null;
    status: Status;
    iconConfig: ProjectIconConfig;

@@ -11,10 +11,13 @@ import {
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useQuery } from '@tanstack/react-query';
-import { type Status } from '@/lib/ui-catalog';
+import { archivedStatus, type Status } from '@/lib/ui-catalog';
 import { CheckIcon } from 'lucide-react';
-import { useId, useState } from 'react';
-import { useIssuesStatuses } from '@/components/common/issues/issues-status-context';
+import { useId, useMemo, useState } from 'react';
+import {
+   toIssueStatuses,
+   useIssuesStatuses,
+} from '@/components/common/issues/issues-status-context';
 import { issuesPageQuery } from '@/src/data/issues';
 
 interface StatusSelectorProps {
@@ -26,8 +29,13 @@ export function StatusSelector({ status, onChange }: StatusSelectorProps) {
    const id = useId();
    const listId = `${id}-list`;
    const [open, setOpen] = useState<boolean>(false);
-   const allStatus = useIssuesStatuses();
+   const contextualStatuses = useIssuesStatuses();
    const { data } = useQuery(issuesPageQuery());
+   const allStatus = useMemo(() => {
+      const queriedStatuses = data?.statusOptions ? toIssueStatuses(data.statusOptions) : [];
+
+      return queriedStatuses.length > 0 ? [...queriedStatuses, archivedStatus] : contextualStatuses;
+   }, [contextualStatuses, data?.statusOptions]);
 
    const handleStatusChange = (statusId: string) => {
       setOpen(false);

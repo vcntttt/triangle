@@ -134,7 +134,7 @@ export function ProjectOverview({
    );
 
    const handleProjectFieldSave = async (
-      field: 'name' | 'key' | 'description',
+      field: 'name' | 'key' | 'subtitle' | 'description',
       rawValue: string
    ) => {
       const trimmedValue = rawValue.trim();
@@ -149,8 +149,10 @@ export function ProjectOverview({
          return project.key;
       }
 
-      const nextValue = field === 'description' ? trimmedValue || null : trimmedValue;
-      const currentValue = field === 'description' ? project.description || null : project[field];
+      const isLongTextField = field === 'description';
+      const isOptionalTextField = field === 'subtitle' || isLongTextField;
+      const nextValue = isOptionalTextField ? trimmedValue || null : trimmedValue;
+      const currentValue = isOptionalTextField ? project[field] || null : project[field];
 
       if (nextValue === currentValue) {
          return nextValue ?? '';
@@ -172,17 +174,18 @@ export function ProjectOverview({
             ...current,
             name: updated.name,
             key: updated.key,
+            subtitle: updated.subtitle,
             description: updated.description,
             updatedAt: updated.updatedAt,
          }));
          toast.success('Project updated');
          await router.invalidate();
 
-         return field === 'description' ? updated.description || '' : updated[field];
+         return isOptionalTextField ? updated[field] || '' : updated[field];
       } catch (error) {
          const message = error instanceof Error ? error.message : 'Project could not be updated.';
          toast.error(message);
-         return field === 'description' ? project.description || '' : project[field];
+         return isOptionalTextField ? project[field] || '' : project[field];
       } finally {
          setIsSavingDetails(false);
       }
@@ -353,6 +356,16 @@ export function ProjectOverview({
                         displayClassName="block max-w-5xl truncate text-3xl font-semibold tracking-normal hover:text-muted-foreground"
                         inputClassName="h-11 max-w-5xl text-3xl font-semibold"
                         onSave={(value) => handleProjectFieldSave('name', value)}
+                     />
+
+                     <InlineEditableText
+                        value={project.subtitle || ''}
+                        placeholder="Add a short project subtitle."
+                        maxLength={160}
+                        disabled={isSavingDetails}
+                        displayClassName="mt-2 block max-w-3xl text-base text-muted-foreground hover:text-foreground"
+                        inputClassName="mt-2 h-9 max-w-3xl text-base"
+                        onSave={(value) => handleProjectFieldSave('subtitle', value)}
                      />
 
                      <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">

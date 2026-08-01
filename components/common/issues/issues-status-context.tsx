@@ -7,6 +7,7 @@ import type { Status } from '@/lib/models';
 
 const IssuesStatusContext = createContext<Status[]>([]);
 const baseStatusById = Object.fromEntries(baseStatus.map((item) => [item.id, item]));
+const fallbackIssueStatuses = [...baseStatus, archivedStatus];
 const statusIconAliases: Record<string, string> = {
    'review': 'technical-review',
    'in-review': 'technical-review',
@@ -57,6 +58,15 @@ function resolveStatusIcon(statusId: string, statusName: string): Status['icon']
    return archivedStatus.icon;
 }
 
+export function toIssueStatuses(statuses: ProjectOptionLike[]): Status[] {
+   return statuses.map((item) => ({
+      id: item.id,
+      name: item.name,
+      color: item.color,
+      icon: resolveStatusIcon(item.id, item.name),
+   }));
+}
+
 export function IssuesStatusProvider({
    statuses,
    children,
@@ -64,16 +74,7 @@ export function IssuesStatusProvider({
    statuses: ProjectOptionLike[];
    children: React.ReactNode;
 }) {
-   const issueStatuses = useMemo<Status[]>(
-      () =>
-         statuses.map((item) => ({
-            id: item.id,
-            name: item.name,
-            color: item.color,
-            icon: resolveStatusIcon(item.id, item.name),
-         })),
-      [statuses]
-   );
+   const issueStatuses = useMemo(() => toIssueStatuses(statuses), [statuses]);
    const contextValue = useMemo(() => [...issueStatuses, archivedStatus], [issueStatuses]);
 
    return (
@@ -83,5 +84,5 @@ export function IssuesStatusProvider({
 
 export function useIssuesStatuses() {
    const statuses = use(IssuesStatusContext);
-   return statuses.length > 0 ? statuses : [archivedStatus];
+   return statuses.length > 0 ? statuses : fallbackIssueStatuses;
 }

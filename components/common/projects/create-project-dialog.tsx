@@ -123,6 +123,7 @@ export function CreateProjectDialog({ disabled = false }: CreateProjectDialogPro
          await createProjectMutation({
             name: String(formData.get('name') ?? ''),
             key: projectKey,
+            subtitle: String(formData.get('subtitle') ?? ''),
             description: String(formData.get('description') ?? ''),
             status: selectedStatus?.id ?? 'backlog',
             priority: selectedPriority?.id ?? 'no-priority',
@@ -181,6 +182,16 @@ export function CreateProjectDialog({ disabled = false }: CreateProjectDialogPro
                         }}
                      />
                   </div>
+               </div>
+
+               <div className="space-y-2">
+                  <Label htmlFor="subtitle">Subtitle</Label>
+                  <Input
+                     id="subtitle"
+                     name="subtitle"
+                     placeholder="A short phrase that explains the project."
+                     maxLength={160}
+                  />
                </div>
 
                <div className="space-y-2">

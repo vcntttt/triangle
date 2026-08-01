@@ -51,6 +51,7 @@ export function ProjectIssuesTab({
          databaseError={null}
          selectedIssueIdentifier={selectedIssueIdentifier}
          projectFilterId={project.id}
+         applyIssueFilters={false}
          onSelectIssue={onSelectIssue}
          onClearSelectedIssue={onClearSelectedIssue}
          onSelectAdjacentIssue={onSelectAdjacentIssue}

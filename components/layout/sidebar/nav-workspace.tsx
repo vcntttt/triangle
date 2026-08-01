@@ -81,6 +81,7 @@ function PinnedProjectMenuItem({ project }: { project: Project }) {
       void navigate({
          to: '/projects/$projectSlug',
          params: { projectSlug: project.slug ?? project.id },
+         search: { tab: 'issues' },
       });
    };
 
@@ -93,6 +94,7 @@ function PinnedProjectMenuItem({ project }: { project: Project }) {
                      <Link
                         to="/projects/$projectSlug"
                         params={{ projectSlug: project.slug ?? project.id }}
+                        search={{ tab: 'issues' }}
                      >
                         <ProjectIconGlyph icon={project.iconConfig} className="size-4" />
                         <span className="truncate">{project.name}</span>

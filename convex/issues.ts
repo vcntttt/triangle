@@ -28,6 +28,7 @@ function serializeProject(project: Doc<'projects'>) {
       iconType: project.iconType,
       iconValue: project.iconValue,
       status: project.status,
+      subtitle: toNullable(project.subtitle),
       description: toNullable(project.description),
       createdAt: nowIso(project.createdAt),
       updatedAt: nowIso(project.updatedAt),
