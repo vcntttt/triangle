@@ -62,7 +62,6 @@ export default defineSchema({
       key: v.string(),
       subtitle: v.optional(v.string()),
       description: v.optional(v.string()),
-      subtitle: v.optional(v.string()),
       iconType: v.string(),
       iconValue: v.string(),
       status: v.string(),
