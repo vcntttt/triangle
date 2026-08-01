@@ -34,7 +34,14 @@ export const Route = createRootRoute({
    head: () => ({
       meta: [
          { charSet: 'utf-8' },
-         { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=1' },
+         {
+            name: 'viewport',
+            content: 'width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover',
+         },
+         { name: 'theme-color', content: '#101116' },
+         { name: 'mobile-web-app-capable', content: 'yes' },
+         { name: 'apple-mobile-web-app-capable', content: 'yes' },
+         { name: 'apple-mobile-web-app-title', content: 'Triangle' },
          { title: 'Triangle' },
          {
             name: 'description',
@@ -44,6 +51,7 @@ export const Route = createRootRoute({
       ],
       links: [
          { rel: 'stylesheet', href: globalsCss },
+         { rel: 'manifest', href: '/manifest.webmanifest' },
          { rel: 'icon', type: 'image/png', href: '/triangle.png' },
          { rel: 'apple-touch-icon', href: '/triangle.png' },
       ],
