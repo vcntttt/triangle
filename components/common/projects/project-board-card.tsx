@@ -93,29 +93,33 @@ export function ProjectBoardCard({
                   'cursor-grab active:cursor-grabbing'
                )}
             >
-               <button
-                  type="button"
-                  onClick={() => onOpenIssues(project)}
-                  className="w-full text-left cursor-pointer bg-transparent border-0 p-0"
-               >
-                  <h3 className="text-sm font-medium leading-5 line-clamp-2 group-hover:underline">
-                     {project.name}
-                  </h3>
-                  {project.subtitle ? (
-                     <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
-                        {project.subtitle}
-                     </p>
+               <div className="flex items-start justify-between gap-3">
+                  <button
+                     type="button"
+                     onClick={() => onOpenIssues(project)}
+                     className="min-w-0 flex-1 cursor-pointer border-0 bg-transparent p-0 text-left"
+                  >
+                     <h3 className="line-clamp-2 text-sm font-medium leading-5 group-hover:underline">
+                        {project.name}
+                     </h3>
+                     {project.subtitle ? (
+                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                           {project.subtitle}
+                        </p>
+                     ) : null}
+                  </button>
+                  {project.source === 'external' ? (
+                     <ProjectSourceBadge source={project.source} className="shrink-0" />
                   ) : null}
-               </button>
-               {project.source === 'external' ? (
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                     <ProjectSourceBadge source={project.source} />
+               </div>
+               {project.source === 'external' && project.externalUrl ? (
+                  <div className="mt-2">
                      <ProjectExternalLink url={project.externalUrl} />
                   </div>
                ) : null}
 
                <div className="mt-3 flex flex-wrap gap-2">
-                  {groupBy !== 'status' ? (
+                  {visibleProperties.status && groupBy !== 'status' ? (
                      <StatusWithPercent
                         status={project.status}
                         options={statusOptions}
@@ -123,7 +127,7 @@ export function ProjectBoardCard({
                      />
                   ) : null}
 
-                  {groupBy !== 'priority' ? (
+                  {visibleProperties.priority && groupBy !== 'priority' ? (
                      <PrioritySelector
                         priority={project.priority}
                         options={priorityOptions}
@@ -131,7 +135,7 @@ export function ProjectBoardCard({
                      />
                   ) : null}
 
-                  {groupBy !== 'attention' ? (
+                  {visibleProperties.attention && groupBy !== 'attention' ? (
                      <AttentionSelector
                         attention={project.attention}
                         options={attentionOptions}
@@ -227,32 +231,35 @@ export function ProjectBoardCardPreview({
                      {project.subtitle}
                   </p>
                ) : null}
-               {project.source === 'external' ? (
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                     <ProjectSourceBadge source={project.source} />
-                     <ProjectExternalLink url={project.externalUrl} />
-                  </div>
-               ) : null}
             </div>
-            <div className="size-7 rounded-md border border-border/50 bg-accent/30" />
+            {project.source === 'external' ? (
+               <ProjectSourceBadge source={project.source} className="shrink-0" />
+            ) : (
+               <div className="size-7 rounded-md border border-border/50 bg-accent/30" />
+            )}
          </div>
+         {project.source === 'external' && project.externalUrl ? (
+            <div className="mt-2">
+               <ProjectExternalLink url={project.externalUrl} />
+            </div>
+         ) : null}
 
          <div className="mt-3 flex flex-wrap gap-2">
-            {groupBy !== 'status' ? (
+            {visibleProperties.status && groupBy !== 'status' ? (
                <div className="inline-flex items-center gap-1.5 rounded-md border border-border/50 px-2 py-1 text-xs">
                   <span>Status</span>
                   <span className="text-muted-foreground">{project.status.name}</span>
                </div>
             ) : null}
 
-            {groupBy !== 'priority' ? (
+            {visibleProperties.priority && groupBy !== 'priority' ? (
                <div className="inline-flex items-center gap-1.5 rounded-md border border-border/50 px-2 py-1 text-xs">
                   <span>Priority</span>
                   <span className="text-muted-foreground">{project.priority.name}</span>
                </div>
             ) : null}
 
-            {groupBy !== 'attention' ? (
+            {visibleProperties.attention && groupBy !== 'attention' ? (
                <div className="inline-flex items-center gap-1.5 rounded-md border border-border/50 px-2 py-1 text-xs">
                   <span>Attention</span>
                   <span className="text-muted-foreground">{project.attention.name}</span>
