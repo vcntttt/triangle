@@ -1,6 +1,7 @@
 import type { ComponentType, FC, SVGProps } from 'react';
 
 export type ProjectIconType = 'lucide' | 'emoji';
+export type ProjectSource = 'internal' | 'external';
 
 export interface ProjectIconConfig {
    type: ProjectIconType;
@@ -83,6 +84,8 @@ export interface Project {
    name: string;
    slug?: string;
    key?: string;
+   source?: ProjectSource;
+   externalUrl?: string | null;
    subtitle?: string | null;
    description?: string | null;
    status: Status;

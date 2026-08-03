@@ -20,6 +20,7 @@ import { PrioritySelector } from './priority-selector';
 import { StatusWithPercent } from './status-with-percent';
 import { AttentionSelector } from './attention-selector';
 import { health as allHealth } from '@/lib/ui-catalog';
+import { ProjectExternalLink, ProjectSourceBadge } from './project-source';
 
 export const ProjectDragType = 'PROJECT';
 
@@ -106,6 +107,12 @@ export function ProjectBoardCard({
                      </p>
                   ) : null}
                </button>
+               {project.source === 'external' ? (
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                     <ProjectSourceBadge source={project.source} />
+                     <ProjectExternalLink url={project.externalUrl} />
+                  </div>
+               ) : null}
 
                <div className="mt-3 flex flex-wrap gap-2">
                   {groupBy !== 'status' ? (
@@ -219,6 +226,12 @@ export function ProjectBoardCardPreview({
                   <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
                      {project.subtitle}
                   </p>
+               ) : null}
+               {project.source === 'external' ? (
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                     <ProjectSourceBadge source={project.source} />
+                     <ProjectExternalLink url={project.externalUrl} />
+                  </div>
                ) : null}
             </div>
             <div className="size-7 rounded-md border border-border/50 bg-accent/30" />

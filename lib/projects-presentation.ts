@@ -2,6 +2,7 @@ import { currentUser } from '@/lib/current-user';
 import type {
    ProjectAttention,
    ProjectIconType,
+   ProjectSource,
    ProjectUpdateAreaMention,
    User,
 } from '@/lib/models';
@@ -27,6 +28,8 @@ export interface ProjectLike {
    name: string;
    slug: string;
    key: string;
+   source?: ProjectSource;
+   externalUrl?: string | null;
    iconType?: ProjectIconType;
    iconValue?: string;
    status: string;
@@ -132,6 +135,8 @@ export const toPresentationProject = (
       subtitle: project.subtitle ?? null,
       description: project.description ?? null,
       key: project.key,
+      source: project.source ?? 'internal',
+      externalUrl: project.externalUrl ?? null,
       iconConfig: {
          type: project.iconType ?? 'lucide',
          value: project.iconValue ?? 'box',

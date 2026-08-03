@@ -3,6 +3,7 @@ import type { Doc, Id } from './_generated/dataModel';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 
 type ProjectHealth = 'no-update' | 'off-track' | 'on-track' | 'at-risk';
+type ProjectSource = 'internal' | 'external';
 type ProjectOptionTable = 'projectStatuses' | 'projectPriorities' | 'projectAttentions';
 
 const defaultProjectStatuses = [
@@ -37,6 +38,7 @@ const defaultProjectAttentions = [
 const defaultProjectAttentionId = defaultProjectAttentions[0].id;
 
 const projectHealthValues = ['no-update', 'off-track', 'on-track', 'at-risk'] as const;
+const projectSourceValues = ['internal', 'external'] as const;
 
 const nowIso = (value: number) => new Date(value).toISOString();
 const toNullable = <T>(value: T | undefined): T | null => value ?? null;
@@ -90,6 +92,46 @@ function toProjectHealth(value: string): ProjectHealth {
       : 'no-update';
 }
 
+function toProjectSource(value: string | undefined): ProjectSource {
+   return projectSourceValues.includes(value as ProjectSource)
+      ? (value as ProjectSource)
+      : 'internal';
+}
+
+function normalizeExternalUrl(value: string | null | undefined): string | undefined {
+   const trimmedValue = value?.trim();
+   if (!trimmedValue) return undefined;
+
+   let parsedUrl: URL;
+   try {
+      parsedUrl = new URL(trimmedValue);
+   } catch {
+      throw new Error('External project URLs must be valid links.');
+   }
+
+   if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+      throw new Error('External project URLs must start with http:// or https://.');
+   }
+
+   return parsedUrl.toString();
+}
+
+function resolveProjectSourceAndUrl(
+   source: string | undefined,
+   externalUrl: string | null | undefined,
+   currentProject?: Pick<Doc<'projects'>, 'source' | 'externalUrl'>
+) {
+   const nextSource = toProjectSource(source ?? currentProject?.source);
+   const nextExternalUrl = normalizeExternalUrl(
+      externalUrl === undefined ? currentProject?.externalUrl : externalUrl
+   );
+
+   return {
+      source: nextSource,
+      externalUrl: nextSource === 'external' ? nextExternalUrl : undefined,
+   };
+}
+
 function getProjectAttentionId(project: Pick<Doc<'projects'>, 'attention'>): string {
    return project.attention ?? defaultProjectAttentionId;
 }
@@ -106,6 +148,8 @@ async function serializeProject(
       key: project.key,
       subtitle: toNullable(project.subtitle),
       description: toNullable(project.description),
+      source: toProjectSource(project.source),
+      externalUrl: toNullable(project.externalUrl),
       iconType: project.iconType,
       iconValue: project.iconValue,
       status: project.status,
@@ -168,6 +212,8 @@ function serializeProjectForIssue(project: Doc<'projects'>) {
       status: project.status,
       subtitle: toNullable(project.subtitle),
       description: toNullable(project.description),
+      source: toProjectSource(project.source),
+      externalUrl: toNullable(project.externalUrl),
       createdAt: nowIso(project.createdAt),
       updatedAt: nowIso(project.updatedAt),
    };
@@ -698,6 +744,8 @@ export const create = mutation({
    args: {
       name: v.string(),
       key: v.optional(v.string()),
+      source: v.optional(v.union(v.literal('internal'), v.literal('external'))),
+      externalUrl: v.optional(v.union(v.string(), v.null())),
       subtitle: v.optional(v.string()),
       description: v.optional(v.string()),
       iconType: v.optional(v.string()),
@@ -710,6 +758,7 @@ export const create = mutation({
    handler: async (ctx, input) => {
       const slug = toOptionId(input.name);
       const key = normalizeProjectKey(input.key || createProjectKeyFromName(input.name));
+      const sourceAndUrl = resolveProjectSourceAndUrl(input.source, input.externalUrl);
 
       if (!slug) {
          throw new Error(
@@ -745,6 +794,7 @@ export const create = mutation({
          name: input.name,
          slug,
          key,
+         ...sourceAndUrl,
          subtitle: input.subtitle || undefined,
          description: input.description || undefined,
          iconType: input.iconType ?? 'lucide',
@@ -791,6 +841,8 @@ export const updateDetails = mutation({
       projectId: v.string(),
       name: v.optional(v.string()),
       key: v.optional(v.string()),
+      source: v.optional(v.union(v.literal('internal'), v.literal('external'))),
+      externalUrl: v.optional(v.union(v.string(), v.null())),
       subtitle: v.optional(v.union(v.string(), v.null())),
       description: v.optional(v.union(v.string(), v.null())),
       iconType: v.optional(v.string()),
@@ -800,6 +852,8 @@ export const updateDetails = mutation({
       const id = projectId as Id<'projects'>;
       const project = await ctx.db.get(id);
       if (!project) return null;
+
+      const sourceAndUrl = resolveProjectSourceAndUrl(input.source, input.externalUrl, project);
 
       const key = input.key === undefined ? undefined : normalizeProjectKey(input.key);
       if (key !== undefined) {
@@ -818,6 +872,10 @@ export const updateDetails = mutation({
       await ctx.db.patch(id, {
          ...(input.name !== undefined ? { name: input.name } : {}),
          ...(key !== undefined ? { key } : {}),
+         ...(input.source !== undefined ? { source: sourceAndUrl.source } : {}),
+         ...(input.externalUrl !== undefined || input.source === 'internal'
+            ? { externalUrl: sourceAndUrl.externalUrl }
+            : {}),
          ...(input.subtitle !== undefined ? { subtitle: input.subtitle ?? undefined } : {}),
          ...(input.description !== undefined
             ? { description: input.description ?? undefined }
@@ -836,6 +894,8 @@ export const updateFields = mutation({
       projectId: v.string(),
       name: v.optional(v.string()),
       key: v.optional(v.string()),
+      source: v.optional(v.union(v.literal('internal'), v.literal('external'))),
+      externalUrl: v.optional(v.union(v.string(), v.null())),
       subtitle: v.optional(v.union(v.string(), v.null())),
       description: v.optional(v.union(v.string(), v.null())),
       iconType: v.optional(v.string()),
@@ -845,6 +905,8 @@ export const updateFields = mutation({
       const id = projectId as Id<'projects'>;
       const project = await ctx.db.get(id);
       if (!project) return null;
+
+      const sourceAndUrl = resolveProjectSourceAndUrl(input.source, input.externalUrl, project);
 
       const key = input.key === undefined ? undefined : normalizeProjectKey(input.key);
       if (key !== undefined) {
@@ -863,6 +925,10 @@ export const updateFields = mutation({
       await ctx.db.patch(id, {
          ...(input.name !== undefined ? { name: input.name } : {}),
          ...(key !== undefined ? { key } : {}),
+         ...(input.source !== undefined ? { source: sourceAndUrl.source } : {}),
+         ...(input.externalUrl !== undefined || input.source === 'internal'
+            ? { externalUrl: sourceAndUrl.externalUrl }
+            : {}),
          ...(input.subtitle !== undefined ? { subtitle: input.subtitle ?? undefined } : {}),
          ...(input.description !== undefined
             ? { description: input.description ?? undefined }

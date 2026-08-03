@@ -88,6 +88,7 @@ export function CreateProjectDialog({ disabled = false }: CreateProjectDialogPro
    const [error, setError] = useState<string | null>(null);
    const [projectKey, setProjectKey] = useState('');
    const [keyTouched, setKeyTouched] = useState(false);
+   const [selectedSource, setSelectedSource] = useState<'internal' | 'external'>('internal');
    const [selectedStatusId, setSelectedStatusId] = useState('');
    const [selectedPriorityId, setSelectedPriorityId] = useState('');
    const [iconConfig, setIconConfig] = useState<ProjectIconConfig>({
@@ -123,6 +124,9 @@ export function CreateProjectDialog({ disabled = false }: CreateProjectDialogPro
          await createProjectMutation({
             name: String(formData.get('name') ?? ''),
             key: projectKey,
+            source: selectedSource,
+            externalUrl:
+               selectedSource === 'external' ? String(formData.get('externalUrl') ?? '') : null,
             subtitle: String(formData.get('subtitle') ?? ''),
             description: String(formData.get('description') ?? ''),
             status: selectedStatus?.id ?? 'backlog',
@@ -134,6 +138,7 @@ export function CreateProjectDialog({ disabled = false }: CreateProjectDialogPro
          formRef.current?.reset();
          setProjectKey('');
          setKeyTouched(false);
+         setSelectedSource('internal');
          setSelectedStatusId('');
          setSelectedPriorityId('');
          setIconConfig({ type: 'lucide', value: 'box' });
@@ -183,6 +188,41 @@ export function CreateProjectDialog({ disabled = false }: CreateProjectDialogPro
                      />
                   </div>
                </div>
+
+               <div className="space-y-2">
+                  <Label htmlFor="source">Origen</Label>
+                  <Select
+                     value={selectedSource}
+                     onValueChange={(value) => setSelectedSource(value as 'internal' | 'external')}
+                     disabled={isCreating}
+                  >
+                     <SelectTrigger id="source" aria-label="Origen del proyecto">
+                        <span>{selectedSource === 'external' ? 'Externo' : 'Local'}</span>
+                     </SelectTrigger>
+                     <SelectContent>
+                        <SelectItem value="internal">Local: se gestiona en Triangle</SelectItem>
+                        <SelectItem value="external">
+                           Externo: referencia a otra herramienta
+                        </SelectItem>
+                     </SelectContent>
+                  </Select>
+               </div>
+
+               {selectedSource === 'external' ? (
+                  <div className="space-y-2">
+                     <Label htmlFor="externalUrl">URL de referencia</Label>
+                     <Input
+                        id="externalUrl"
+                        name="externalUrl"
+                        type="url"
+                        placeholder="https://linear.app/..."
+                     />
+                     <p className="text-xs text-muted-foreground">
+                        Este proyecto aparecerá en tu board, pero sus tareas viven fuera de
+                        Triangle.
+                     </p>
+                  </div>
+               ) : null}
 
                <div className="space-y-2">
                   <Label htmlFor="subtitle">Subtitle</Label>

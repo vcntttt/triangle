@@ -16,6 +16,7 @@ import { CreateProjectUpdateDialog } from './create-project-update-dialog';
 import { DeleteProjectDialog } from './delete-project-dialog';
 import { ProjectIcon } from './project-icon';
 import { useProjectFieldUpdates } from './use-project-field-updates';
+import { ProjectExternalLink, ProjectSourceBadge } from './project-source';
 
 interface ProjectLineProps {
    project: Project;
@@ -94,6 +95,12 @@ function ProjectLineContent({
                         </span>
                      ) : null}
                   </button>
+                  {project.source === 'external' ? (
+                     <span className="flex items-center gap-2">
+                        <ProjectSourceBadge source={project.source} className="px-1.5 py-0" />
+                        <ProjectExternalLink url={project.externalUrl} />
+                     </span>
+                  ) : null}
                </div>
 
                {visibleProperties.health && (

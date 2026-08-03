@@ -28,6 +28,7 @@ import { useProjectCommands } from '@/src/data/projects';
 import { useViewerProfile } from '@/src/data/viewer';
 import { useCreateIssueStore } from '@/store/create-issue-store';
 import { DisplayMenu } from '@/components/layout/headers/issues/header-options';
+import { ProjectExternalLink, ProjectSourceBadge } from './project-source';
 
 const updateDateFormatter = new Intl.DateTimeFormat('en-US');
 
@@ -55,6 +56,12 @@ export function ProjectToolbar({
             ) : null}
             <span className="truncate text-sm font-medium">{title}</span>
             {project ? <span className="text-xs text-muted-foreground">{project.key}</span> : null}
+            {project?.source === 'external' ? (
+               <>
+                  <ProjectSourceBadge source={project.source} className="px-1.5 py-0" />
+                  <ProjectExternalLink url={project.externalUrl} />
+               </>
+            ) : null}
          </div>
          <div className="flex items-center gap-2">
             {showIssueDisplay ? <DisplayMenu /> : null}
@@ -386,6 +393,13 @@ export function ProjectOverview({
                            onSave={(value) => handleProjectFieldSave('key', value)}
                         />
                      </div>
+
+                     {project.source === 'external' ? (
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                           <ProjectSourceBadge source={project.source} />
+                           <ProjectExternalLink url={project.externalUrl} />
+                        </div>
+                     ) : null}
 
                      {/*
                         Keep this visual description hidden for now. It duplicates the
