@@ -229,6 +229,15 @@ export default defineSchema({
    })
       .index('by_issue_createdAt', ['issueId', 'createdAt'])
       .index('by_issue_kind_createdAt', ['issueId', 'kind', 'createdAt']),
+   issueActivity: defineTable({
+      issueId: v.id('issues'),
+      actorId: v.string(),
+      type: v.string(),
+      message: v.string(),
+      fromValue: v.optional(v.string()),
+      toValue: v.optional(v.string()),
+      createdAt: v.number(),
+   }).index('by_issue_createdAt', ['issueId', 'createdAt']),
    issueArtifacts: defineTable({
       issueId: v.id('issues'),
       title: v.string(),

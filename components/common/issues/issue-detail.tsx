@@ -7,6 +7,8 @@ import { format } from 'date-fns';
 import {
    Archive,
    ArrowLeft,
+   Activity,
+   ChevronDown,
    Maximize2,
    MessageSquare,
    Minimize2,
@@ -96,7 +98,7 @@ function IssueDetailProperties({
          return;
       }
 
-      updateIssueParent(issue.id, parent);
+      updateIssueParent(issue.id, parent ?? null);
       if (parent) {
          toast.success(`Parent set to ${parent.identifier}`);
       }
@@ -206,6 +208,7 @@ export function IssueDetail({
       enabled: Boolean(issueDetailIdentifier),
    });
    const comments = issueDetail?.comments ?? [];
+   const activity = issueDetail?.activity ?? [];
 
    const applyInlineTokenMetadata = useCallback(
       (rawTitle: string) => {
@@ -687,6 +690,64 @@ export function IssueDetail({
                            })}
                         </div>
                      )}
+                  </section>
+
+                  <section className="border-t border-border/60 pt-5">
+                     <details className="group">
+                        <summary className="flex cursor-pointer list-none items-center justify-between rounded-md text-xs font-medium text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+                           <span>
+                              <Activity className="-mt-0.5 mr-1.5 inline-block size-3.5" />{' '}
+                              Actividad{' '}
+                              <span className="text-muted-foreground/70">({activity.length})</span>
+                           </span>
+                           <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+                        </summary>
+
+                        <div className="mt-4 space-y-0.5">
+                           {activity.map((event) => {
+                              const author = resolveCommentAuthor(event.actorId, currentUser);
+                              const hasValueChange =
+                                 event.fromValue !== null || event.toValue !== null;
+
+                              return (
+                                 <div key={event.id} className="flex gap-3 py-2">
+                                    <Avatar className="size-6 shrink-0">
+                                       <AvatarImage src={author.avatarUrl} alt={author.name} />
+                                       <AvatarFallback className="text-[10px]">
+                                          {author.name[0]}
+                                       </AvatarFallback>
+                                    </Avatar>
+                                    <div className="min-w-0 flex-1 text-xs leading-5">
+                                       <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+                                          <span className="font-medium text-foreground">
+                                             {author.name}
+                                          </span>
+                                          <span className="text-muted-foreground">
+                                             {event.message}
+                                          </span>
+                                          {hasValueChange && (
+                                             <span className="text-muted-foreground">
+                                                {event.fromValue ?? 'Ninguno'} →{' '}
+                                                {event.toValue ?? 'Ninguno'}
+                                             </span>
+                                          )}
+                                          <span
+                                             className="text-muted-foreground/70"
+                                             suppressHydrationWarning
+                                          >
+                                             ·{' '}
+                                             {format(
+                                                new Date(event.createdAt),
+                                                'MMM dd, yyyy h:mm a'
+                                             )}
+                                          </span>
+                                       </div>
+                                    </div>
+                                 </div>
+                              );
+                           })}
+                        </div>
+                     </details>
                   </section>
 
                   <section className="border-t border-border/60 pt-5">

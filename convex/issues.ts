@@ -10,6 +10,34 @@ const toNullable = <T>(value: T | undefined): T | null => value ?? null;
 const resolvedIssueStatusIds = new Set(['completed', 'archived', 'canceled', 'cancelled']);
 const isResolvedIssueStatus = (statusId: string) => resolvedIssueStatusIds.has(statusId);
 
+function activityValue(value: string | null | undefined) {
+   if (!value) return 'Ninguno';
+   return value.replaceAll('-', ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+async function recordIssueActivity(
+   ctx: MutationCtx,
+   input: {
+      issueId: Id<'issues'>;
+      type: string;
+      message: string;
+      fromValue?: string | null;
+      toValue?: string | null;
+      actorId?: string;
+      createdAt: number;
+   }
+) {
+   await ctx.db.insert('issueActivity', {
+      issueId: input.issueId,
+      actorId: input.actorId ?? 'me',
+      type: input.type,
+      message: input.message,
+      fromValue: input.fromValue ?? undefined,
+      toValue: input.toValue ?? undefined,
+      createdAt: input.createdAt,
+   });
+}
+
 async function listStatusOptions(ctx: QueryCtx) {
    const rows = await ctx.db.query('issueStatuses').withIndex('by_position').collect();
    const values = new Map(
@@ -236,6 +264,16 @@ async function transitionIssueStatus(
       status,
       updatedAt,
    });
+   if (issue.status !== status) {
+      await recordIssueActivity(ctx, {
+         issueId: issue._id,
+         type: 'status_changed',
+         message: 'cambió el estado',
+         fromValue: activityValue(issue.status),
+         toValue: activityValue(status),
+         createdAt: updatedAt,
+      });
+   }
    const updatedIssue = await ctx.db.get(issue._id);
    if (updatedIssue) {
       await applyIssueStatusAutomations(ctx, updatedIssue, issue.status, status, updatedAt);
@@ -385,9 +423,13 @@ export const detail = query({
       const issue = issues.find((item) => item.identifier === issueIdentifier) ?? null;
       if (!issue) return null;
       const issueId = issue.id as Id<'issues'>;
-      const [comments, artifacts] = await Promise.all([
+      const [comments, activity, artifacts] = await Promise.all([
          ctx.db
             .query('issueComments')
+            .withIndex('by_issue_createdAt', (q) => q.eq('issueId', issueId))
+            .collect(),
+         ctx.db
+            .query('issueActivity')
             .withIndex('by_issue_createdAt', (q) => q.eq('issueId', issueId))
             .collect(),
          ctx.db
@@ -395,8 +437,29 @@ export const detail = query({
             .withIndex('by_issue_createdAt', (q) => q.eq('issueId', issueId))
             .collect(),
       ]);
+      const serializedActivity = activity.map((event) => ({
+         id: event._id,
+         actorId: event.actorId,
+         type: event.type,
+         message: event.message,
+         fromValue: toNullable(event.fromValue),
+         toValue: toNullable(event.toValue),
+         createdAt: nowIso(event.createdAt),
+      }));
+      if (!serializedActivity.some((event) => event.type === 'created')) {
+         serializedActivity.unshift({
+            id: issueId as Id<'issueActivity'>,
+            actorId: 'me',
+            type: 'created',
+            message: 'creó el issue',
+            fromValue: null,
+            toValue: null,
+            createdAt: issue.createdAt,
+         });
+      }
       return {
          ...issue,
+         activity: serializedActivity,
          comments: comments.map((comment) => ({
             id: comment._id,
             body: comment.body,
@@ -517,6 +580,12 @@ export const create = mutation({
          createdAt: now,
          updatedAt: now,
       });
+      await recordIssueActivity(ctx, {
+         issueId,
+         type: 'created',
+         message: 'creó el issue',
+         createdAt: now,
+      });
 
       if (input.parentIssueId) {
          await validateParentAssignment(ctx, issueId, input.parentIssueId as Id<'issues'>);
@@ -579,6 +648,12 @@ export const createWithSubissues = mutation({
          createdAt: now,
          updatedAt: now,
       });
+      await recordIssueActivity(ctx, {
+         issueId,
+         type: 'created',
+         message: 'creó el issue',
+         createdAt: now,
+      });
 
       if (input.parentIssueId) {
          await validateParentAssignment(ctx, issueId, input.parentIssueId as Id<'issues'>);
@@ -591,7 +666,7 @@ export const createWithSubissues = mutation({
          }
 
          const childIdentifier = await createIssueIdentifier(ctx, project?.key ?? 'TRI');
-         await ctx.db.insert('issues', {
+         const childIssueId = await ctx.db.insert('issues', {
             identifier: childIdentifier.identifier,
             projectIssueNumber: childIdentifier.projectIssueNumber,
             title,
@@ -608,6 +683,12 @@ export const createWithSubissues = mutation({
             labelIds: [],
             createdAt: Date.now(),
             updatedAt: Date.now(),
+         });
+         await recordIssueActivity(ctx, {
+            issueId: childIssueId,
+            type: 'created',
+            message: 'creó el issue',
+            createdAt: Date.now(),
          });
       }
 
@@ -705,10 +786,154 @@ export const update = mutation({
          ...(labels !== undefined ? { labelIds: labels.map((label) => label._id) } : {}),
          updatedAt: Date.now(),
       };
+      const updatedAt = patch.updatedAt;
       if (input.status !== undefined) {
-         await transitionIssueStatus(ctx, issue, input.status, patch.updatedAt, { patch });
+         await transitionIssueStatus(ctx, issue, input.status, updatedAt, { patch });
       } else {
          await ctx.db.patch(id, patch);
+      }
+
+      if (input.title !== undefined && input.title !== issue.title) {
+         await recordIssueActivity(ctx, {
+            issueId: id,
+            type: 'title_changed',
+            message: 'cambió el título',
+            createdAt: updatedAt,
+         });
+      }
+      if (
+         input.description !== undefined &&
+         (input.description ?? undefined) !== issue.description
+      ) {
+         await recordIssueActivity(ctx, {
+            issueId: id,
+            type: 'description_changed',
+            message: 'actualizó la descripción',
+            createdAt: updatedAt,
+         });
+      }
+      if (input.priority !== undefined && input.priority !== issue.priority) {
+         await recordIssueActivity(ctx, {
+            issueId: id,
+            type: 'priority_changed',
+            message: 'cambió la prioridad',
+            fromValue: activityValue(issue.priority),
+            toValue: activityValue(input.priority),
+            createdAt: updatedAt,
+         });
+      }
+      if (input.assigneeId !== undefined && (input.assigneeId ?? undefined) !== issue.assigneeId) {
+         await recordIssueActivity(ctx, {
+            issueId: id,
+            type: 'assignee_changed',
+            message: 'cambió la asignación',
+            fromValue: issue.assigneeId ?? null,
+            toValue: input.assigneeId,
+            createdAt: updatedAt,
+         });
+      }
+      if (input.estimatedHours !== undefined) {
+         const nextEstimatedHours = input.estimatedHours?.toString();
+         if (nextEstimatedHours !== issue.estimatedHours) {
+            await recordIssueActivity(ctx, {
+               issueId: id,
+               type: 'estimate_changed',
+               message: 'cambió la estimación',
+               fromValue: issue.estimatedHours,
+               toValue: nextEstimatedHours,
+               createdAt: updatedAt,
+            });
+         }
+      }
+      if (input.dueDate !== undefined) {
+         const nextDueDate = input.dueDate
+            ? new Date(input.dueDate).toISOString().slice(0, 10)
+            : undefined;
+         const previousDueDate = issue.dueDate
+            ? new Date(issue.dueDate).toISOString().slice(0, 10)
+            : undefined;
+         if (nextDueDate !== previousDueDate) {
+            await recordIssueActivity(ctx, {
+               issueId: id,
+               type: 'due_date_changed',
+               message: 'cambió la fecha límite',
+               fromValue: previousDueDate,
+               toValue: nextDueDate,
+               createdAt: updatedAt,
+            });
+         }
+      }
+      if (
+         (input.projectId !== undefined || input.projectName !== undefined) &&
+         issue.projectId !== nextProjectId
+      ) {
+         const previousProject = issue.projectId ? await ctx.db.get(issue.projectId) : null;
+         await recordIssueActivity(ctx, {
+            issueId: id,
+            type: 'project_changed',
+            message: 'cambió el proyecto',
+            fromValue: previousProject?.name,
+            toValue: project?.name,
+            createdAt: updatedAt,
+         });
+      }
+      if (
+         (input.areaId !== undefined || shouldClearAreaForProjectChange) &&
+         issue.areaId !== area?._id
+      ) {
+         const previousArea = issue.areaId ? await ctx.db.get(issue.areaId) : null;
+         await recordIssueActivity(ctx, {
+            issueId: id,
+            type: 'area_changed',
+            message: 'cambió el área',
+            fromValue: previousArea?.name,
+            toValue: area?.name,
+            createdAt: updatedAt,
+         });
+      }
+      if (
+         input.parentIssueId !== undefined &&
+         issue.parentIssueId !== (input.parentIssueId ?? undefined)
+      ) {
+         const previousParent = issue.parentIssueId ? await ctx.db.get(issue.parentIssueId) : null;
+         const nextParent = input.parentIssueId
+            ? await ctx.db.get(input.parentIssueId as Id<'issues'>)
+            : null;
+         await recordIssueActivity(ctx, {
+            issueId: id,
+            type: 'parent_changed',
+            message: 'cambió el issue padre',
+            fromValue: previousParent?.identifier,
+            toValue: nextParent?.identifier,
+            createdAt: updatedAt,
+         });
+      }
+      if (labels !== undefined) {
+         const previousLabels = await findLabelsByIds(ctx, issue.labelIds.map(String));
+         const previousLabelIds = new Set(previousLabels.map((label) => label._id));
+         const nextLabelIds = new Set(labels.map((label) => label._id));
+         for (const label of labels) {
+            if (!previousLabelIds.has(label._id)) {
+               await recordIssueActivity(ctx, {
+                  issueId: id,
+                  type: 'label_added',
+                  message: 'añadió la etiqueta',
+                  toValue: label.name,
+                  createdAt: updatedAt,
+               });
+            }
+         }
+         for (const label of previousLabels) {
+            if (!nextLabelIds.has(label._id)) {
+               await recordIssueActivity(ctx, {
+                  issueId: id,
+                  type: 'label_removed',
+                  message: 'quitó la etiqueta',
+                  fromValue: label.name,
+                  createdAt: updatedAt,
+               });
+            }
+         }
       }
 
       return (await listIssues(ctx)).find((item) => item.id === id) ?? null;
@@ -783,7 +1008,19 @@ export const assign = mutation({
       if (assigneeId !== null && assigneeId !== 'me') {
          throw new Error('Triangle is personal; the only assignable user ID is me.');
       }
-      await ctx.db.patch(id, { assigneeId: assigneeId ?? undefined, updatedAt: Date.now() });
+      const now = Date.now();
+      const issue = await ctx.db.get(id);
+      await ctx.db.patch(id, { assigneeId: assigneeId ?? undefined, updatedAt: now });
+      if (issue && issue.assigneeId !== (assigneeId ?? undefined)) {
+         await recordIssueActivity(ctx, {
+            issueId: id,
+            type: 'assignee_changed',
+            message: 'cambió la asignación',
+            fromValue: issue.assigneeId,
+            toValue: assigneeId,
+            createdAt: now,
+         });
+      }
       return (await listIssues(ctx)).find((item) => item.id === id) ?? null;
    },
 });
@@ -798,7 +1035,19 @@ export const claim = mutation({
          .withIndex('by_singletonKey', (q) => q.eq('singletonKey', 'me'))
          .unique();
       const assigneeId = profile?.singletonKey ?? 'me';
-      await ctx.db.patch(id, { assigneeId, updatedAt: Date.now() });
+      const now = Date.now();
+      const issue = await ctx.db.get(id);
+      await ctx.db.patch(id, { assigneeId, updatedAt: now });
+      if (issue && issue.assigneeId !== assigneeId) {
+         await recordIssueActivity(ctx, {
+            issueId: id,
+            type: 'assignee_changed',
+            message: 'cambió la asignación',
+            fromValue: issue.assigneeId,
+            toValue: assigneeId,
+            createdAt: now,
+         });
+      }
       return (await listIssues(ctx)).find((item) => item.id === id) ?? null;
    },
 });
@@ -920,6 +1169,13 @@ export const addArtifact = mutation({
          updatedAt: now,
       });
       await ctx.db.patch(issueId, { updatedAt: now });
+      await recordIssueActivity(ctx, {
+         issueId,
+         type: 'artifact_added',
+         message: 'añadió un artefacto',
+         toValue: title,
+         createdAt: now,
+      });
       return artifactId;
    },
 });
@@ -961,11 +1217,19 @@ export const addBlocker = mutation({
             .collect();
          stack.push(...outgoing.map((relation) => relation.blockedIssueId));
       }
-      return ctx.db.insert('issueRelations', {
+      const relationId = await ctx.db.insert('issueRelations', {
          blockerIssueId,
          blockedIssueId,
          createdAt: Date.now(),
       });
+      await recordIssueActivity(ctx, {
+         issueId: blockedIssueId,
+         type: 'blocker_added',
+         message: 'añadió un bloqueador',
+         toValue: blocker.identifier,
+         createdAt: Date.now(),
+      });
+      return relationId;
    },
 });
 
@@ -980,7 +1244,17 @@ export const removeBlocker = mutation({
                .eq('blockedIssueId', input.blockedIssueId as Id<'issues'>)
          )
          .unique();
-      if (relation) await ctx.db.delete(relation._id);
+      if (relation) {
+         const blocker = await ctx.db.get(relation.blockerIssueId);
+         await ctx.db.delete(relation._id);
+         await recordIssueActivity(ctx, {
+            issueId: relation.blockedIssueId,
+            type: 'blocker_removed',
+            message: 'quitó un bloqueador',
+            fromValue: blocker?.identifier,
+            createdAt: Date.now(),
+         });
+      }
       return relation !== null;
    },
 });
@@ -1011,10 +1285,24 @@ export const setParent = mutation({
          parentIssueId === null ? null : (parentIssueId as Id<'issues'>)
       );
 
+      const issue = await ctx.db.get(id);
+      const previousParent = issue?.parentIssueId ? await ctx.db.get(issue.parentIssueId) : null;
+      const nextParent = parentIssueId ? await ctx.db.get(parentIssueId as Id<'issues'>) : null;
+      const now = Date.now();
       await ctx.db.patch(id, {
          parentIssueId: parentIssueId === null ? undefined : (parentIssueId as Id<'issues'>),
-         updatedAt: Date.now(),
+         updatedAt: now,
       });
+      if (issue?.parentIssueId !== (parentIssueId ?? undefined)) {
+         await recordIssueActivity(ctx, {
+            issueId: id,
+            type: 'parent_changed',
+            message: 'cambió el issue padre',
+            fromValue: previousParent?.identifier,
+            toValue: nextParent?.identifier,
+            createdAt: now,
+         });
+      }
 
       return (await listIssues(ctx)).find((item) => item.id === id) ?? null;
    },
@@ -1050,9 +1338,13 @@ export const remove = mutation({
       await Promise.all(
          [...outgoingRelations, ...incomingRelations].map((relation) => ctx.db.delete(relation._id))
       );
-      const [comments, artifacts] = await Promise.all([
+      const [comments, activity, artifacts] = await Promise.all([
          ctx.db
             .query('issueComments')
+            .withIndex('by_issue_createdAt', (q) => q.eq('issueId', id))
+            .collect(),
+         ctx.db
+            .query('issueActivity')
             .withIndex('by_issue_createdAt', (q) => q.eq('issueId', id))
             .collect(),
          ctx.db
@@ -1062,6 +1354,7 @@ export const remove = mutation({
       ]);
       await Promise.all([
          ...comments.map((comment) => ctx.db.delete(comment._id)),
+         ...activity.map((event) => ctx.db.delete(event._id)),
          ...artifacts.map((artifact) => ctx.db.delete(artifact._id)),
       ]);
       await ctx.db.delete(id);
