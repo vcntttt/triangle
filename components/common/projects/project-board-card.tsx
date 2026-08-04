@@ -16,6 +16,7 @@ import type { ProjectBoardGroupBy, ProjectDisplayProperty } from '@/store/projec
 import { ProjectContextMenu } from './project-context-menu';
 import { CreateProjectUpdateDialog } from './create-project-update-dialog';
 import { DeleteProjectDialog } from './delete-project-dialog';
+import { ProjectIcon } from './project-icon';
 import { PrioritySelector } from './priority-selector';
 import { StatusWithPercent } from './status-with-percent';
 import { AttentionSelector } from './attention-selector';
@@ -99,14 +100,23 @@ export function ProjectBoardCard({
                      onClick={() => onOpenIssues(project)}
                      className="min-w-0 flex-1 cursor-pointer border-0 bg-transparent p-0 text-left"
                   >
-                     <h3 className="line-clamp-2 text-sm font-medium leading-5 group-hover:underline">
-                        {project.name}
-                     </h3>
-                     {project.subtitle ? (
-                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                           {project.subtitle}
-                        </p>
-                     ) : null}
+                     <div className="flex min-w-0 items-start gap-2">
+                        <ProjectIcon
+                           project={project}
+                           className="mt-0.5 size-5"
+                           iconClassName="size-3"
+                        />
+                        <div className="min-w-0">
+                           <h3 className="line-clamp-2 text-sm font-medium leading-5 group-hover:underline">
+                              {project.name}
+                           </h3>
+                           {project.subtitle ? (
+                              <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                                 {project.subtitle}
+                              </p>
+                           ) : null}
+                        </div>
+                     </div>
                   </button>
                   {project.source === 'external' ? (
                      <ProjectSourceBadge source={project.source} className="shrink-0" />
@@ -225,18 +235,21 @@ export function ProjectBoardCardPreview({
       <div className="w-full rounded-md border border-border/70 bg-background p-3 shadow-lg">
          <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-               <h3 className="text-sm font-medium leading-5 line-clamp-2">{project.name}</h3>
-               {project.subtitle ? (
-                  <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
-                     {project.subtitle}
-                  </p>
-               ) : null}
+               <div className="flex min-w-0 items-start gap-2">
+                  <ProjectIcon project={project} className="mt-0.5 size-5" iconClassName="size-3" />
+                  <div className="min-w-0">
+                     <h3 className="text-sm font-medium leading-5 line-clamp-2">{project.name}</h3>
+                     {project.subtitle ? (
+                        <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+                           {project.subtitle}
+                        </p>
+                     ) : null}
+                  </div>
+               </div>
             </div>
             {project.source === 'external' ? (
                <ProjectSourceBadge source={project.source} className="shrink-0" />
-            ) : (
-               <div className="size-7 rounded-md border border-border/50 bg-accent/30" />
-            )}
+            ) : null}
          </div>
          {project.source === 'external' && project.externalUrl ? (
             <div className="mt-2">

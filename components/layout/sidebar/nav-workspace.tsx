@@ -27,7 +27,7 @@ import type { Project } from '@/lib/projects-presentation';
 import { useProjectOptions } from '@/hooks/use-project-options';
 
 export function NavWorkspace() {
-   const projects = useProjectOptions();
+   const projects = useProjectOptions().filter((project) => project.source !== 'external');
    const pathname = useRouterState({ select: (state) => state.location.pathname });
 
    return (
