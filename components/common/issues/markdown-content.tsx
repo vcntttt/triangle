@@ -1,6 +1,56 @@
+import hljs from 'highlight.js/lib/core';
+import bash from 'highlight.js/lib/languages/bash';
+import css from 'highlight.js/lib/languages/css';
+import javascript from 'highlight.js/lib/languages/javascript';
+import json from 'highlight.js/lib/languages/json';
+import markdown from 'highlight.js/lib/languages/markdown';
+import python from 'highlight.js/lib/languages/python';
+import rust from 'highlight.js/lib/languages/rust';
+import sql from 'highlight.js/lib/languages/sql';
+import typescript from 'highlight.js/lib/languages/typescript';
+import xml from 'highlight.js/lib/languages/xml';
+import yaml from 'highlight.js/lib/languages/yaml';
+import { useMemo } from 'react';
 import type { ElementType, ReactNode } from 'react';
 
 const tableDividerCellPattern = /^:?-{3,}:?$/;
+const languageAliases: Record<string, string> = {
+   bash: 'bash',
+   cjs: 'javascript',
+   css: 'css',
+   html: 'xml',
+   javascript: 'javascript',
+   js: 'javascript',
+   jsx: 'javascript',
+   json: 'json',
+   md: 'markdown',
+   markdown: 'markdown',
+   mjs: 'javascript',
+   py: 'python',
+   rs: 'rust',
+   sh: 'bash',
+   shell: 'bash',
+   sql: 'sql',
+   svg: 'xml',
+   ts: 'typescript',
+   tsx: 'typescript',
+   typescript: 'typescript',
+   xml: 'xml',
+   yaml: 'yaml',
+   yml: 'yaml',
+};
+
+hljs.registerLanguage('bash', bash);
+hljs.registerLanguage('css', css);
+hljs.registerLanguage('javascript', javascript);
+hljs.registerLanguage('json', json);
+hljs.registerLanguage('markdown', markdown);
+hljs.registerLanguage('python', python);
+hljs.registerLanguage('rust', rust);
+hljs.registerLanguage('sql', sql);
+hljs.registerLanguage('typescript', typescript);
+hljs.registerLanguage('xml', xml);
+hljs.registerLanguage('yaml', yaml);
 
 function nextOccurrenceKey(prefix: string, value: string, occurrences: Map<string, number>) {
    const occurrence = occurrences.get(value) ?? 0;
@@ -70,6 +120,50 @@ function isClosingFence(line: string, openingFence: string): boolean {
    );
 }
 
+function nextNonEmptyLineIsIndented(lines: string[], lineIndex: number): boolean {
+   for (let nextIndex = lineIndex + 1; nextIndex < lines.length; nextIndex += 1) {
+      if (!lines[nextIndex].trim()) continue;
+      return /^\s{2,}\S/.test(lines[nextIndex]);
+   }
+   return false;
+}
+
+function normalizeLanguage(language: string): string {
+   const normalized = language.toLowerCase();
+   return languageAliases[normalized] ?? normalized;
+}
+
+function CodeBlock({ code, language }: { code: string; language?: string }) {
+   const highlightedCode = useMemo(() => {
+      if (!language) return null;
+
+      const normalizedLanguage = normalizeLanguage(language);
+      if (!hljs.getLanguage(normalizedLanguage)) return null;
+
+      try {
+         return hljs.highlight(code, { language: normalizedLanguage, ignoreIllegals: true }).value;
+      } catch {
+         return null;
+      }
+   }, [code, language]);
+
+   return (
+      <pre className="markdown-code-block overflow-x-auto rounded-md border border-border bg-muted/50 p-3 text-xs leading-5">
+         {highlightedCode ? (
+            <code
+               className="hljs font-mono"
+               data-language={language}
+               dangerouslySetInnerHTML={{ __html: highlightedCode }}
+            />
+         ) : (
+            <code className="font-mono" data-language={language}>
+               {code}
+            </code>
+         )}
+      </pre>
+   );
+}
+
 export function MarkdownContent({ content }: { content: string }) {
    const lines = content.replace(/\r\n?/g, '\n').split('\n');
    const blocks: ReactNode[] = [];
@@ -123,6 +217,7 @@ export function MarkdownContent({ content }: { content: string }) {
       const heading = trimmed.match(/^(#{1,6})\s+(.+)$/);
       const blockquote = trimmed.match(/^>\s?(.*)$/);
       const fencedCode = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+      const listContinuation = Boolean(list && list.items.length && /^\s{2,}\S/.test(line));
       const unordered = trimmed.match(/^[-*+]\s+(.+)$/);
       const ordered = trimmed.match(/^\d+[.)]\s+(.+)$/);
       const tableHeader = parseTableRow(trimmed);
@@ -133,14 +228,16 @@ export function MarkdownContent({ content }: { content: string }) {
 
       if (!trimmed) {
          flushParagraph();
-         flushList();
+         if (!listContinuation && !nextNonEmptyLineIsIndented(lines, lineIndex)) {
+            flushList();
+         }
       } else if (fencedCode) {
          flushParagraph();
          flushList();
 
          const codeLines: string[] = [];
          const openingFence = fencedCode[1];
-         const language = fencedCode[2].trim() || undefined;
+         const language = fencedCode[2].trim().split(/\s+/)[0] || undefined;
          lineIndex += 1;
          while (lineIndex < lines.length && !isClosingFence(lines[lineIndex], openingFence)) {
             codeLines.push(lines[lineIndex]);
@@ -148,15 +245,14 @@ export function MarkdownContent({ content }: { content: string }) {
          }
 
          blocks.push(
-            <pre
+            <CodeBlock
                key={`code-${blocks.length}`}
-               className="overflow-x-auto rounded-md border border-border bg-muted/50 p-3 text-xs leading-5"
-            >
-               <code className="font-mono" data-language={language}>
-                  {codeLines.join('\n')}
-               </code>
-            </pre>
+               code={codeLines.join('\n')}
+               language={language}
+            />
          );
+      } else if (listContinuation && list) {
+         list.items[list.items.length - 1] += ` ${trimmed}`;
       } else if (hasTable) {
          flushParagraph();
          flushList();

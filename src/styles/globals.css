@@ -44,6 +44,12 @@
    --background: oklch(1 0 0);
    --foreground: oklch(0.141 0.005 285.823);
    --container: #fff;
+   --syntax-comment: #6b7280;
+   --syntax-keyword: #7c3aed;
+   --syntax-string: #047857;
+   --syntax-number: #b45309;
+   --syntax-title: #0369a1;
+   --syntax-attribute: #9333ea;
 }
 
 .dark {
@@ -80,6 +86,12 @@
    --sidebar-border: rgb(255 255 255 / 0.08);
    --sidebar-ring: rgb(255 255 255 / 0.2);
    --container: #121318;
+   --syntax-comment: #8b949e;
+   --syntax-keyword: #ff7b72;
+   --syntax-string: #a5d6ff;
+   --syntax-number: #79c0ff;
+   --syntax-title: #d2a8ff;
+   --syntax-attribute: #ffa657;
 }
 
 @theme inline {
@@ -153,6 +165,50 @@ input::-webkit-search-cancel-button {
 
 input[type='search'] {
    font-size: 16px !important;
+}
+
+.markdown-code-block .hljs {
+   background: transparent;
+   color: var(--foreground);
+}
+
+.markdown-code-block .hljs-comment,
+.markdown-code-block .hljs-quote {
+   color: var(--syntax-comment);
+   font-style: italic;
+}
+
+.markdown-code-block .hljs-keyword,
+.markdown-code-block .hljs-literal,
+.markdown-code-block .hljs-selector-tag,
+.markdown-code-block .hljs-type {
+   color: var(--syntax-keyword);
+}
+
+.markdown-code-block .hljs-string,
+.markdown-code-block .hljs-regexp,
+.markdown-code-block .hljs-symbol {
+   color: var(--syntax-string);
+}
+
+.markdown-code-block .hljs-number,
+.markdown-code-block .hljs-bullet {
+   color: var(--syntax-number);
+}
+
+.markdown-code-block .hljs-title,
+.markdown-code-block .hljs-title.class_,
+.markdown-code-block .hljs-title.function_,
+.markdown-code-block .hljs-built_in {
+   color: var(--syntax-title);
+}
+
+.markdown-code-block .hljs-attr,
+.markdown-code-block .hljs-attribute,
+.markdown-code-block .hljs-property,
+.markdown-code-block .hljs-variable,
+.markdown-code-block .hljs-variable.language_ {
+   color: var(--syntax-attribute);
 }
 
 @media (prefers-reduced-motion: reduce) {
