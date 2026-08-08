@@ -28,6 +28,7 @@ import { useProjectCommands } from '@/src/data/projects';
 import { useViewerProfile } from '@/src/data/viewer';
 import { useCreateIssueStore } from '@/store/create-issue-store';
 import { DisplayMenu } from '@/components/layout/headers/issues/header-options';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 import { ProjectExternalLink, ProjectSourceBadge } from './project-source';
 
 const updateDateFormatter = new Intl.DateTimeFormat('en-US');
@@ -47,6 +48,7 @@ export function ProjectToolbar({
    return (
       <div className="flex min-h-10 w-full flex-wrap items-center justify-between gap-2 border-b px-4 py-1.5">
          <div className="flex min-w-0 items-center gap-2">
+            <SidebarTrigger className="shrink-0" />
             {project ? (
                <ProjectIcon
                   icon={{ type: project.iconType ?? 'lucide', value: project.iconValue ?? 'box' }}
