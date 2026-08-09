@@ -20,6 +20,7 @@ export interface ProjectOptionLike {
    name: string;
    color: string;
    type?: 'unstarted' | 'started' | 'completed';
+   position?: number;
    listPosition?: number;
    boardPosition?: number;
 }

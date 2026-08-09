@@ -16,6 +16,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useFilterStore } from '@/store/filter-store';
 import { useViewStore } from '@/store/view-store';
+import { useViewerPreferences } from '@/src/data/viewer';
 import {
    useSavedViewCommands,
    type SavedViewInput,
@@ -38,7 +39,7 @@ export function SavedViewDialog({
    open,
    onOpenChange,
    projectId,
-   scope = 'active',
+   scope = 'all',
    existing,
 }: {
    open: boolean;
@@ -137,12 +138,17 @@ export function SavedViewDialog({
 
 export function SaveViewButton({
    projectId,
-   scope = 'active',
+   scope = 'all',
 }: {
    projectId?: string;
    scope?: SavedViewScope;
 }) {
    const [open, setOpen] = useState(false);
+   const preferences = useViewerPreferences();
+
+   if (preferences?.savedViewsEnabled === false) {
+      return null;
+   }
 
    return (
       <>

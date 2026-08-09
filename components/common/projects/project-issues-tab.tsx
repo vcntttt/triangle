@@ -29,7 +29,7 @@ export function ProjectIssuesTab({
    onSelectIssue,
    onClearSelectedIssue,
    onSelectAdjacentIssue,
-   scope = 'active',
+   scope = 'all',
    viewOverride,
 }: ProjectIssuesTabProps) {
    useEffect(() => {

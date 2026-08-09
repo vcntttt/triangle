@@ -1,5 +1,9 @@
 'use client';
 
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { Switch } from '@/components/ui/switch';
+import { useViewerCommands, useViewerPreferences } from '@/src/data/viewer';
 import type { IssueAutomation, IssueStatusOption, LabelInterface } from '@/lib/models';
 import { AutomationsSettings } from './automations-settings';
 import { LabelsSettings } from './labels-settings';
@@ -22,6 +26,8 @@ export default function Settings({
             <h1 className="text-2xl font-semibold">Settings</h1>
          </div>
 
+         <SavedViewsSettings />
+
          <section className="mb-10" id="project-workflow">
             <div className="mb-6">
                <h2 className="text-lg font-semibold">Project workflow</h2>
@@ -40,5 +46,49 @@ export default function Settings({
 
          <LabelsSettings initialLabels={initialLabels} />
       </div>
+   );
+}
+
+function SavedViewsSettings() {
+   const preferences = useViewerPreferences();
+   const { updatePreferences } = useViewerCommands();
+   const [saving, setSaving] = useState(false);
+   const enabled = preferences?.savedViewsEnabled ?? true;
+
+   const handleChange = async (nextEnabled: boolean) => {
+      setSaving(true);
+
+      try {
+         await updatePreferences({ savedViewsEnabled: nextEnabled });
+      } catch (error) {
+         toast.error(error instanceof Error ? error.message : 'Saved views could not be updated.');
+      } finally {
+         setSaving(false);
+      }
+   };
+
+   return (
+      <section className="mb-10" id="saved-views-settings">
+         <div className="mb-4">
+            <h2 className="text-lg font-semibold">Saved views</h2>
+            <p className="text-sm text-muted-foreground">
+               Show or hide saved views across the sidebar and issue actions.
+            </p>
+         </div>
+         <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+            <div>
+               <p className="text-sm font-medium">Enable saved views</p>
+               <p className="text-xs text-muted-foreground">
+                  Turn this off to remove saved views from the app.
+               </p>
+            </div>
+            <Switch
+               checked={enabled}
+               disabled={saving}
+               onCheckedChange={(checked) => void handleChange(checked)}
+               aria-label="Enable saved views"
+            />
+         </div>
+      </section>
    );
 }

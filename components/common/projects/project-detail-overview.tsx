@@ -43,7 +43,7 @@ export function ProjectToolbar({
    title,
    project,
    activeTab,
-   scope = 'active',
+   scope = 'all',
 }: {
    title: string;
    project?: ProjectLike;
@@ -148,7 +148,7 @@ export function ProjectOverview({
    issues,
    activeTab,
    selectedIssueIdentifier,
-   scope = 'active',
+   scope = 'all',
    viewOverride,
    isConnected,
 }: {

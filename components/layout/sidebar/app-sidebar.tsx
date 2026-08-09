@@ -32,6 +32,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
    const pathname = useRouterState({ select: (state) => state.location.pathname });
    const isSettings = pathname.includes('/settings');
    const hiddenItems = preferences?.sidebar?.hiddenItems ?? [];
+   const savedViewsEnabled = preferences?.savedViewsEnabled ?? true;
    return (
       <>
          <Sidebar collapsible="offcanvas" {...props}>
@@ -45,7 +46,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                ) : (
                   <>
                      <NavWorkspace />
-                     {!hiddenItems.includes('saved-views') ? <NavSavedViews /> : null}
+                     {savedViewsEnabled && !hiddenItems.includes('saved-views') ? (
+                        <NavSavedViews />
+                     ) : null}
                   </>
                )}
             </SidebarContent>

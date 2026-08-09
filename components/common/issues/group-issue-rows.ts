@@ -1,5 +1,5 @@
 import type { Issue } from '@/lib/models';
-import { sortIssuesByPriority } from '@/lib/ui-catalog';
+import { sortIssuesByConfiguredPriority, type IssueOrderOption } from '@/lib/issue-view';
 
 export type IssueListRow = {
    issue: Issue;
@@ -11,9 +11,10 @@ export type IssueListRow = {
 export function getIssueListRows(
    issues: Issue[],
    listMode: 'hierarchy' | 'flat' = 'hierarchy',
-   collapsedParentIds: ReadonlySet<string> = new Set()
+   collapsedParentIds: ReadonlySet<string> = new Set(),
+   priorities: IssueOrderOption[] = []
 ): IssueListRow[] {
-   const sortedIssues = sortIssuesByPriority(issues);
+   const sortedIssues = sortIssuesByConfiguredPriority(issues, priorities);
 
    if (listMode === 'flat') {
       return sortedIssues.map((issue) => ({

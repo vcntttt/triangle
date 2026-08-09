@@ -39,6 +39,12 @@ export interface IssueDisplayConfig {
    visibleProperties: Record<IssueDisplayProperty, boolean>;
 }
 
+export interface IssueOrderOption {
+   id: string;
+   listPosition?: number;
+   position?: number;
+}
+
 export const defaultIssueFilters: IssueFilters = {
    status: [],
    assignee: [],
@@ -68,7 +74,7 @@ export const defaultIssueDisplay: IssueDisplayConfig = {
    },
 };
 
-const priorityOrder: Record<string, number> = {
+const fallbackPriorityOrder: Record<string, number> = {
    'urgent': 0,
    'high': 1,
    'medium': 2,
@@ -76,7 +82,47 @@ const priorityOrder: Record<string, number> = {
    'no-priority': 4,
 };
 
-export function sortIssuesForDisplay(issues: Issue[], display: IssueDisplayConfig): Issue[] {
+export function sortIssuesByConfiguredPriority(
+   issues: Issue[],
+   priorities: IssueOrderOption[] = []
+): Issue[] {
+   const configuredOrder = new Map(
+      priorities.map((priority, index) => [
+         priority.id,
+         priority.listPosition ?? priority.position ?? index,
+      ])
+   );
+
+   return issues.slice().sort((left, right) => {
+      const leftPosition =
+         configuredOrder.get(left.priority.id) ??
+         fallbackPriorityOrder[left.priority.id] ??
+         Number.MAX_SAFE_INTEGER;
+      const rightPosition =
+         configuredOrder.get(right.priority.id) ??
+         fallbackPriorityOrder[right.priority.id] ??
+         Number.MAX_SAFE_INTEGER;
+
+      return (
+         leftPosition - rightPosition ||
+         left.rank.localeCompare(right.rank) ||
+         left.identifier.localeCompare(right.identifier)
+      );
+   });
+}
+
+export function sortIssuesForDisplay(
+   issues: Issue[],
+   display: IssueDisplayConfig,
+   priorities: IssueOrderOption[] = []
+): Issue[] {
+   const configuredOrder = new Map(
+      priorities.map((priority, index) => [
+         priority.id,
+         priority.listPosition ?? priority.position ?? index,
+      ])
+   );
+
    return issues.slice().sort((left, right) => {
       let comparison = 0;
 
@@ -86,8 +132,12 @@ export function sortIssuesForDisplay(issues: Issue[], display: IssueDisplayConfi
          comparison = left.createdAt.localeCompare(right.createdAt);
       } else {
          comparison =
-            (priorityOrder[left.priority.id] ?? Number.MAX_SAFE_INTEGER) -
-            (priorityOrder[right.priority.id] ?? Number.MAX_SAFE_INTEGER);
+            (configuredOrder.get(left.priority.id) ??
+               fallbackPriorityOrder[left.priority.id] ??
+               Number.MAX_SAFE_INTEGER) -
+            (configuredOrder.get(right.priority.id) ??
+               fallbackPriorityOrder[right.priority.id] ??
+               Number.MAX_SAFE_INTEGER);
       }
 
       if (comparison === 0) {
@@ -100,6 +150,23 @@ export function sortIssuesForDisplay(issues: Issue[], display: IssueDisplayConfi
 
       return display.orderDirection === 'descending' ? -comparison : comparison;
    });
+}
+
+function sortOptionsByConfiguredOrder<T extends IssueOrderOption>(options: T[]): T[] {
+   return options
+      .map((option, index) => ({ option, index }))
+      .sort((left, right) => {
+         const leftPosition = left.option.listPosition ?? left.option.position;
+         const rightPosition = right.option.listPosition ?? right.option.position;
+
+         if (leftPosition === undefined && rightPosition === undefined) {
+            return left.index - right.index;
+         }
+         if (leftPosition === undefined) return 1;
+         if (rightPosition === undefined) return -1;
+         return leftPosition - rightPosition || left.index - right.index;
+      })
+      .map(({ option }) => option);
 }
 
 export function filterIssuesByScope(
@@ -119,12 +186,14 @@ export function buildIssueDisplayGroups(
    issues: Issue[],
    display: IssueDisplayConfig,
    options: {
-      statuses: Array<{ id: string; name: string; color: string }>;
-      priorities: Array<{ id: string; name: string; color?: string }>;
+      statuses: Array<IssueOrderOption & { name: string; color: string }>;
+      priorities: Array<IssueOrderOption & { name: string; color?: string }>;
       projects: Array<{ id: string; name: string }>;
    }
 ): IssueDisplayGroup[] {
-   const sortedIssues = sortIssuesForDisplay(issues, display);
+   const orderedStatuses = sortOptionsByConfiguredOrder(options.statuses);
+   const orderedPriorities = sortOptionsByConfiguredOrder(options.priorities);
+   const sortedIssues = sortIssuesForDisplay(issues, display, orderedPriorities);
    const grouped = new Map<string, Issue[]>();
    const addIssue = (key: string, issue: Issue) => {
       grouped.set(key, [...(grouped.get(key) ?? []), issue]);
@@ -157,27 +226,37 @@ export function buildIssueDisplayGroups(
    }
 
    if (display.groupBy === 'status') {
-      return options.statuses
-         .filter((status) => display.showEmptyGroups || (grouped.get(status.id)?.length ?? 0) > 0)
-         .map((status) => ({
-            ...status,
-            issues: grouped.get(status.id) ?? [],
-            isStatusGroup: true,
-         }));
+      return orderedStatuses.flatMap((status) => {
+         if (!display.showEmptyGroups && (grouped.get(status.id)?.length ?? 0) === 0) {
+            return [];
+         }
+
+         return [
+            {
+               ...status,
+               issues: grouped.get(status.id) ?? [],
+               isStatusGroup: true,
+            },
+         ];
+      });
    }
 
    if (display.groupBy === 'priority') {
-      return options.priorities
-         .filter(
-            (priority) => display.showEmptyGroups || (grouped.get(priority.id)?.length ?? 0) > 0
-         )
-         .map((priority) => ({
-            id: priority.id,
-            name: priority.name,
-            color: priority.color ?? '#71717a',
-            issues: grouped.get(priority.id) ?? [],
-            isStatusGroup: false,
-         }));
+      return orderedPriorities.flatMap((priority) => {
+         if (!display.showEmptyGroups && (grouped.get(priority.id)?.length ?? 0) === 0) {
+            return [];
+         }
+
+         return [
+            {
+               id: priority.id,
+               name: priority.name,
+               color: priority.color ?? '#71717a',
+               issues: grouped.get(priority.id) ?? [],
+               isStatusGroup: false,
+            },
+         ];
+      });
    }
 
    if (display.groupBy === 'project') {

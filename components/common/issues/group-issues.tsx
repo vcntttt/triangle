@@ -15,7 +15,8 @@ import { AnimatePresence, LazyMotion, domAnimation } from 'motion/react';
 import * as m from 'motion/react-m';
 import { useMemo } from 'react';
 import { getIssueListRows } from './group-issue-rows';
-import { sortIssuesByPriority } from '@/lib/ui-catalog';
+import { sortIssuesByConfiguredPriority } from '@/lib/issue-view';
+import type { ProjectOptionLike } from '@/lib/projects-presentation';
 
 interface GroupIssuesProps {
    status: Status;
@@ -30,7 +31,10 @@ interface GroupIssuesProps {
    onToggleParentCollapse?: (issueId: string) => void;
    onToggleStatusCollapse?: () => void;
    allowCreate?: boolean;
+   priorities?: ProjectOptionLike[];
 }
+
+const emptyPriorities: ProjectOptionLike[] = [];
 
 export function GroupIssues({
    status,
@@ -45,13 +49,15 @@ export function GroupIssues({
    onToggleParentCollapse,
    onToggleStatusCollapse,
    allowCreate = true,
+   priorities,
 }: GroupIssuesProps) {
+   const configuredPriorities = priorities ?? emptyPriorities;
    const { viewType, listMode } = useIssueDisplay();
    const isViewTypeGrid = viewType === 'grid';
    const { openModal } = useCreateIssueStore();
    const listRows = useMemo(
-      () => getIssueListRows(issues, listMode, collapsedParentIds),
-      [collapsedParentIds, issues, listMode]
+      () => getIssueListRows(issues, listMode, collapsedParentIds, configuredPriorities),
+      [collapsedParentIds, configuredPriorities, issues, listMode]
    );
 
    return (
@@ -146,6 +152,7 @@ export function GroupIssues({
             <IssueGridList
                issues={issues}
                status={status}
+               priorities={configuredPriorities}
                selectedIssueIdentifier={selectedIssueIdentifier}
                selectedIssueIds={selectedIssueIds}
                onSelectIssue={onSelectIssue}
@@ -159,6 +166,7 @@ export function GroupIssues({
 const IssueGridList: FC<{
    issues: Issue[];
    status: Status;
+   priorities: ProjectOptionLike[];
    selectedIssueIdentifier?: string;
    selectedIssueIds?: Set<string>;
    onSelectIssue?: (issue: Issue) => void;
@@ -166,6 +174,7 @@ const IssueGridList: FC<{
 }> = ({
    issues,
    status,
+   priorities,
    selectedIssueIdentifier,
    selectedIssueIds,
    onSelectIssue,
@@ -188,7 +197,7 @@ const IssueGridList: FC<{
    }));
    drop(ref);
 
-   const sortedIssues = sortIssuesByPriority(issues);
+   const sortedIssues = sortIssuesByConfiguredPriority(issues, priorities);
 
    return (
       <div

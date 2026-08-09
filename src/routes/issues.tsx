@@ -9,11 +9,12 @@ import type { Project } from '@/lib/models';
 import { useCreateIssueStore } from '@/store/create-issue-store';
 import { issuesPageQuery } from '@/src/data/issues';
 import { savedViewQuery } from '@/src/data/saved-views';
+import { useViewerPreferences } from '@/src/data/viewer';
 import { IssuesWorkspace } from '@/components/common/issues/issues-workspace';
 
 const issuesSearchSchema = z.object({
    projectId: z.string().optional(),
-   scope: z.enum(['active', 'backlog', 'all']).optional().catch('active'),
+   scope: z.enum(['active', 'backlog', 'all']).optional().catch('all'),
    view: z.string().optional(),
 });
 
@@ -31,9 +32,11 @@ export const Route = createFileRoute('/issues')({
 });
 
 function IssuesLayout() {
-   const { projectId, scope = 'active', view: viewId } = Route.useSearch();
+   const { projectId, scope = 'all', view: viewId } = Route.useSearch();
+   const preferences = useViewerPreferences();
+   const savedViewsEnabled = preferences?.savedViewsEnabled ?? true;
    const { data: pageData } = useSuspenseQuery(issuesPageQuery({ projectId }));
-   const { data: savedView } = useQuery(savedViewQuery(viewId));
+   const { data: savedView } = useQuery(savedViewQuery(savedViewsEnabled ? viewId : undefined));
    const { issues, isConnected } = pageData;
    const projects = useProjectOptions();
    const { setDefaultProject } = useCreateIssueStore();
@@ -54,7 +57,8 @@ function IssuesLayout() {
       [issues, projectId]
    );
    const projectTitle = project ? `Issues for ${project.name}` : 'Issues';
-   const activeScope = savedView?.scope ?? scope;
+   const activeSavedView = savedViewsEnabled ? savedView : undefined;
+   const activeScope = activeSavedView?.scope ?? scope;
 
    useEffect(() => {
       setDefaultProject(project ?? null);
@@ -91,7 +95,9 @@ function IssuesLayout() {
             projectFilterId={projectId}
             scope={activeScope}
             viewOverride={
-               savedView ? { filters: savedView.filters, display: savedView.display } : undefined
+               activeSavedView
+                  ? { filters: activeSavedView.filters, display: activeSavedView.display }
+                  : undefined
             }
          />
       </MainLayout>

@@ -26,6 +26,11 @@ export function NavSavedViews() {
    const { removeSavedView } = useSavedViewCommands();
    const [createOpen, setCreateOpen] = useState(false);
    const [editing, setEditing] = useState<SavedViewLike | undefined>();
+
+   if (preferences?.savedViewsEnabled === false) {
+      return null;
+   }
+
    const savedViewsCollapsed =
       preferences?.sidebar?.collapsedSections?.includes('saved-views') ?? false;
 

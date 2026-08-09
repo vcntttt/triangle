@@ -63,6 +63,7 @@ const defaultPreferences = {
       sort: 'title-asc',
    },
    pinnedProjectIds: [] as Id<'projects'>[],
+   savedViewsEnabled: true,
    sidebar: {
       itemOrder: ['issues', 'my-work', 'projects', 'pulse', 'settings', 'saved-views'],
       hiddenItems: [] as string[],
@@ -198,6 +199,7 @@ function serializePreferences(preferences: Doc<'viewerPreferences'> | null) {
          ...preferences.projectFilters,
       },
       pinnedProjectIds: preferences.pinnedProjectIds,
+      savedViewsEnabled: preferences.savedViewsEnabled ?? defaultPreferences.savedViewsEnabled,
       sidebar: {
          ...defaultPreferences.sidebar,
          ...preferences.sidebar,
@@ -292,6 +294,7 @@ export const updatePreferences = mutation({
       projectView: v.optional(projectViewPatchValidator),
       projectFilters: v.optional(projectFiltersPatchValidator),
       pinnedProjectIds: v.optional(v.array(v.id('projects'))),
+      savedViewsEnabled: v.optional(v.boolean()),
       sidebar: v.optional(sidebarPatchValidator),
       sidebarOpen: v.optional(v.boolean()),
    },
@@ -331,6 +334,9 @@ export const updatePreferences = mutation({
             : {}),
          ...(input.pinnedProjectIds !== undefined
             ? { pinnedProjectIds: input.pinnedProjectIds }
+            : {}),
+         ...(input.savedViewsEnabled !== undefined
+            ? { savedViewsEnabled: input.savedViewsEnabled }
             : {}),
          ...(input.sidebar
             ? {

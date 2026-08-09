@@ -27,8 +27,6 @@ const sectionNames = [
    { id: 'saved-views', name: 'Saved views' },
 ] as const;
 
-const defaultOrder = sidebarItems.map((item) => item.id);
-
 export function CustomizeSidebarDialog({
    open,
    onOpenChange,
@@ -39,6 +37,14 @@ export function CustomizeSidebarDialog({
    const preferences = useViewerPreferences();
    const { updatePreferences } = useViewerCommands();
    const sidebar = preferences?.sidebar;
+   const savedViewsEnabled = preferences?.savedViewsEnabled ?? true;
+   const availableSidebarItems = savedViewsEnabled
+      ? sidebarItems
+      : sidebarItems.filter((item) => item.id !== 'saved-views');
+   const availableSectionNames = savedViewsEnabled
+      ? sectionNames
+      : sectionNames.filter((section) => section.id !== 'saved-views');
+   const defaultOrder = availableSidebarItems.map((item) => item.id);
    const order = useMemo(() => {
       const configured = sidebar?.itemOrder ?? [];
       return [...defaultOrder].sort((left, right) => {
@@ -49,7 +55,7 @@ export function CustomizeSidebarDialog({
             (rightPosition === -1 ? defaultOrder.length : rightPosition)
          );
       });
-   }, [sidebar?.itemOrder]);
+   }, [defaultOrder, sidebar?.itemOrder]);
    const hiddenItems = sidebar?.hiddenItems ?? [];
    const collapsedSections = sidebar?.collapsedSections ?? [];
    const showBadges = sidebar?.showBadges ?? true;
@@ -156,7 +162,7 @@ export function CustomizeSidebarDialog({
                   <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                      Sections
                   </h3>
-                  {sectionNames.map((section) => {
+                  {availableSectionNames.map((section) => {
                      const collapsed = collapsedSections.includes(section.id);
                      return (
                         <div

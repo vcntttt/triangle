@@ -28,7 +28,7 @@ export default function HeaderNav({
    project,
    leftActions,
    rightActions,
-   scope = 'active',
+   scope = 'all',
    viewId,
 }: HeaderNavProps) {
    const { openModal } = useCreateIssueStore();

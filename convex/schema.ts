@@ -206,6 +206,7 @@ export default defineSchema({
          sort: v.string(),
       }),
       pinnedProjectIds: v.array(v.id('projects')),
+      savedViewsEnabled: v.optional(v.boolean()),
       sidebar: v.optional(
          v.object({
             itemOrder: v.array(v.string()),

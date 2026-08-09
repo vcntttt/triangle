@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 import { IssueListItem } from '@/lib/db/issues';
 import { viewerProfileToUser } from '@/lib/current-user';
 import { toPresentationIssue } from '@/lib/issues-presentation';
-import { type Issue, archivedStatus, sortIssuesByPriority } from '@/lib/ui-catalog';
+import { type Issue, archivedStatus } from '@/lib/ui-catalog';
 import { cn } from '@/lib/utils';
 import { useFilterStore } from '@/store/filter-store';
 import {
@@ -50,6 +50,7 @@ import { groupIssuesForDisplayByStatus } from '@/lib/issue-status-groups';
 import {
    buildIssueDisplayGroups,
    filterIssuesByScope,
+   sortIssuesByConfiguredPriority,
    type IssueScope,
    type IssueFilters,
    type IssueDisplayConfig,
@@ -251,7 +252,7 @@ export function IssuesWorkspace({
    databaseError,
    selectedIssueIdentifier,
    projectFilterId,
-   scope = 'active',
+   scope = 'all',
    viewOverride,
    applyIssueFilters,
    onSelectIssue,
@@ -299,7 +300,7 @@ function IssuesWorkspaceContent({
    databaseError,
    selectedIssueIdentifier,
    projectFilterId,
-   scope = 'active',
+   scope = 'all',
    viewOverride,
    applyIssueFilters = true,
    onSelectIssue,
@@ -497,10 +498,10 @@ function IssuesWorkspaceContent({
          const statusIssues = issuesByStatus[statusId] ?? [];
 
          if (viewType === 'grid' || viewType === 'graph') {
-            return sortIssuesByPriority(statusIssues);
+            return sortIssuesByConfiguredPriority(statusIssues, initialPriorities);
          }
 
-         return getIssueListRows(statusIssues, listMode, collapsedParentIds).map(
+         return getIssueListRows(statusIssues, listMode, collapsedParentIds, initialPriorities).map(
             (row) => row.issue
          );
       });
@@ -509,6 +510,7 @@ function IssuesWorkspaceContent({
       collapsedStatusIds,
       displayIssues,
       initialStatuses,
+      initialPriorities,
       isSearching,
       listMode,
       searchResults,
@@ -1022,6 +1024,7 @@ function IssuesListPanel({
                               onToggleParentCollapse={onToggleParentCollapse}
                               onToggleStatusCollapse={() => onToggleStatusCollapse(statusItem.id)}
                               allowCreate={group.isStatusGroup}
+                              priorities={initialPriorities}
                            />
                         );
                      })}

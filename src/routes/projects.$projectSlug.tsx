@@ -10,11 +10,12 @@ import {
 } from '@/components/common/projects/project-detail-overview';
 import { projectDetailQuery } from '@/src/data/projects';
 import { savedViewQuery } from '@/src/data/saved-views';
+import { useViewerPreferences } from '@/src/data/viewer';
 
 const projectSearchSchema = z.object({
    tab: z.enum(['overview', 'issues']).optional().catch('overview'),
    issue: z.string().optional(),
-   scope: z.enum(['active', 'backlog', 'all']).optional().catch('active'),
+   scope: z.enum(['active', 'backlog', 'all']).optional().catch('all'),
    view: z.string().optional(),
 });
 
@@ -48,18 +49,21 @@ function ProjectPage() {
       databaseError,
       isConnected,
    } = data;
-   const { tab = 'overview', issue, scope = 'active', view: viewId } = Route.useSearch();
-   const { data: savedView } = useQuery(savedViewQuery(viewId));
+   const { tab = 'overview', issue, scope = 'all', view: viewId } = Route.useSearch();
+   const preferences = useViewerPreferences();
+   const savedViewsEnabled = preferences?.savedViewsEnabled ?? true;
+   const { data: savedView } = useQuery(savedViewQuery(savedViewsEnabled ? viewId : undefined));
+   const activeSavedView = savedViewsEnabled ? savedView : undefined;
    const savedViewMatchesProject =
-      savedView?.target === 'project' && savedView.projectId === project?.id;
+      activeSavedView?.target === 'project' && activeSavedView.projectId === project?.id;
 
    useEffect(() => {
-      if (!savedView || savedViewMatchesProject || !project) {
+      if (!activeSavedView || savedViewMatchesProject || !project) {
          return;
       }
 
       toast.error('This saved view belongs to another project.');
-   }, [project, savedView, savedViewMatchesProject]);
+   }, [activeSavedView, project, savedViewMatchesProject]);
 
    if (databaseError) {
       return (
@@ -92,7 +96,7 @@ function ProjectPage() {
       );
    }
 
-   const usableSavedView = savedViewMatchesProject ? savedView : undefined;
+   const usableSavedView = savedViewMatchesProject ? activeSavedView : undefined;
    return (
       <ProjectOverview
          key={project.id}
