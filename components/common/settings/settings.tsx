@@ -2,12 +2,15 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { SlidersHorizontal } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { useViewerCommands, useViewerPreferences } from '@/src/data/viewer';
 import type { IssueAutomation, IssueStatusOption, LabelInterface } from '@/lib/models';
 import { AutomationsSettings } from './automations-settings';
 import { LabelsSettings } from './labels-settings';
 import { ProjectOptionsSettings } from './project-options-settings';
+import { CustomizeSidebarDialog } from '@/components/layout/sidebar/customize-sidebar-dialog';
 
 interface SettingsProps {
    initialLabels: LabelInterface[];
@@ -26,6 +29,7 @@ export default function Settings({
             <h1 className="text-2xl font-semibold">Settings</h1>
          </div>
 
+         <SidebarSettings />
          <SavedViewsSettings />
 
          <section className="mb-10" id="project-workflow">
@@ -46,6 +50,34 @@ export default function Settings({
 
          <LabelsSettings initialLabels={initialLabels} />
       </div>
+   );
+}
+
+function SidebarSettings() {
+   const [open, setOpen] = useState(false);
+
+   return (
+      <section className="mb-10" id="sidebar-settings">
+         <div className="mb-4">
+            <h2 className="text-lg font-semibold">Sidebar</h2>
+            <p className="text-sm text-muted-foreground">
+               Choose which navigation entries appear and how they are ordered.
+            </p>
+         </div>
+         <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+            <div>
+               <p className="text-sm font-medium">Navigation preferences</p>
+               <p className="text-xs text-muted-foreground">
+                  Manage entries, sections, and badges from one place.
+               </p>
+            </div>
+            <Button variant="outline" onClick={() => setOpen(true)}>
+               <SlidersHorizontal className="mr-2 size-4" />
+               Configure sidebar
+            </Button>
+         </div>
+         <CustomizeSidebarDialog open={open} onOpenChange={setOpen} />
+      </section>
    );
 }
 
