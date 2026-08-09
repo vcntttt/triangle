@@ -5,7 +5,13 @@ import { ThemeProvider as NextThemesProvider, ThemeProviderProps } from 'next-th
 
 export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
    return (
-      <NextThemesProvider {...props} enableSystem enableColorScheme disableTransitionOnChange>
+      <NextThemesProvider
+         {...props}
+         themes={['light', 'dark', 'pure-light', 'classic-dark']}
+         enableSystem
+         enableColorScheme
+         disableTransitionOnChange
+      >
          {children}
       </NextThemesProvider>
    );

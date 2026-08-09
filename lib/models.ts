@@ -140,6 +140,7 @@ export interface Issue {
    priority: Priority;
    labels: LabelInterface[];
    createdAt: string;
+   lastActivityAt?: string;
    cycleId: string;
    project?: Project;
    area?: ProjectArea | null;

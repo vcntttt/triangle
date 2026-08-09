@@ -12,6 +12,7 @@ import {
    SidebarGroup,
    SidebarGroupLabel,
    SidebarMenu,
+   SidebarMenuBadge,
    SidebarMenuButton,
    SidebarMenuItem,
    SidebarMenuSub,
@@ -25,42 +26,96 @@ import { ProjectIconGlyph } from '@/components/common/projects/project-icon';
 import { workspaceItems } from '@/lib/ui-catalog';
 import type { Project } from '@/lib/projects-presentation';
 import { useProjectOptions } from '@/hooks/use-project-options';
+import { useViewerCommands, useViewerPreferences } from '@/src/data/viewer';
 
 export function NavWorkspace() {
-   const projects = useProjectOptions().filter((project) => project.source !== 'external');
+   const preferences = useViewerPreferences();
+   const { updatePreferences } = useViewerCommands();
+   const configuredProjectOrder = preferences?.sidebar?.projectOrder?.length
+      ? preferences.sidebar.projectOrder
+      : (preferences?.pinnedProjectIds ?? []);
+   const projectOrderMap = new Map(configuredProjectOrder.map((id, index) => [id, index]));
+   const projects = useProjectOptions()
+      .filter((project) => project.source !== 'external')
+      .toSorted((left, right) => {
+         const leftPosition = projectOrderMap.get(left.id) ?? Number.MAX_SAFE_INTEGER;
+         const rightPosition = projectOrderMap.get(right.id) ?? Number.MAX_SAFE_INTEGER;
+         return leftPosition - rightPosition || left.name.localeCompare(right.name);
+      });
    const pathname = useRouterState({ select: (state) => state.location.pathname });
+   const hiddenItems = preferences?.sidebar?.hiddenItems ?? [];
+   const workspaceCollapsed =
+      preferences?.sidebar?.collapsedSections?.includes('workspace') ?? false;
+   const showBadges = preferences?.sidebar?.showBadges ?? true;
+   const configuredOrder = preferences?.sidebar?.itemOrder ?? [];
+   const hiddenItemSet = new Set(hiddenItems);
+   const configuredOrderMap = new Map(configuredOrder.map((item, index) => [item, index]));
+   const items = workspaceItems
+      .filter((item) => !hiddenItemSet.has(item.name.toLowerCase().replaceAll(' ', '-')))
+      .toSorted((left, right) => {
+         const leftPosition =
+            configuredOrderMap.get(left.name.toLowerCase().replaceAll(' ', '-')) ??
+            workspaceItems.length;
+         const rightPosition =
+            configuredOrderMap.get(right.name.toLowerCase().replaceAll(' ', '-')) ??
+            workspaceItems.length;
+         return leftPosition - rightPosition;
+      });
+   const toggleWorkspace = () => {
+      const collapsedSections = preferences?.sidebar?.collapsedSections ?? [];
+      const nextCollapsedSections = collapsedSections.includes('workspace')
+         ? collapsedSections.filter((section) => section !== 'workspace')
+         : [...collapsedSections, 'workspace'];
+      void updatePreferences({ sidebar: { collapsedSections: nextCollapsedSections } });
+   };
 
    return (
       <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-         <SidebarGroupLabel>Workspace</SidebarGroupLabel>
-         <SidebarMenu>
-            {workspaceItems.map((item) => {
-               const isProjectsItem = item.name === 'Projects';
+         <SidebarGroupLabel asChild>
+            <button
+               type="button"
+               className="w-full text-left"
+               aria-expanded={!workspaceCollapsed}
+               onClick={toggleWorkspace}
+            >
+               Workspace
+            </button>
+         </SidebarGroupLabel>
+         {!workspaceCollapsed ? (
+            <SidebarMenu>
+               {items.map((item) => {
+                  const isProjectsItem = item.name === 'Projects';
 
-               return (
-                  <SidebarMenuItem key={item.name}>
-                     <SidebarMenuButton asChild isActive={pathname === item.url}>
-                        <Link to={item.url}>
-                           <item.icon />
-                           <span>{item.name}</span>
-                        </Link>
-                     </SidebarMenuButton>
+                  return (
+                     <SidebarMenuItem key={item.name}>
+                        <SidebarMenuButton asChild isActive={pathname === item.url}>
+                           <Link to={item.url}>
+                              <item.icon />
+                              <span>{item.name}</span>
+                           </Link>
+                        </SidebarMenuButton>
+                        {showBadges && isProjectsItem ? (
+                           <SidebarMenuBadge>{projects.length}</SidebarMenuBadge>
+                        ) : null}
 
-                     {isProjectsItem && (
-                        <SidebarMenuSub>
-                           {projects.map((project) => (
-                              <ProjectMenuItem
-                                 key={project.id}
-                                 project={project}
-                                 isActive={pathname === `/projects/${project.slug ?? project.id}`}
-                              />
-                           ))}
-                        </SidebarMenuSub>
-                     )}
-                  </SidebarMenuItem>
-               );
-            })}
-         </SidebarMenu>
+                        {isProjectsItem && (
+                           <SidebarMenuSub>
+                              {projects.map((project) => (
+                                 <ProjectMenuItem
+                                    key={project.id}
+                                    project={project}
+                                    isActive={
+                                       pathname === `/projects/${project.slug ?? project.id}`
+                                    }
+                                 />
+                              ))}
+                           </SidebarMenuSub>
+                        )}
+                     </SidebarMenuItem>
+                  );
+               })}
+            </SidebarMenu>
+         ) : null}
       </SidebarGroup>
    );
 }

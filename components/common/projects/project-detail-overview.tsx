@@ -1,5 +1,5 @@
 import { Link, useRouter } from '@tanstack/react-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { FileText, Pencil, Plus } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -30,6 +30,12 @@ import { useCreateIssueStore } from '@/store/create-issue-store';
 import { DisplayMenu } from '@/components/layout/headers/issues/header-options';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { ProjectExternalLink, ProjectSourceBadge } from './project-source';
+import type { IssueDisplayConfig, IssueFilters, IssueScope } from '@/lib/issue-view';
+import { MarkdownContent } from '@/components/common/issues/markdown-content';
+import { DocumentOutline } from '@/components/common/projects/document-outline';
+import { extractMarkdownHeadings } from '@/lib/markdown-outline';
+import { SaveViewButton } from '@/components/common/views/saved-view-dialog';
+import { IssueInsightsToggle } from '@/components/common/issues/issue-insights-panel';
 
 const updateDateFormatter = new Intl.DateTimeFormat('en-US');
 
@@ -37,10 +43,13 @@ export function ProjectToolbar({
    title,
    project,
    activeTab,
+   scope = 'active',
 }: {
    title: string;
    project?: ProjectLike;
    activeTab?: 'overview' | 'issues';
+   scope?: IssueScope;
+   viewOverride?: { filters: IssueFilters; display: IssueDisplayConfig };
 }) {
    const showTabs = project && activeTab;
    const showIssueDisplay = activeTab === 'issues';
@@ -66,7 +75,32 @@ export function ProjectToolbar({
             ) : null}
          </div>
          <div className="flex items-center gap-2">
+            {showIssueDisplay && project ? (
+               <SaveViewButton projectId={project.id} scope={scope} />
+            ) : null}
             {showIssueDisplay ? <DisplayMenu /> : null}
+            {showIssueDisplay ? <IssueInsightsToggle /> : null}
+            {showIssueDisplay && project ? (
+               <div className="hidden items-center gap-0.5 rounded-md bg-muted/60 p-0.5 md:flex">
+                  {(['active', 'backlog', 'all'] as const).map((item) => (
+                     <Button
+                        key={item}
+                        asChild
+                        size="xs"
+                        variant={scope === item ? 'secondary' : 'ghost'}
+                        className="h-6 px-2 text-[11px] capitalize"
+                     >
+                        <Link
+                           to="/projects/$projectSlug"
+                           params={{ projectSlug: project.slug }}
+                           search={{ tab: 'issues', scope: item }}
+                        >
+                           {item === 'all' ? 'All' : item}
+                        </Link>
+                     </Button>
+                  ))}
+               </div>
+            ) : null}
             {showTabs ? (
                <div className="flex items-center gap-1">
                   <Button
@@ -107,22 +141,28 @@ export function ProjectToolbar({
 export function ProjectOverview({
    initialProject,
    statusOptions,
+   issueStatusOptions,
    priorityOptions,
    attentionOptions,
    areas,
    issues,
    activeTab,
    selectedIssueIdentifier,
+   scope = 'active',
+   viewOverride,
    isConnected,
 }: {
    initialProject: ProjectLike;
    statusOptions: ProjectOptionLike[];
+   issueStatusOptions: ProjectOptionLike[];
    priorityOptions: ProjectOptionLike[];
    attentionOptions: ProjectOptionLike[];
    areas: ProjectArea[];
    issues: IssueListItem[];
    activeTab: 'overview' | 'issues';
    selectedIssueIdentifier?: string;
+   scope?: IssueScope;
+   viewOverride?: { filters: IssueFilters; display: IssueDisplayConfig };
    isConnected: boolean;
 }) {
    const router = useRouter();
@@ -140,6 +180,10 @@ export function ProjectOverview({
       () =>
          toPresentationProject(project, statusOptions, priorityOptions, attentionOptions, viewer),
       [attentionOptions, priorityOptions, project, statusOptions, viewer]
+   );
+   const descriptionHeadings = useMemo(
+      () => extractMarkdownHeadings(project.description || ''),
+      [project.description]
    );
 
    const handleProjectFieldSave = async (
@@ -329,167 +373,291 @@ export function ProjectOverview({
 
    return (
       <div className="flex h-full min-h-full flex-col bg-container">
-         <ProjectToolbar title={project.name} project={project} activeTab={activeTab} />
+         <ProjectToolbar
+            title={project.name}
+            project={project}
+            activeTab={activeTab}
+            scope={scope}
+         />
 
          {activeTab === 'issues' ? (
             <div className="min-h-0 flex-1">
                <ProjectIssuesTab
                   project={presentationProject}
                   initialIssues={issues}
-                  initialStatuses={statusOptions}
+                  initialStatuses={issueStatusOptions}
                   initialPriorities={priorityOptions}
                   selectedIssueIdentifier={selectedIssueIdentifier}
                   onSelectIssue={handleSelectIssue}
                   onClearSelectedIssue={handleClearSelectedIssue}
                   onSelectAdjacentIssue={handleSelectIssue}
+                  scope={scope}
+                  viewOverride={viewOverride}
                />
             </div>
          ) : (
-            <div className="mx-auto w-full max-w-4xl px-10 py-16">
-               <div className="flex items-start justify-between gap-6">
+            <div className="mx-auto w-full max-w-6xl px-6 py-10 lg:px-10 lg:py-14">
+               <div
+                  className={cn(
+                     'grid min-w-0 gap-10',
+                     descriptionHeadings.length > 0 && 'xl:grid-cols-[minmax(0,1fr)_240px]'
+                  )}
+               >
                   <div className="min-w-0">
-                     <div className="mb-5">
-                        <ProjectIconPicker
-                           value={iconConfig}
-                           onChange={(nextIcon) => void handleIconChange(nextIcon)}
-                           disabled={isSavingDetails}
-                           triggerClassName="rounded-full"
-                        />
-                     </div>
+                     <div className="flex items-start justify-between gap-6">
+                        <div className="min-w-0">
+                           <div className="mb-5">
+                              <ProjectIconPicker
+                                 value={iconConfig}
+                                 onChange={(nextIcon) => void handleIconChange(nextIcon)}
+                                 disabled={isSavingDetails}
+                                 triggerClassName="rounded-full"
+                              />
+                           </div>
 
-                     <InlineEditableText
-                        value={project.name}
-                        placeholder="Untitled project"
-                        maxLength={120}
-                        disabled={isSavingDetails}
-                        displayClassName="block max-w-5xl truncate text-3xl font-semibold tracking-normal hover:text-muted-foreground"
-                        inputClassName="h-11 max-w-5xl text-3xl font-semibold"
-                        onSave={(value) => handleProjectFieldSave('name', value)}
-                     />
+                           <InlineEditableText
+                              value={project.name}
+                              placeholder="Untitled project"
+                              maxLength={120}
+                              disabled={isSavingDetails}
+                              displayClassName="block max-w-5xl truncate text-3xl font-semibold tracking-normal hover:text-muted-foreground"
+                              inputClassName="h-11 max-w-5xl text-3xl font-semibold"
+                              onSave={(value) => handleProjectFieldSave('name', value)}
+                           />
 
-                     <InlineEditableText
-                        value={project.subtitle || ''}
-                        placeholder="Add a short project subtitle."
-                        maxLength={160}
-                        disabled={isSavingDetails}
-                        displayClassName="mt-2 block max-w-3xl text-base text-muted-foreground hover:text-foreground"
-                        inputClassName="mt-2 h-9 max-w-3xl text-base"
-                        onSave={(value) => handleProjectFieldSave('subtitle', value)}
-                     />
+                           <InlineEditableText
+                              value={project.subtitle || ''}
+                              placeholder="Add a short project subtitle."
+                              maxLength={160}
+                              disabled={isSavingDetails}
+                              displayClassName="mt-2 block max-w-3xl text-base text-muted-foreground hover:text-foreground"
+                              inputClassName="mt-2 h-9 max-w-3xl text-base"
+                              onSave={(value) => handleProjectFieldSave('subtitle', value)}
+                           />
 
-                     <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
-                        <span>Project ID</span>
-                        <InlineEditableText
-                           value={project.key}
-                           placeholder="ID"
-                           maxLength={5}
-                           disabled={isSavingDetails}
-                           transformValue={(value) =>
-                              value
-                                 .toUpperCase()
-                                 .replace(/[^A-Z0-9]+/g, '')
-                                 .slice(0, 5)
-                           }
-                           displayClassName="rounded px-1.5 py-0.5 font-medium text-foreground hover:bg-muted/60"
-                           inputClassName="h-7 w-28 px-2 text-sm font-medium uppercase"
-                           onSave={(value) => handleProjectFieldSave('key', value)}
-                        />
-                     </div>
+                           <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+                              <span>Project ID</span>
+                              <InlineEditableText
+                                 value={project.key}
+                                 placeholder="ID"
+                                 maxLength={5}
+                                 disabled={isSavingDetails}
+                                 transformValue={(value) =>
+                                    value
+                                       .toUpperCase()
+                                       .replace(/[^A-Z0-9]+/g, '')
+                                       .slice(0, 5)
+                                 }
+                                 displayClassName="rounded px-1.5 py-0.5 font-medium text-foreground hover:bg-muted/60"
+                                 inputClassName="h-7 w-28 px-2 text-sm font-medium uppercase"
+                                 onSave={(value) => handleProjectFieldSave('key', value)}
+                              />
+                           </div>
 
-                     {project.source === 'external' ? (
-                        <div className="mt-3 flex flex-wrap items-center gap-2">
-                           <ProjectSourceBadge source={project.source} />
-                           <ProjectExternalLink url={project.externalUrl} />
-                        </div>
-                     ) : null}
+                           {project.source === 'external' ? (
+                              <div className="mt-3 flex flex-wrap items-center gap-2">
+                                 <ProjectSourceBadge source={project.source} />
+                                 <ProjectExternalLink url={project.externalUrl} />
+                              </div>
+                           ) : null}
 
-                     {/*
+                           {/*
                         Keep this visual description hidden for now. It duplicates the
                         dedicated Description section below, but will be reused later.
                         <p className="mt-2 max-w-3xl text-lg text-muted-foreground">
                            {project.description || 'No description yet.'}
                         </p>
                      */}
-                  </div>
-               </div>
-
-               <div className="mt-8 space-y-4 text-sm">
-                  <div className="grid items-center gap-4 md:grid-cols-[116px_minmax(0,1fr)]">
-                     <div className="font-medium text-muted-foreground">Properties</div>
-                     <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
-                        <StatusWithPercent
-                           status={presentationProject.status}
-                           options={statusOptions}
-                           onStatusChange={(statusId) => void handleStatusChange(statusId)}
-                        />
-                        <div className="inline-flex items-center gap-2 text-muted-foreground">
-                           <Avatar className="size-5">
-                              <AvatarImage src={viewer.avatarUrl} alt={viewer.name} />
-                              <AvatarFallback>{viewer.name.charAt(0)}</AvatarFallback>
-                           </Avatar>
-                           <span>{viewer.name}</span>
                         </div>
-                        <PrioritySelector
-                           priority={presentationProject.priority}
-                           options={priorityOptions}
-                           onPriorityChange={(priorityId) => void handlePriorityChange(priorityId)}
-                        />
-                        <AttentionSelector
-                           attention={presentationProject.attention}
-                           options={attentionOptions}
-                           onAttentionChange={(attentionId) =>
-                              void handleAttentionChange(attentionId)
-                           }
-                        />
-                        <span className="text-muted-foreground">Target date</span>
                      </div>
-                  </div>
 
-                  <div className="grid items-center gap-4 md:grid-cols-[116px_minmax(0,1fr)]">
-                     <div className="font-medium text-muted-foreground">Resources</div>
-                     <button
-                        type="button"
-                        className="inline-flex h-6 w-fit items-center gap-2 text-muted-foreground hover:text-foreground"
-                     >
-                        <Plus className="size-4" />
-                        Add document or link…
-                     </button>
+                     <div className="mt-8 space-y-4 text-sm">
+                        <div className="grid items-center gap-4 md:grid-cols-[116px_minmax(0,1fr)]">
+                           <div className="font-medium text-muted-foreground">Properties</div>
+                           <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
+                              <StatusWithPercent
+                                 status={presentationProject.status}
+                                 options={statusOptions}
+                                 onStatusChange={(statusId) => void handleStatusChange(statusId)}
+                              />
+                              <div className="inline-flex items-center gap-2 text-muted-foreground">
+                                 <Avatar className="size-5">
+                                    <AvatarImage src={viewer.avatarUrl} alt={viewer.name} />
+                                    <AvatarFallback>{viewer.name.charAt(0)}</AvatarFallback>
+                                 </Avatar>
+                                 <span>{viewer.name}</span>
+                              </div>
+                              <PrioritySelector
+                                 priority={presentationProject.priority}
+                                 options={priorityOptions}
+                                 onPriorityChange={(priorityId) =>
+                                    void handlePriorityChange(priorityId)
+                                 }
+                              />
+                              <AttentionSelector
+                                 attention={presentationProject.attention}
+                                 options={attentionOptions}
+                                 onAttentionChange={(attentionId) =>
+                                    void handleAttentionChange(attentionId)
+                                 }
+                              />
+                              <span className="text-muted-foreground">Target date</span>
+                           </div>
+                        </div>
+
+                        <ProjectIssueSummaryRow
+                           issues={issues}
+                           statuses={issueStatusOptions}
+                           areas={areas}
+                        />
+
+                        <div className="grid items-center gap-4 md:grid-cols-[116px_minmax(0,1fr)]">
+                           <div className="font-medium text-muted-foreground">Resources</div>
+                           <button
+                              type="button"
+                              className="inline-flex h-6 w-fit items-center gap-2 text-muted-foreground hover:text-foreground"
+                           >
+                              <Plus className="size-4" />
+                              Add document or link…
+                           </button>
+                        </div>
+                     </div>
+
+                     <div className="mt-8">
+                        <LatestUpdateCard
+                           project={presentationProject}
+                           isConnected={isConnected}
+                           onProjectUpdate={handleProjectUpdate}
+                        />
+                     </div>
+
+                     <ProjectAreasSection projectId={project.id} initialAreas={areas} />
+
+                     <section className="mt-8 border-t pt-5">
+                        <button
+                           type="button"
+                           className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground"
+                           onClick={() => setEditingDescription(true)}
+                        >
+                           Description
+                           <span className="text-xs">⌄</span>
+                        </button>
+                        <div className="mt-3 max-w-5xl whitespace-pre-wrap text-sm leading-6 text-foreground">
+                           <InlineEditableText
+                              value={project.description || ''}
+                              placeholder="Add a project description to capture scope, decisions, and links."
+                              maxLength={500}
+                              disabled={isSavingDetails}
+                              multiline
+                              displayClassName="block min-h-6 max-w-5xl rounded-sm hover:text-muted-foreground"
+                              inputClassName="min-h-28 max-w-5xl resize-none text-sm leading-6"
+                              renderDisplay={(value) => <MarkdownContent content={value} />}
+                              onSave={(value) => handleProjectFieldSave('description', value)}
+                           />
+                        </div>
+                     </section>
                   </div>
+                  {descriptionHeadings.length > 0 ? (
+                     <aside className="hidden min-w-0 space-y-4 xl:block">
+                        <div className="sticky top-4 space-y-4">
+                           <DocumentOutline headings={descriptionHeadings} />
+                        </div>
+                     </aside>
+                  ) : null}
                </div>
-
-               <div className="mt-8">
-                  <LatestUpdateCard
-                     project={presentationProject}
-                     isConnected={isConnected}
-                     onProjectUpdate={handleProjectUpdate}
-                  />
-               </div>
-
-               <ProjectAreasSection projectId={project.id} initialAreas={areas} />
-
-               <section className="mt-8 border-t pt-5">
-                  <button
-                     type="button"
-                     className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground"
-                  >
-                     Description
-                     <span className="text-xs">⌄</span>
-                  </button>
-                  <div className="mt-3 max-w-5xl whitespace-pre-wrap text-sm leading-6 text-foreground">
-                     <InlineEditableText
-                        value={project.description || ''}
-                        placeholder="Add a project description to capture scope, decisions, and links."
-                        maxLength={500}
-                        disabled={isSavingDetails}
-                        multiline
-                        displayClassName="block min-h-6 max-w-5xl whitespace-pre-wrap rounded-sm hover:text-muted-foreground"
-                        inputClassName="min-h-28 max-w-5xl resize-none text-sm leading-6"
-                        onSave={(value) => handleProjectFieldSave('description', value)}
-                     />
-                  </div>
-               </section>
             </div>
          )}
+      </div>
+   );
+}
+
+function ProjectIssueSummaryRow({
+   issues,
+   statuses,
+   areas,
+}: {
+   issues: IssueListItem[];
+   statuses: ProjectOptionLike[];
+   areas: ProjectArea[];
+}) {
+   const statusCountById = new Map<string, number>();
+   const areaCountById = new Map<string, number>();
+   let unassignedAreaCount = 0;
+
+   issues.forEach((issue) => {
+      statusCountById.set(issue.status, (statusCountById.get(issue.status) ?? 0) + 1);
+
+      if (issue.area) {
+         areaCountById.set(issue.area.id, (areaCountById.get(issue.area.id) ?? 0) + 1);
+      } else {
+         unassignedAreaCount += 1;
+      }
+   });
+
+   const statusCounts = statuses.reduce<Array<ProjectOptionLike & { count: number }>>(
+      (counts, status) => {
+         const count = statusCountById.get(status.id) ?? 0;
+         if (count > 0) counts.push({ ...status, count });
+         return counts;
+      },
+      []
+   );
+   const areaCounts = areas.reduce<Array<ProjectArea & { count: number }>>((counts, area) => {
+      const count = areaCountById.get(area.id) ?? 0;
+      if (count > 0) counts.push({ ...area, count });
+      return counts;
+   }, []);
+
+   return (
+      <div className="grid items-start gap-4 md:grid-cols-[116px_minmax(0,1fr)]">
+         <div className="font-medium text-muted-foreground">Overview</div>
+         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 text-xs">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+               {statusCounts.length > 0 ? (
+                  statusCounts.map((status) => (
+                     <span
+                        key={status.id}
+                        className="inline-flex items-center gap-1.5 text-muted-foreground"
+                     >
+                        <span
+                           className="size-2 rounded-full"
+                           style={{ backgroundColor: status.color }}
+                           aria-hidden="true"
+                        />
+                        <span>{status.name}</span>
+                        <span className="font-medium text-foreground">{status.count}</span>
+                     </span>
+                  ))
+               ) : (
+                  <span className="text-muted-foreground">No issues yet</span>
+               )}
+            </div>
+            <span className="hidden h-4 border-l md:inline-block" aria-hidden="true" />
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-muted-foreground">
+               <span className="font-medium text-foreground">Areas</span>
+               {areaCounts.length > 0 ? (
+                  areaCounts.map((area) => (
+                     <span key={area.id} className="inline-flex items-center gap-1.5">
+                        <span
+                           className="size-2 rounded-full"
+                           style={{ backgroundColor: area.color }}
+                           aria-hidden="true"
+                        />
+                        <span>{area.name}</span>
+                        <span className="font-medium text-foreground">{area.count}</span>
+                     </span>
+                  ))
+               ) : (
+                  <span>No areas used</span>
+               )}
+               {unassignedAreaCount > 0 ? (
+                  <span>
+                     Unassigned{' '}
+                     <span className="font-medium text-foreground">{unassignedAreaCount}</span>
+                  </span>
+               ) : null}
+            </div>
+         </div>
       </div>
    );
 }
@@ -503,6 +671,7 @@ function InlineEditableText({
    displayClassName,
    inputClassName,
    transformValue,
+   renderDisplay,
    onSave,
 }: {
    value: string;
@@ -513,6 +682,7 @@ function InlineEditableText({
    displayClassName?: string;
    inputClassName?: string;
    transformValue?: (value: string) => string;
+   renderDisplay?: (value: string) => ReactNode;
    onSave: (value: string) => Promise<string>;
 }) {
    const [isEditing, setIsEditing] = useState(false);
@@ -586,20 +756,33 @@ function InlineEditableText({
       );
    }
 
+   const handleStartEditing = () => {
+      if (disabled) {
+         return;
+      }
+
+      setDraft(value);
+      setIsEditing(true);
+   };
+   const displayContent = value ? (renderDisplay?.(value) ?? value) : placeholder;
+   const displayClasses = cn(
+      'text-left transition-colors disabled:cursor-default disabled:opacity-70',
+      !renderDisplay && 'cursor-text',
+      displayClassName
+   );
+
+   if (renderDisplay) {
+      return <div className={displayClasses}>{displayContent}</div>;
+   }
+
    return (
       <button
          type="button"
          disabled={disabled}
-         className={cn(
-            'cursor-text text-left transition-colors disabled:cursor-default disabled:opacity-70',
-            displayClassName
-         )}
-         onClick={() => {
-            setDraft(value);
-            setIsEditing(true);
-         }}
+         className={displayClasses}
+         onClick={handleStartEditing}
       >
-         {value || placeholder}
+         {displayContent}
       </button>
    );
 }

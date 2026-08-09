@@ -44,6 +44,7 @@ export const toPresentationIssue = (
       priority: resolvePriority(issue.priority),
       labels: issue.labels,
       createdAt: issue.createdAt,
+      lastActivityAt: issue.lastActivityAt,
       cycleId: '',
       project: issue.project
          ? toPresentationProject(issue.project, undefined, undefined, undefined, viewer)

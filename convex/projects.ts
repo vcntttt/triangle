@@ -1,6 +1,7 @@
 import { v } from 'convex/values';
 import type { Doc, Id } from './_generated/dataModel';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
+import { listIssueStatusOptions } from './issueStatusOptions';
 
 type ProjectHealth = 'no-update' | 'off-track' | 'on-track' | 'at-risk';
 type ProjectSource = 'internal' | 'external';
@@ -664,12 +665,14 @@ export const bySlug = query({
 export const detail = query({
    args: { projectSlug: v.string() },
    handler: async (ctx, { projectSlug }) => {
-      const [statusOptions, priorityOptions, attentionOptions, project] = await Promise.all([
-         listOptions(ctx, 'projectStatuses'),
-         listOptions(ctx, 'projectPriorities'),
-         listOptions(ctx, 'projectAttentions'),
-         findProjectBySlugOrId(ctx, projectSlug),
-      ]);
+      const [statusOptions, priorityOptions, attentionOptions, issueStatusOptions, project] =
+         await Promise.all([
+            listOptions(ctx, 'projectStatuses'),
+            listOptions(ctx, 'projectPriorities'),
+            listOptions(ctx, 'projectAttentions'),
+            listIssueStatusOptions(ctx),
+            findProjectBySlugOrId(ctx, projectSlug),
+         ]);
       const [latestUpdate, areas, issues] = project
          ? await Promise.all([
               getLatestProjectUpdate(ctx, project._id),
@@ -681,6 +684,7 @@ export const detail = query({
       return {
          project: project ? await serializeProject(ctx, project, latestUpdate) : null,
          statusOptions,
+         issueStatusOptions,
          priorityOptions,
          attentionOptions,
          areas,

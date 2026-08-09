@@ -12,6 +12,7 @@ import xml from 'highlight.js/lib/languages/xml';
 import yaml from 'highlight.js/lib/languages/yaml';
 import { useMemo } from 'react';
 import type { ElementType, ReactNode } from 'react';
+import { getHeadingId } from '@/lib/markdown-outline';
 
 const tableDividerCellPattern = /^:?-{3,}:?$/;
 const languageAliases: Record<string, string> = {
@@ -167,13 +168,14 @@ function CodeBlock({ code, language }: { code: string; language?: string }) {
 export function MarkdownContent({ content }: { content: string }) {
    const lines = content.replace(/\r\n?/g, '\n').split('\n');
    const blocks: ReactNode[] = [];
+   const headingOccurrences = new Map<string, number>();
    let paragraph: string[] = [];
    let list: { ordered: boolean; items: string[] } | null = null;
 
    const flushParagraph = () => {
       if (!paragraph.length) return;
       blocks.push(
-         <p key={`paragraph-${blocks.length}`} className="leading-6">
+         <p key={`paragraph-${blocks.length}`} className="text-[15px] leading-7">
             {renderInline(paragraph.join(' '))}
          </p>
       );
@@ -184,7 +186,7 @@ export function MarkdownContent({ content }: { content: string }) {
       const List = list.ordered ? 'ol' : 'ul';
       const itemOccurrences = new Map<string, number>();
       blocks.push(
-         <List key={`list-${blocks.length}`} className="space-y-1.5 pl-5">
+         <List key={`list-${blocks.length}`} className="space-y-2 pl-6 text-[15px] leading-7">
             {list.items.map((item) => {
                const key = nextOccurrenceKey('item', item, itemOccurrences);
                const checked = /^\[[ xX]\]\s+/.test(item);
@@ -310,8 +312,13 @@ export function MarkdownContent({ content }: { content: string }) {
          flushParagraph();
          flushList();
          const Tag = `h${Math.min(heading[1].length + 1, 6)}` as ElementType;
+         const headingId = getHeadingId(heading[2], headingOccurrences);
          blocks.push(
-            <Tag key={`heading-${blocks.length}`} className="font-semibold tracking-tight">
+            <Tag
+               key={`heading-${blocks.length}`}
+               id={headingId}
+               className="mt-6 scroll-mt-6 text-lg font-semibold leading-tight tracking-tight first:mt-0"
+            >
                {renderInline(heading[2])}
             </Tag>
          );
@@ -330,7 +337,7 @@ export function MarkdownContent({ content }: { content: string }) {
          blocks.push(
             <blockquote
                key={`blockquote-${blocks.length}`}
-               className="border-l-2 border-muted-foreground/40 pl-4 text-muted-foreground"
+               className="rounded-r-md border-l-2 border-primary/60 bg-primary/[0.04] px-4 py-3 text-muted-foreground"
             >
                <MarkdownContent content={quoteLines.join('\n')} />
             </blockquote>
@@ -356,5 +363,5 @@ export function MarkdownContent({ content }: { content: string }) {
    flushParagraph();
    flushList();
 
-   return <div className="space-y-4 text-sm text-foreground/90">{blocks}</div>;
+   return <div className="space-y-5 text-[15px] text-foreground/90">{blocks}</div>;
 }

@@ -9,10 +9,12 @@
  */
 
 import type * as issueAutomations from "../issueAutomations.js";
+import type * as issueStatusOptions from "../issueStatusOptions.js";
 import type * as issueStatuses from "../issueStatuses.js";
 import type * as issues from "../issues.js";
 import type * as labels from "../labels.js";
 import type * as projects from "../projects.js";
+import type * as savedViews from "../savedViews.js";
 import type * as viewer from "../viewer.js";
 
 import type {
@@ -23,10 +25,12 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   issueAutomations: typeof issueAutomations;
+  issueStatusOptions: typeof issueStatusOptions;
   issueStatuses: typeof issueStatuses;
   issues: typeof issues;
   labels: typeof labels;
   projects: typeof projects;
+  savedViews: typeof savedViews;
   viewer: typeof viewer;
 }>;
 

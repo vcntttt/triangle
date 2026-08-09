@@ -16,7 +16,7 @@ import { StatusSelector } from './status-selector';
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { IssueContextMenu } from './issue-context-menu';
 import { cn } from '@/lib/utils';
-import { useViewStore } from '@/store/view-store';
+import { useIssueDisplay } from './issues-display-context';
 
 export const IssueDragType = 'ISSUE';
 type IssueGridProps = {
@@ -95,7 +95,7 @@ export const IssueGrid = memo(function IssueGrid({
    onToggleSelection,
 }: IssueGridProps) {
    const ref = useRef<HTMLDivElement>(null);
-   const { visibleProperties } = useViewStore();
+   const { visibleProperties } = useIssueDisplay();
    const createdAtLabel = format(new Date(issue.createdAt), 'MMM dd');
 
    // Set up drag functionality.

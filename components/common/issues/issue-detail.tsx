@@ -601,7 +601,7 @@ export function IssueDetail({
                                  setEditingDescription(true);
                               }
                            }}
-                           className="block min-h-[156px] w-full rounded-lg border bg-card p-4 text-left transition-colors hover:border-primary/40"
+                           className="block min-h-[156px] w-full rounded-md border border-transparent p-0 text-left transition-colors hover:border-primary/30"
                         >
                            {description.trim() ? (
                               <MarkdownContent content={description} />
@@ -693,7 +693,7 @@ export function IssueDetail({
                   </section>
 
                   <section className="border-t border-border/60 pt-5">
-                     <details className="group">
+                     <details className="group" open>
                         <summary className="flex cursor-pointer list-none items-center justify-between rounded-md text-xs font-medium text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
                            <span>
                               <Activity className="-mt-0.5 mr-1.5 inline-block size-3.5" />{' '}
@@ -703,14 +703,18 @@ export function IssueDetail({
                            <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
                         </summary>
 
-                        <div className="mt-4 space-y-0.5">
+                        <div className="relative mt-4 space-y-0.5 border-l border-border/70 pl-5">
                            {activity.map((event) => {
                               const author = resolveCommentAuthor(event.actorId, currentUser);
                               const hasValueChange =
                                  event.fromValue !== null || event.toValue !== null;
 
                               return (
-                                 <div key={event.id} className="flex gap-3 py-2">
+                                 <div key={event.id} className="relative flex gap-3 py-2">
+                                    <span
+                                       className="absolute -left-[1.58rem] top-3 size-2 rounded-full border-2 border-background bg-muted-foreground/60"
+                                       aria-hidden="true"
+                                    />
                                     <Avatar className="size-6 shrink-0">
                                        <AvatarImage src={author.avatarUrl} alt={author.name} />
                                        <AvatarFallback className="text-[10px]">

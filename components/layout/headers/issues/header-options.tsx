@@ -17,7 +17,16 @@ import {
    useViewStore,
    ViewType,
 } from '@/store/view-store';
-import { GitFork, LayoutGrid, LayoutList, ListTree, SlidersHorizontal } from 'lucide-react';
+import {
+   ArrowDownAZ,
+   ArrowUpAZ,
+   GitFork,
+   LayoutGrid,
+   LayoutList,
+   ListTree,
+   SlidersHorizontal,
+} from 'lucide-react';
+import type { IssueGroupBy, IssueOrderBy } from '@/lib/issue-view';
 
 const propertyLabels: Record<IssueDisplayProperty, string> = {
    identifier: 'ID',
@@ -35,12 +44,20 @@ export function DisplayMenu() {
       setViewType,
       listMode,
       setListMode,
+      groupBy,
+      setGroupBy,
+      orderBy,
+      setOrderBy,
+      orderDirection,
+      setOrderDirection,
       visibleProperties,
       toggleProperty,
-      showEmptyStatuses,
-      setShowEmptyStatuses,
       hideCompletedIssues,
       setHideCompletedIssues,
+      showSubissues,
+      setShowSubissues,
+      showEmptyGroups,
+      setShowEmptyGroups,
    } = useViewStore();
 
    const handleViewChange = (type: ViewType) => {
@@ -128,6 +145,57 @@ export function DisplayMenu() {
 
             <div className="space-y-1">
                <DropdownMenuLabel className="px-2 text-xs text-muted-foreground">
+                  Group issues by
+               </DropdownMenuLabel>
+               {(['status', 'priority', 'project', 'assignee', 'none'] as IssueGroupBy[]).map(
+                  (value) => (
+                     <DropdownMenuItem
+                        key={value}
+                        className="justify-between"
+                        onSelect={() => setGroupBy(value)}
+                     >
+                        <span className="capitalize">
+                           {value === 'none' ? 'No grouping' : value}
+                        </span>
+                        {groupBy === value ? <span className="text-primary">✓</span> : null}
+                     </DropdownMenuItem>
+                  )
+               )}
+            </div>
+
+            <div className="space-y-1">
+               <DropdownMenuLabel className="px-2 text-xs text-muted-foreground">
+                  Order issues by
+               </DropdownMenuLabel>
+               {(['priority', 'created', 'title'] as IssueOrderBy[]).map((value) => (
+                  <DropdownMenuItem
+                     key={value}
+                     className="justify-between"
+                     onSelect={() => setOrderBy(value)}
+                  >
+                     <span className="capitalize">{value === 'created' ? 'Created' : value}</span>
+                     {orderBy === value ? <span className="text-primary">✓</span> : null}
+                  </DropdownMenuItem>
+               ))}
+               <DropdownMenuItem
+                  className="justify-between"
+                  onSelect={() =>
+                     setOrderDirection(orderDirection === 'ascending' ? 'descending' : 'ascending')
+                  }
+               >
+                  <span>Direction</span>
+                  {orderDirection === 'ascending' ? (
+                     <ArrowUpAZ className="size-4" />
+                  ) : (
+                     <ArrowDownAZ className="size-4" />
+                  )}
+               </DropdownMenuItem>
+            </div>
+
+            <DropdownMenuSeparator />
+
+            <div className="space-y-1">
+               <DropdownMenuLabel className="px-2 text-xs text-muted-foreground">
                   Display properties
                </DropdownMenuLabel>
                {(Object.keys(propertyLabels) as IssueDisplayProperty[]).map((property) => (
@@ -153,19 +221,33 @@ export function DisplayMenu() {
 
             <div className="space-y-1">
                <DropdownMenuLabel className="px-0 text-xs text-muted-foreground">
-                  Statuses without issues
+                  Groups and subissues
                </DropdownMenuLabel>
                <DropdownMenuItem
                   className="justify-between"
                   onSelect={(event) => {
                      event.preventDefault();
-                     setShowEmptyStatuses(!showEmptyStatuses);
+                     setShowEmptyGroups(!showEmptyGroups);
                   }}
                >
-                  <span>Show empty statuses</span>
+                  <span>Show empty groups</span>
                   <Switch
-                     checked={showEmptyStatuses}
-                     aria-label="Show empty statuses"
+                     checked={showEmptyGroups}
+                     aria-label="Show empty groups"
+                     className="pointer-events-none"
+                  />
+               </DropdownMenuItem>
+               <DropdownMenuItem
+                  className="justify-between"
+                  onSelect={(event) => {
+                     event.preventDefault();
+                     setShowSubissues(!showSubissues);
+                  }}
+               >
+                  <span>Show subissues</span>
+                  <Switch
+                     checked={showSubissues}
+                     aria-label="Show subissues"
                      className="pointer-events-none"
                   />
                </DropdownMenuItem>

@@ -1,16 +1,21 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { z } from 'zod';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
    ProjectOverview,
    ProjectToolbar,
 } from '@/components/common/projects/project-detail-overview';
 import { projectDetailQuery } from '@/src/data/projects';
+import { savedViewQuery } from '@/src/data/saved-views';
 
 const projectSearchSchema = z.object({
    tab: z.enum(['overview', 'issues']).optional().catch('overview'),
    issue: z.string().optional(),
+   scope: z.enum(['active', 'backlog', 'all']).optional().catch('active'),
+   view: z.string().optional(),
 });
 
 export const Route = createFileRoute('/projects/$projectSlug')({
@@ -35,6 +40,7 @@ function ProjectPage() {
    const {
       project,
       statusOptions,
+      issueStatusOptions,
       priorityOptions,
       attentionOptions,
       areas,
@@ -42,7 +48,18 @@ function ProjectPage() {
       databaseError,
       isConnected,
    } = data;
-   const { tab = 'overview', issue } = Route.useSearch();
+   const { tab = 'overview', issue, scope = 'active', view: viewId } = Route.useSearch();
+   const { data: savedView } = useQuery(savedViewQuery(viewId));
+   const savedViewMatchesProject =
+      savedView?.target === 'project' && savedView.projectId === project?.id;
+
+   useEffect(() => {
+      if (!savedView || savedViewMatchesProject || !project) {
+         return;
+      }
+
+      toast.error('This saved view belongs to another project.');
+   }, [project, savedView, savedViewMatchesProject]);
 
    if (databaseError) {
       return (
@@ -75,17 +92,25 @@ function ProjectPage() {
       );
    }
 
+   const usableSavedView = savedViewMatchesProject ? savedView : undefined;
    return (
       <ProjectOverview
          key={project.id}
          initialProject={project}
          statusOptions={statusOptions}
+         issueStatusOptions={issueStatusOptions}
          priorityOptions={priorityOptions}
          attentionOptions={attentionOptions}
          areas={areas}
          issues={issues}
          activeTab={tab}
          selectedIssueIdentifier={issue}
+         scope={usableSavedView?.scope ?? scope}
+         viewOverride={
+            usableSavedView
+               ? { filters: usableSavedView.filters, display: usableSavedView.display }
+               : undefined
+         }
          isConnected={isConnected}
       />
    );

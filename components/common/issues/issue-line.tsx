@@ -12,14 +12,13 @@ import { StatusSelector } from './status-selector';
 import { LazyMotion, domAnimation } from 'motion/react';
 import * as m from 'motion/react-m';
 import { cn } from '@/lib/utils';
-import { useViewStore } from '@/store/view-store';
-
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { IssueContextMenu } from './issue-context-menu';
 import { Clock3 } from 'lucide-react';
 import { IssueChip, issueChipIconClassName } from './issue-chip';
 import { IssueDependencyIndicator } from './issue-dependencies';
 import { memo } from 'react';
+import { useIssueDisplay } from './issues-display-context';
 
 const formatEstimatedHours = (estimatedHours?: number) => {
    if (estimatedHours === undefined) {
@@ -55,8 +54,8 @@ export const IssueLine = memo(function IssueLine({
    onToggleSelection?: (issue: Issue) => void;
    onToggleCollapse?: (issueId: string) => void;
 }) {
-   const { visibleProperties } = useViewStore();
-   const createdAtLabel = format(new Date(issue.createdAt), 'MMM dd');
+   const { visibleProperties } = useIssueDisplay();
+   const activityLabel = format(new Date(issue.lastActivityAt ?? issue.createdAt), 'MMM dd');
 
    return (
       <LazyMotion features={domAnimation}>
@@ -175,7 +174,7 @@ export const IssueLine = memo(function IssueLine({
                            className="text-xs leading-none text-muted-foreground shrink-0 hidden sm:inline-block"
                            suppressHydrationWarning
                         >
-                           {createdAtLabel}
+                           {activityLabel}
                         </span>
                      )}
                      {visibleProperties.assignee && (
