@@ -14,6 +14,7 @@ import { Route as OrgIdRouteImport } from './routes/$orgId'
 import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as IssuesRouteImport } from './routes/issues'
 import { Route as McpRouteImport } from './routes/mcp'
+import { Route as MyWorkRouteImport } from './routes/my-work'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as PulseRouteImport } from './routes/pulse'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -53,6 +54,11 @@ const IssuesRoute = IssuesRouteImport.update({
 const McpRoute = McpRouteImport.update({
   id: '/mcp',
   path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyWorkRoute = MyWorkRouteImport.update({
+  id: '/my-work',
+  path: '/my-work',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjectsRoute = ProjectsRouteImport.update({
@@ -138,6 +144,7 @@ export interface FileRoutesByFullPath {
   '/inbox': typeof InboxRoute
   '/issues': typeof IssuesRouteWithChildren
   '/mcp': typeof McpRoute
+  '/my-work': typeof MyWorkRoute
   '/projects': typeof ProjectsRouteWithChildren
   '/pulse': typeof PulseRoute
   '/settings': typeof SettingsRoute
@@ -159,6 +166,7 @@ export interface FileRoutesByTo {
   '/$orgId': typeof OrgIdRouteWithChildren
   '/inbox': typeof InboxRoute
   '/mcp': typeof McpRoute
+  '/my-work': typeof MyWorkRoute
   '/pulse': typeof PulseRoute
   '/settings': typeof SettingsRoute
   '/$orgId/inbox': typeof OrgIdInboxRoute
@@ -181,6 +189,7 @@ export interface FileRoutesById {
   '/inbox': typeof InboxRoute
   '/issues': typeof IssuesRouteWithChildren
   '/mcp': typeof McpRoute
+  '/my-work': typeof MyWorkRoute
   '/projects': typeof ProjectsRouteWithChildren
   '/pulse': typeof PulseRoute
   '/settings': typeof SettingsRoute
@@ -205,6 +214,7 @@ export interface FileRouteTypes {
     | '/inbox'
     | '/issues'
     | '/mcp'
+    | '/my-work'
     | '/projects'
     | '/pulse'
     | '/settings'
@@ -226,6 +236,7 @@ export interface FileRouteTypes {
     | '/$orgId'
     | '/inbox'
     | '/mcp'
+    | '/my-work'
     | '/pulse'
     | '/settings'
     | '/$orgId/inbox'
@@ -247,6 +258,7 @@ export interface FileRouteTypes {
     | '/inbox'
     | '/issues'
     | '/mcp'
+    | '/my-work'
     | '/projects'
     | '/pulse'
     | '/settings'
@@ -270,6 +282,7 @@ export interface RootRouteChildren {
   InboxRoute: typeof InboxRoute
   IssuesRoute: typeof IssuesRouteWithChildren
   McpRoute: typeof McpRoute
+  MyWorkRoute: typeof MyWorkRoute
   ProjectsRoute: typeof ProjectsRouteWithChildren
   PulseRoute: typeof PulseRoute
   SettingsRoute: typeof SettingsRoute
@@ -310,6 +323,13 @@ declare module '@tanstack/react-router' {
       path: '/mcp'
       fullPath: '/mcp'
       preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-work': {
+      id: '/my-work'
+      path: '/my-work'
+      fullPath: '/my-work'
+      preLoaderRoute: typeof MyWorkRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/projects': {
@@ -487,6 +507,7 @@ const rootRouteChildren: RootRouteChildren = {
   InboxRoute: InboxRoute,
   IssuesRoute: IssuesRouteWithChildren,
   McpRoute: McpRoute,
+  MyWorkRoute: MyWorkRoute,
   ProjectsRoute: ProjectsRouteWithChildren,
   PulseRoute: PulseRoute,
   SettingsRoute: SettingsRoute,

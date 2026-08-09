@@ -10,7 +10,6 @@ import {
    useSyncExternalStore,
 } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { useQuery } from '@tanstack/react-query';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import type { ImperativePanelHandle } from 'react-resizable-panels';
@@ -30,7 +29,7 @@ import {
 import { useSearchStore } from '@/store/search-store';
 import { useViewStore } from '@/store/view-store';
 import { useViewerProfile } from '@/src/data/viewer';
-import { projectStatusListQuery } from '@/src/data/projects';
+import { useProjectOptions } from '@/hooks/use-project-options';
 import { usePersistentStringSet } from '@/hooks/use-persistent-string-set';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Button } from '@/components/ui/button';
@@ -39,12 +38,22 @@ import { GroupIssues } from './group-issues';
 import { getIssueListRows } from './group-issue-rows';
 import { IssueActionCommand, type IssueActionKind } from './issue-action-command';
 import { IssueDetail } from './issue-detail';
+import { IssueInsightsPanel } from './issue-insights-panel';
 import { IssueDependencyGraph } from './issue-dependency-graph';
 import { SearchIssues } from './search-issues';
 import { IssuesStatusProvider, useIssuesStatuses } from './issues-status-context';
 import { IssuesPriorityProvider } from './issues-priority-context';
+import { IssuesDisplayProvider } from './issues-display-context';
+import { useIssueInsightsStore } from '@/store/issue-insights-store';
 import type { ProjectOptionLike } from '@/lib/projects-presentation';
 import { groupIssuesForDisplayByStatus } from '@/lib/issue-status-groups';
+import {
+   buildIssueDisplayGroups,
+   filterIssuesByScope,
+   type IssueScope,
+   type IssueFilters,
+   type IssueDisplayConfig,
+} from '@/lib/issue-view';
 import {
    hasOpenKeyboardBlockingLayer,
    isEditableTarget,
@@ -57,6 +66,11 @@ interface IssuesWorkspaceProps {
    databaseError: string | null;
    selectedIssueIdentifier?: string;
    projectFilterId?: string;
+   scope?: IssueScope;
+   viewOverride?: {
+      filters: IssueFilters;
+      display: IssueDisplayConfig;
+   };
    applyIssueFilters?: boolean;
    onSelectIssue?: (issue: Issue) => void | Promise<void>;
    onClearSelectedIssue?: () => void | Promise<void>;
@@ -237,32 +251,36 @@ export function IssuesWorkspace({
    databaseError,
    selectedIssueIdentifier,
    projectFilterId,
+   scope = 'active',
+   viewOverride,
    applyIssueFilters,
    onSelectIssue,
    onClearSelectedIssue,
    onSelectAdjacentIssue,
    emptyCopy,
 }: IssuesWorkspaceProps) {
-   const { data: liveStatuses } = useQuery(projectStatusListQuery());
-   const statuses = liveStatuses ?? initialStatuses;
    const viewerProfile = useViewerProfile();
    const viewer = useMemo(() => viewerProfileToUser(viewerProfile), [viewerProfile]);
    const hydratedIssues = useMemo(
       () =>
          initialIssues.map((issue) =>
-            toPresentationIssue(issue, statuses, viewer, initialPriorities)
+            toPresentationIssue(issue, initialStatuses, viewer, initialPriorities)
          ),
-      [initialIssues, initialPriorities, statuses, viewer]
+      [initialIssues, initialPriorities, initialStatuses, viewer]
    );
 
    return (
       <IssuesDataProvider issues={hydratedIssues}>
          <IssuesPriorityProvider priorities={initialPriorities}>
             <IssuesWorkspaceContent
-               initialStatuses={statuses}
+               initialStatuses={initialStatuses}
+               initialPriorities={initialPriorities}
+               scopeStatuses={initialStatuses}
                databaseError={databaseError}
                selectedIssueIdentifier={selectedIssueIdentifier}
                projectFilterId={projectFilterId}
+               scope={scope}
+               viewOverride={viewOverride}
                applyIssueFilters={applyIssueFilters}
                onSelectIssue={onSelectIssue}
                onClearSelectedIssue={onClearSelectedIssue}
@@ -276,23 +294,35 @@ export function IssuesWorkspace({
 
 function IssuesWorkspaceContent({
    initialStatuses,
+   initialPriorities,
+   scopeStatuses,
    databaseError,
    selectedIssueIdentifier,
    projectFilterId,
+   scope = 'active',
+   viewOverride,
    applyIssueFilters = true,
    onSelectIssue,
    onClearSelectedIssue,
    onSelectAdjacentIssue,
    emptyCopy,
-}: Omit<IssuesWorkspaceProps, 'initialIssues'>) {
+}: Omit<IssuesWorkspaceProps, 'initialIssues'> & {
+   scopeStatuses: ProjectOptionLike[];
+}) {
    const { issues, filterIssues } = useIssuesData();
    const { isSearchOpen, searchQuery } = useSearchStore();
    const { filters, hasActiveFilters } = useFilterStore();
    const {
       hideCompletedIssues,
       showEmptyStatuses,
+      showEmptyGroups,
       viewType,
       listMode,
+      groupBy,
+      orderBy,
+      orderDirection,
+      showSubissues,
+      visibleProperties,
       objectiveIssueIds,
       setObjectiveIssueIds,
    } = useViewStore();
@@ -376,18 +406,61 @@ function IssuesWorkspaceContent({
    );
 
    const isSearching = isSearchOpen && searchQuery.trim() !== '';
-   const isFiltering = applyIssueFilters && hasActiveFilters();
-   const visibleIssues = issues.filter((issue) => issue.status.id !== archivedStatus.id);
-   const storeFilteredIssues = isFiltering ? filterIssues(filters) : visibleIssues;
+   const preferenceDisplay = useMemo<IssueDisplayConfig>(
+      () => ({
+         viewType,
+         listMode,
+         groupBy,
+         orderBy,
+         orderDirection,
+         showEmptyGroups,
+         hideCompletedIssues,
+         showSubissues,
+         visibleProperties,
+      }),
+      [
+         groupBy,
+         hideCompletedIssues,
+         listMode,
+         orderBy,
+         orderDirection,
+         showEmptyGroups,
+         showSubissues,
+         viewType,
+         visibleProperties,
+      ]
+   );
+   const activeDisplay = viewOverride?.display ?? preferenceDisplay;
+   const activeFilters = viewOverride?.filters ?? filters;
+   const hasActiveFilterValues = Object.values(activeFilters).some((values) => values.length > 0);
+   const isFiltering =
+      applyIssueFilters && (viewOverride ? hasActiveFilterValues : hasActiveFilters());
+   const statusTypes = useMemo(
+      () => new Map(scopeStatuses.map((status) => [status.id, status.type ?? 'unstarted'])),
+      [scopeStatuses]
+   );
+   const scopedIssues = useMemo(
+      () => filterIssuesByScope(issues, scope, statusTypes),
+      [issues, scope, statusTypes]
+   );
+   const visibleIssues = scopedIssues.filter((issue) => issue.status.id !== archivedStatus.id);
+   const scopedIssueIds = useMemo(
+      () => new Set(visibleIssues.map((issue) => issue.id)),
+      [visibleIssues]
+   );
+   const storeFilteredIssues = isFiltering
+      ? filterIssues(activeFilters).filter((issue) => scopedIssueIds.has(issue.id))
+      : visibleIssues;
    const filteredIssues = projectFilterId
       ? storeFilteredIssues.filter((issue) => issue.project?.id === projectFilterId)
       : storeFilteredIssues;
    const displayIssues = useMemo(
       () =>
-         hideCompletedIssues
+         (activeDisplay.hideCompletedIssues
             ? filteredIssues.filter((issue) => issue.status.id !== 'completed')
-            : filteredIssues,
-      [filteredIssues, hideCompletedIssues]
+            : filteredIssues
+         ).filter((issue) => activeDisplay.showSubissues || !issue.parentIssueId),
+      [activeDisplay, filteredIssues]
    );
    const searchResults = useMemo(() => {
       const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -511,75 +584,86 @@ function IssuesWorkspaceContent({
    }
 
    return (
-      <IssuesStatusProvider statuses={initialStatuses}>
-         <DndProvider backend={HTML5Backend}>
-            <CustomDragLayer />
-            <IssueActionCommand
-               open={issueAction !== null}
-               action={issueAction}
-               targetIssues={actionTargetIssues}
-               onOpenChange={(open) => {
-                  if (!open) {
-                     setIssueAction(null);
-                  }
-               }}
-            />
-            <div className="h-full w-full">
-               {isDesktopWorkspace ? (
-                  <DesktopIssuesWorkspace
-                     selectedIssue={selectedIssue}
-                     listPanelProps={{
-                        issues: filteredIssues,
-                        showEmptyStatuses,
-                        isSearching,
-                        searchIssues: displayIssues,
-                        selectedIssueIdentifier: activeSelectedIssueIdentifier,
-                        selectedIssueIds,
-                        onSelectIssue: handleListSelectIssue,
-                        onToggleIssueSelection: handleListToggleIssueSelection,
-                        onMarkSelectedAsObjectives: markSelectedAsObjectives,
-                        onClearIssueSelection: clearIssueSelection,
-                        collapsedParentIds,
-                        collapsedStatusIds,
-                        onToggleParentCollapse: toggleParentCollapse,
-                        onToggleStatusCollapse: toggleStatusCollapse,
-                     }}
-                     onDeleteOrArchive={navigateToAdjacentIssue}
-                     onClearSelectedIssue={handleClearSelectedIssue}
-                  />
-               ) : selectedIssue ? (
-                  <div className="h-full">
-                     <IssueDetail
-                        issueId={selectedIssue.id}
-                        initialIssue={selectedIssue}
-                        onDelete={navigateToAdjacentIssue}
-                        onArchive={navigateToAdjacentIssue}
-                        onMobileBack={handleClearSelectedIssue}
-                        mobileBack
-                        onClose={handleClearSelectedIssue}
+      <IssuesDisplayProvider display={activeDisplay}>
+         <IssuesStatusProvider statuses={initialStatuses}>
+            <DndProvider backend={HTML5Backend}>
+               <CustomDragLayer />
+               <IssueActionCommand
+                  open={issueAction !== null}
+                  action={issueAction}
+                  targetIssues={actionTargetIssues}
+                  onOpenChange={(open) => {
+                     if (!open) {
+                        setIssueAction(null);
+                     }
+                  }}
+               />
+               <div className="h-full w-full">
+                  {isDesktopWorkspace ? (
+                     <DesktopIssuesWorkspace
+                        selectedIssue={selectedIssue}
+                        listPanelProps={{
+                           issues: filteredIssues,
+                           showEmptyStatuses,
+                           initialStatuses,
+                           initialPriorities,
+                           display: activeDisplay,
+                           isSearching,
+                           searchIssues: displayIssues,
+                           selectedIssueIdentifier: activeSelectedIssueIdentifier,
+                           selectedIssueIds,
+                           onSelectIssue: handleListSelectIssue,
+                           onToggleIssueSelection: handleListToggleIssueSelection,
+                           onMarkSelectedAsObjectives: markSelectedAsObjectives,
+                           onClearIssueSelection: clearIssueSelection,
+                           collapsedParentIds,
+                           collapsedStatusIds,
+                           onToggleParentCollapse: toggleParentCollapse,
+                           onToggleStatusCollapse: toggleStatusCollapse,
+                        }}
+                        onDeleteOrArchive={navigateToAdjacentIssue}
+                        onClearSelectedIssue={handleClearSelectedIssue}
+                        insightsIssues={filteredIssues}
+                        insightsStatuses={initialStatuses}
+                        insightsPriorities={initialPriorities}
                      />
-                  </div>
-               ) : (
-                  <IssuesListPanel
-                     issues={filteredIssues}
-                     showEmptyStatuses={showEmptyStatuses}
-                     isSearching={isSearching}
-                     searchIssues={displayIssues}
-                     selectedIssueIdentifier={activeSelectedIssueIdentifier}
-                     selectedIssueIds={selectedIssueIds}
-                     onSelectIssue={handleListSelectIssue}
-                     onToggleIssueSelection={handleListToggleIssueSelection}
-                     onMarkSelectedAsObjectives={markSelectedAsObjectives}
-                     onClearIssueSelection={clearIssueSelection}
-                     collapsedParentIds={collapsedParentIds}
-                     collapsedStatusIds={collapsedStatusIds}
-                     onToggleParentCollapse={toggleParentCollapse}
-                     onToggleStatusCollapse={toggleStatusCollapse}
-                  />
-               )}
-            </div>
-         </DndProvider>
-      </IssuesStatusProvider>
+                  ) : selectedIssue ? (
+                     <div className="h-full">
+                        <IssueDetail
+                           issueId={selectedIssue.id}
+                           initialIssue={selectedIssue}
+                           onDelete={navigateToAdjacentIssue}
+                           onArchive={navigateToAdjacentIssue}
+                           onMobileBack={handleClearSelectedIssue}
+                           mobileBack
+                           onClose={handleClearSelectedIssue}
+                        />
+                     </div>
+                  ) : (
+                     <IssuesListPanel
+                        issues={filteredIssues}
+                        showEmptyStatuses={showEmptyStatuses}
+                        initialStatuses={initialStatuses}
+                        initialPriorities={initialPriorities}
+                        display={activeDisplay}
+                        isSearching={isSearching}
+                        searchIssues={displayIssues}
+                        selectedIssueIdentifier={activeSelectedIssueIdentifier}
+                        selectedIssueIds={selectedIssueIds}
+                        onSelectIssue={handleListSelectIssue}
+                        onToggleIssueSelection={handleListToggleIssueSelection}
+                        onMarkSelectedAsObjectives={markSelectedAsObjectives}
+                        onClearIssueSelection={clearIssueSelection}
+                        collapsedParentIds={collapsedParentIds}
+                        collapsedStatusIds={collapsedStatusIds}
+                        onToggleParentCollapse={toggleParentCollapse}
+                        onToggleStatusCollapse={toggleStatusCollapse}
+                     />
+                  )}
+               </div>
+            </DndProvider>
+         </IssuesStatusProvider>
+      </IssuesDisplayProvider>
    );
 
    function openIssueActionPicker(action: IssueActionKind) {
@@ -679,6 +763,9 @@ function IssuesWorkspaceContent({
 interface IssuesListPanelProps {
    issues: IssuesData['issues'];
    showEmptyStatuses: boolean;
+   initialStatuses: ProjectOptionLike[];
+   initialPriorities: ProjectOptionLike[];
+   display: IssueDisplayConfig;
    isSearching: boolean;
    searchIssues: IssuesData['issues'];
    selectedIssueIdentifier?: string;
@@ -698,28 +785,38 @@ function DesktopIssuesWorkspace({
    listPanelProps,
    onDeleteOrArchive,
    onClearSelectedIssue,
+   insightsIssues,
+   insightsStatuses,
+   insightsPriorities,
 }: {
    selectedIssue?: Issue;
    listPanelProps: IssuesListPanelProps;
    onDeleteOrArchive: (issueId: string) => void;
    onClearSelectedIssue: () => void;
+   insightsIssues: Issue[];
+   insightsStatuses: ProjectOptionLike[];
+   insightsPriorities: ProjectOptionLike[];
 }) {
    const detailPanelRef = useRef<ImperativePanelHandle>(null);
+   const isInsightsOpen = useIssueInsightsStore((state) => state.isOpen);
 
    useLayoutEffect(() => {
       const detailPanel = detailPanelRef.current;
       if (!detailPanel) return;
 
       if (selectedIssue) {
-         detailPanel.expand(40);
+         detailPanel.expand(isInsightsOpen ? 28 : 40);
       } else {
          detailPanel.collapse();
       }
-   }, [selectedIssue]);
+   }, [isInsightsOpen, selectedIssue]);
 
    return (
       <ResizablePanelGroup direction="horizontal" className="h-full w-full">
-         <ResizablePanel defaultSize={selectedIssue ? 60 : 100} minSize={32}>
+         <ResizablePanel
+            defaultSize={selectedIssue ? (isInsightsOpen ? 52 : 60) : isInsightsOpen ? 76 : 100}
+            minSize={30}
+         >
             <IssuesListPanel {...listPanelProps} />
          </ResizablePanel>
          <ResizableHandle
@@ -728,7 +825,7 @@ function DesktopIssuesWorkspace({
          />
          <ResizablePanel
             ref={detailPanelRef}
-            defaultSize={selectedIssue ? 40 : 0}
+            defaultSize={selectedIssue ? (isInsightsOpen ? 28 : 40) : 0}
             minSize={28}
             collapsedSize={0}
             collapsible
@@ -742,6 +839,22 @@ function DesktopIssuesWorkspace({
                />
             ) : null}
          </ResizablePanel>
+         {isInsightsOpen ? (
+            <>
+               <ResizableHandle withHandle />
+               <ResizablePanel
+                  defaultSize={selectedIssue ? 20 : 24}
+                  minSize={18}
+                  className="min-w-0"
+               >
+                  <IssueInsightsPanel
+                     issues={insightsIssues}
+                     statuses={insightsStatuses}
+                     priorities={insightsPriorities}
+                  />
+               </ResizablePanel>
+            </>
+         ) : null}
       </ResizablePanelGroup>
    );
 }
@@ -775,6 +888,9 @@ function SelectedIssueDetail({
 function IssuesListPanel({
    issues,
    showEmptyStatuses,
+   initialStatuses,
+   initialPriorities,
+   display,
    isSearching,
    searchIssues,
    selectedIssueIdentifier,
@@ -788,9 +904,11 @@ function IssuesListPanel({
    onToggleParentCollapse,
    onToggleStatusCollapse,
 }: IssuesListPanelProps) {
-   const { viewType, hideCompletedIssues, objectiveIssueIds } = useViewStore();
+   const { objectiveIssueIds } = useViewStore();
+   const { viewType, hideCompletedIssues, showSubissues } = display;
    const isViewTypeGrid = viewType === 'grid';
    const statuses = useIssuesStatuses();
+   const projects = useProjectOptions();
    const completedStatus = statuses.find((status) => status.id === 'completed');
    const completedIssuesCount = useMemo(
       () => issues.filter((issue) => issue.status.id === 'completed').length,
@@ -798,26 +916,33 @@ function IssuesListPanel({
    );
    const displayIssues = useMemo(
       () =>
-         hideCompletedIssues ? issues.filter((issue) => issue.status.id !== 'completed') : issues,
-      [hideCompletedIssues, issues]
+         (hideCompletedIssues
+            ? issues.filter((issue) => issue.status.id !== 'completed')
+            : issues
+         ).filter((issue) => showSubissues || !issue.parentIssueId),
+      [hideCompletedIssues, issues, showSubissues]
    );
-   const issuesByStatus = useMemo(
-      () => groupIssuesForDisplayByStatus(displayIssues),
-      [displayIssues]
-   );
-   const displayedStatuses = useMemo(() => {
-      if (showEmptyStatuses) {
-         return hideCompletedIssues
-            ? statuses.filter((status) => status.id !== 'completed')
-            : statuses;
-      }
+   const displayGroups = useMemo(() => {
+      const groupDisplay = {
+         ...display,
+         showEmptyGroups: display.showEmptyGroups && showEmptyStatuses,
+         ...(isViewTypeGrid ? { groupBy: 'status' as const } : {}),
+      };
 
-      return statuses.filter(
-         (status) =>
-            (!hideCompletedIssues || status.id !== 'completed') &&
-            (issuesByStatus[status.id] ?? []).length > 0
-      );
-   }, [hideCompletedIssues, issuesByStatus, showEmptyStatuses, statuses]);
+      return buildIssueDisplayGroups(displayIssues, groupDisplay, {
+         statuses: initialStatuses,
+         priorities: initialPriorities,
+         projects,
+      });
+   }, [
+      displayIssues,
+      display,
+      initialPriorities,
+      initialStatuses,
+      isViewTypeGrid,
+      projects,
+      showEmptyStatuses,
+   ]);
    const showCompletedSummary = hideCompletedIssues && completedIssuesCount > 0 && completedStatus;
 
    return (
@@ -873,8 +998,14 @@ function IssuesListPanel({
             ) : (
                <div className={cn('h-full overflow-auto', isViewTypeGrid && 'overflow-x-auto')}>
                   <div className={cn(isViewTypeGrid && 'flex h-full gap-3 px-2 py-2 min-w-max')}>
-                     {displayedStatuses.map((statusItem) => {
-                        const statusIssues = issuesByStatus[statusItem.id] ?? [];
+                     {displayGroups.map((group) => {
+                        const statusItem = statuses.find((status) => status.id === group.id) ?? {
+                           id: group.id,
+                           name: group.name,
+                           color: group.color,
+                           icon: () => null,
+                        };
+                        const statusIssues = group.issues;
 
                         return (
                            <GroupIssues
@@ -890,6 +1021,7 @@ function IssuesListPanel({
                               isCollapsed={collapsedStatusIds.has(statusItem.id)}
                               onToggleParentCollapse={onToggleParentCollapse}
                               onToggleStatusCollapse={() => onToggleStatusCollapse(statusItem.id)}
+                              allowCreate={group.isStatusGroup}
                            />
                         );
                      })}

@@ -13,6 +13,7 @@ import { ThemeProvider } from '@/components/layout/theme-provider';
 import { AppSidebar } from '@/components/layout/sidebar/app-sidebar';
 import { CreateIssueModalProvider } from '@/components/common/issues/create-issue-modal-provider';
 import { GlobalShortcuts } from '@/components/common/shortcuts/global-shortcuts';
+import { CommandPalette } from '@/components/common/command-palette';
 import { ShortcutsHelpProvider } from '@/components/common/shortcuts/shortcuts-help-provider';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/sonner';
@@ -85,6 +86,7 @@ function RootDocument({ children }: { children: ReactNode }) {
                   <CreateIssueModalProvider />
                   <ShortcutsHelpProvider />
                   <GlobalShortcuts />
+                  <CommandPalette />
                   <AppSidebar />
                   {children}
                </SidebarProvider>

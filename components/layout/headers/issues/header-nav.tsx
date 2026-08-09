@@ -1,5 +1,6 @@
 'use client';
 
+import { Link } from '@tanstack/react-router';
 import type { Project } from '@/lib/models';
 import { Button } from '@/components/ui/button';
 import { useCreateIssueStore } from '@/store/create-issue-store';
@@ -16,6 +17,8 @@ interface HeaderNavProps {
    project?: Project;
    leftActions?: React.ReactNode;
    rightActions?: React.ReactNode;
+   scope?: 'active' | 'backlog' | 'all';
+   viewId?: string;
 }
 
 export default function HeaderNav({
@@ -25,6 +28,8 @@ export default function HeaderNav({
    project,
    leftActions,
    rightActions,
+   scope = 'active',
+   viewId,
 }: HeaderNavProps) {
    const { openModal } = useCreateIssueStore();
    const { isSearchOpen, toggleSearch, closeSearch, setSearchQuery, searchQuery } =
@@ -116,6 +121,27 @@ export default function HeaderNav({
                </Button>
             )}
             {leftActions}
+            <div
+               className="hidden items-center gap-0.5 rounded-md bg-muted/60 p-0.5 md:flex"
+               aria-label="Issue scope"
+            >
+               {(['active', 'backlog', 'all'] as const).map((item) => (
+                  <Button
+                     key={item}
+                     asChild
+                     size="xs"
+                     variant={scope === item ? 'secondary' : 'ghost'}
+                     className="h-6 px-2 text-[11px] capitalize"
+                  >
+                     <Link
+                        to="/issues"
+                        search={{ scope: item, projectId: project?.id, view: viewId }}
+                     >
+                        {item === 'all' ? 'All' : item}
+                     </Link>
+                  </Button>
+               ))}
+            </div>
          </div>
 
          <div className="flex items-center gap-2">

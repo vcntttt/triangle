@@ -21,6 +21,11 @@ const defaultPreferences = {
       objectiveIssueIds: [] as string[],
       showEmptyStatuses: true,
       hideCompletedIssues: false,
+      groupBy: 'status' as const,
+      orderBy: 'priority' as const,
+      orderDirection: 'ascending' as const,
+      showSubissues: true,
+      showEmptyGroups: true,
       visibleProperties: {
          identifier: true,
          labels: true,
@@ -58,6 +63,13 @@ const defaultPreferences = {
       sort: 'title-asc',
    },
    pinnedProjectIds: [] as Id<'projects'>[],
+   sidebar: {
+      itemOrder: ['issues', 'my-work', 'projects', 'pulse', 'settings', 'saved-views'],
+      hiddenItems: [] as string[],
+      collapsedSections: [] as string[],
+      showBadges: true,
+      projectOrder: [] as Id<'projects'>[],
+   },
    sidebarOpen: true,
 };
 
@@ -67,6 +79,19 @@ const issueViewPatchValidator = v.object({
    objectiveIssueIds: v.optional(v.array(v.string())),
    showEmptyStatuses: v.optional(v.boolean()),
    hideCompletedIssues: v.optional(v.boolean()),
+   groupBy: v.optional(
+      v.union(
+         v.literal('status'),
+         v.literal('priority'),
+         v.literal('project'),
+         v.literal('assignee'),
+         v.literal('none')
+      )
+   ),
+   orderBy: v.optional(v.union(v.literal('priority'), v.literal('created'), v.literal('title'))),
+   orderDirection: v.optional(v.union(v.literal('ascending'), v.literal('descending'))),
+   showSubissues: v.optional(v.boolean()),
+   showEmptyGroups: v.optional(v.boolean()),
    visibleProperties: v.optional(
       v.object({
          identifier: v.optional(v.boolean()),
@@ -118,6 +143,14 @@ const projectFiltersPatchValidator = v.object({
    sort: v.optional(v.string()),
 });
 
+const sidebarPatchValidator = v.object({
+   itemOrder: v.optional(v.array(v.string())),
+   hiddenItems: v.optional(v.array(v.string())),
+   collapsedSections: v.optional(v.array(v.string())),
+   showBadges: v.optional(v.boolean()),
+   projectOrder: v.optional(v.array(v.id('projects'))),
+});
+
 function serializeProfile(profile: Doc<'viewerProfiles'> | null) {
    if (!profile) {
       return defaultProfile;
@@ -165,6 +198,10 @@ function serializePreferences(preferences: Doc<'viewerPreferences'> | null) {
          ...preferences.projectFilters,
       },
       pinnedProjectIds: preferences.pinnedProjectIds,
+      sidebar: {
+         ...defaultPreferences.sidebar,
+         ...preferences.sidebar,
+      },
       sidebarOpen: preferences.sidebarOpen,
    };
 }
@@ -255,6 +292,7 @@ export const updatePreferences = mutation({
       projectView: v.optional(projectViewPatchValidator),
       projectFilters: v.optional(projectFiltersPatchValidator),
       pinnedProjectIds: v.optional(v.array(v.id('projects'))),
+      sidebar: v.optional(sidebarPatchValidator),
       sidebarOpen: v.optional(v.boolean()),
    },
    handler: async (ctx, input) => {
@@ -293,6 +331,15 @@ export const updatePreferences = mutation({
             : {}),
          ...(input.pinnedProjectIds !== undefined
             ? { pinnedProjectIds: input.pinnedProjectIds }
+            : {}),
+         ...(input.sidebar
+            ? {
+                 sidebar: {
+                    ...defaultPreferences.sidebar,
+                    ...existing.sidebar,
+                    ...input.sidebar,
+                 },
+              }
             : {}),
          ...(input.sidebarOpen !== undefined ? { sidebarOpen: input.sidebarOpen } : {}),
          updatedAt: Date.now(),

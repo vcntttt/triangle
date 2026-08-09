@@ -27,6 +27,7 @@ export interface IssueListItem {
    dueDate: string | null;
    createdAt: string;
    updatedAt: string;
+   lastActivityAt?: string;
    parentIssueId: string | null;
    parentIssue: IssueSummary | null;
    subissues: IssueSubissueSummary[];

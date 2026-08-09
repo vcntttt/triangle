@@ -2,7 +2,7 @@ import { v } from 'convex/values';
 import type { Doc, Id } from './_generated/dataModel';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import { applyIssueStatusAutomations } from './issueAutomations';
-import { defaultIssueStatuses } from './issueStatuses';
+import { listIssueStatusOptions } from './issueStatusOptions';
 import { listOptions } from './projects';
 
 const nowIso = (value: number) => new Date(value).toISOString();
@@ -36,15 +36,6 @@ async function recordIssueActivity(
       toValue: input.toValue ?? undefined,
       createdAt: input.createdAt,
    });
-}
-
-async function listStatusOptions(ctx: QueryCtx) {
-   const rows = await ctx.db.query('issueStatuses').withIndex('by_position').collect();
-   const values = new Map(
-      defaultIssueStatuses.map((item, position) => [item.id, { ...item, position }])
-   );
-   rows.forEach((row) => values.set(row.id, row));
-   return Array.from(values.values()).toSorted((left, right) => left.position - right.position);
 }
 
 function serializeProject(project: Doc<'projects'>) {
@@ -394,7 +385,7 @@ export const page = query({
    handler: async (ctx, { projectId }) => {
       const [issues, statusOptions, priorityOptions] = await Promise.all([
          listIssues(ctx, projectId ? (projectId as Id<'projects'>) : undefined),
-         listStatusOptions(ctx),
+         listIssueStatusOptions(ctx),
          listOptions(ctx, 'projectPriorities'),
       ]);
 
@@ -525,6 +516,97 @@ export const search = query({
             (updatedAfter === undefined || updatedAt > updatedAfter)
          );
       });
+   },
+});
+
+export const globalSearch = query({
+   args: { query: v.string() },
+   handler: async (ctx, { query: rawQuery }) => {
+      const query = rawQuery.trim().toLowerCase();
+      if (!query) return { issues: [], projects: [] };
+
+      const [issues, projects] = await Promise.all([
+         listIssues(ctx),
+         ctx.db.query('projects').collect(),
+      ]);
+
+      return {
+         issues: issues
+            .filter(
+               (issue) =>
+                  issue.identifier.toLowerCase().includes(query) ||
+                  issue.title.toLowerCase().includes(query)
+            )
+            .slice(0, 12)
+            .map((issue) => ({
+               id: issue.id,
+               identifier: issue.identifier,
+               title: issue.title,
+               project: issue.project
+                  ? { id: issue.project.id, name: issue.project.name, slug: issue.project.slug }
+                  : null,
+            })),
+         projects: projects
+            .filter(
+               (project) =>
+                  project.name.toLowerCase().includes(query) ||
+                  project.key.toLowerCase().includes(query)
+            )
+            .slice(0, 8)
+            .map((project) => ({
+               id: project._id,
+               name: project.name,
+               slug: project.slug,
+               key: project.key,
+            })),
+      };
+   },
+});
+
+export const myWork = query({
+   args: { tab: v.union(v.literal('assigned'), v.literal('activity')) },
+   handler: async (ctx, { tab }) => {
+      const [issues, statusOptions, priorityOptions] = await Promise.all([
+         listIssues(ctx),
+         listIssueStatusOptions(ctx),
+         listOptions(ctx, 'projectPriorities'),
+      ]);
+
+      if (tab === 'assigned') {
+         return {
+            issues: issues.filter((issue) => issue.assigneeId === 'me'),
+            statusOptions,
+            priorityOptions,
+            databaseError: null,
+            isConnected: true,
+         };
+      }
+
+      const activity = await ctx.db.query('issueActivity').withIndex('by_createdAt').collect();
+      const latestActivity = new Map<string, number>();
+      for (const event of activity) {
+         const current = latestActivity.get(event.issueId);
+         if (current === undefined || event.createdAt > current) {
+            latestActivity.set(event.issueId, event.createdAt);
+         }
+      }
+
+      return {
+         issues: issues
+            .map((issue) => ({
+               ...issue,
+               lastActivityAt: new Date(
+                  latestActivity.get(issue.id as Id<'issues'>) ??
+                     new Date(issue.updatedAt).getTime()
+               ).toISOString(),
+            }))
+            .toSorted((left, right) => right.lastActivityAt.localeCompare(left.lastActivityAt))
+            .slice(0, 50),
+         statusOptions,
+         priorityOptions,
+         databaseError: null,
+         isConnected: true,
+      };
    },
 });
 

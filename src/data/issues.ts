@@ -13,6 +13,14 @@ export function issuesPageQuery(args: IssuesPageArgs = {}) {
    });
 }
 
+export function myWorkQuery(tab: 'assigned' | 'activity') {
+   return convexQuery(api.issues.myWork, { tab });
+}
+
+export function globalIssueSearchQuery(query: string) {
+   return convexQuery(api.issues.globalSearch, { query });
+}
+
 export function issueDetailQuery(issueIdentifier: string) {
    return convexQuery(api.issues.detail, { issueIdentifier });
 }

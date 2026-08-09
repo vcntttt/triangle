@@ -1,20 +1,14 @@
 import { useViewerCommands, useViewerPreferences } from '@/src/data/viewer';
+import { defaultIssueFilters, type IssueFilters } from '@/lib/issue-view';
 
 type IssueFilterType = 'status' | 'assignee' | 'priority' | 'labels' | 'project' | 'area';
 
-const emptyIssueFilters: Record<IssueFilterType, string[]> = {
-   status: [],
-   assignee: [],
-   priority: [],
-   labels: [],
-   project: [],
-   area: [],
-};
+export type { IssueFilters };
 
 export function useFilterStore() {
    const preferences = useViewerPreferences();
    const { updatePreferences } = useViewerCommands();
-   const filters = preferences?.issueFilters ?? emptyIssueFilters;
+   const filters = { ...defaultIssueFilters, ...(preferences?.issueFilters ?? {}) };
 
    const setFilter = (type: IssueFilterType, ids: string[]) => {
       void updatePreferences({ issueFilters: { [type]: ids } });
@@ -33,7 +27,7 @@ export function useFilterStore() {
          );
       },
       clearFilters: () => {
-         void updatePreferences({ issueFilters: emptyIssueFilters });
+         void updatePreferences({ issueFilters: defaultIssueFilters });
       },
       clearFilterType: (type: IssueFilterType) => setFilter(type, []),
       hasActiveFilters: () => Object.values(filters).some((filterArray) => filterArray.length > 0),

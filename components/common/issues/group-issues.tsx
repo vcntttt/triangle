@@ -2,7 +2,7 @@
 
 import type { Issue, Status } from '@/lib/models';
 import { useIssuesData } from '@/components/common/issues/issues-data-context';
-import { useViewStore } from '@/store/view-store';
+import { useIssueDisplay } from './issues-display-context';
 import { cn } from '@/lib/utils';
 import { ChevronDown, ChevronRight, Plus } from 'lucide-react';
 import { FC, useRef } from 'react';
@@ -29,6 +29,7 @@ interface GroupIssuesProps {
    onToggleIssueSelection?: (issue: Issue) => void;
    onToggleParentCollapse?: (issueId: string) => void;
    onToggleStatusCollapse?: () => void;
+   allowCreate?: boolean;
 }
 
 export function GroupIssues({
@@ -43,8 +44,9 @@ export function GroupIssues({
    onToggleIssueSelection,
    onToggleParentCollapse,
    onToggleStatusCollapse,
+   allowCreate = true,
 }: GroupIssuesProps) {
-   const { viewType, listMode } = useViewStore();
+   const { viewType, listMode } = useIssueDisplay();
    const isViewTypeGrid = viewType === 'grid';
    const { openModal } = useCreateIssueStore();
    const listRows = useMemo(
@@ -105,17 +107,19 @@ export function GroupIssues({
                   <span className="text-sm leading-none text-muted-foreground">{count}</span>
                </div>
 
-               <Button
-                  className="size-6"
-                  size="icon"
-                  variant="ghost"
-                  onClick={(e) => {
-                     e.stopPropagation();
-                     openModal(status, null, null);
-                  }}
-               >
-                  <Plus className="size-4" />
-               </Button>
+               {allowCreate ? (
+                  <Button
+                     className="size-6"
+                     size="icon"
+                     variant="ghost"
+                     onClick={(e) => {
+                        e.stopPropagation();
+                        openModal(status, null, null);
+                     }}
+                  >
+                     <Plus className="size-4" />
+                  </Button>
+               ) : null}
             </div>
          </div>
 
