@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import type { Issue, LabelInterface, Priority, Project, Status, User } from '@/lib/models';
+import type { IssueEnvironment } from '@/lib/issue-environment';
 import { archivedStatus } from '@/lib/ui-catalog';
 import { isResolvedIssueStatus } from '@/lib/issue-status';
 import { useIssueCommands } from '@/src/data/issues';
@@ -36,6 +37,7 @@ interface IssuesDataContextValue {
    ) => void;
    updateIssueStatus: (issueId: string, newStatus: Status) => void;
    updateIssuePriority: (issueId: string, newPriority: Priority) => void;
+   updateIssueEnvironment: (issueId: string, environment: IssueEnvironment) => void;
    updateIssueAssignee: (issueId: string, newAssignee: User | null) => void;
    addIssueLabel: (issueId: string, label: LabelInterface) => void;
    removeIssueLabel: (issueId: string, labelId: string) => void;
@@ -53,6 +55,10 @@ const IssuesDataContext = createContext<IssuesDataContextValue | null>(null);
 const isArchivedIssue = (issue: Issue) => issue.status.id === archivedStatus.id;
 const isDoneStatusId = isResolvedIssueStatus;
 const sortByRankDesc = (issues: Issue[]) => issues.toSorted((a, b) => b.rank.localeCompare(a.rank));
+type IssueUpdatePayload = Omit<
+   Parameters<ReturnType<typeof useIssueCommands>['updateIssue']>[0],
+   'issueId'
+>;
 
 export function IssuesDataProvider({ issues, children }: { issues: Issue[]; children: ReactNode }) {
    const commands = useIssueCommands();
@@ -63,10 +69,7 @@ export function IssuesDataProvider({ issues, children }: { issues: Issue[]; chil
       const getSubissues = (parentIssueId: string) =>
          sortByRankDesc(issues.filter((issue) => issue.parentIssueId === parentIssueId));
 
-      const persistIssuePatch = (
-         issueId: string,
-         payload: Parameters<typeof commands.updateIssue>[0]
-      ) => {
+      const persistIssuePatch = (issueId: string, payload: IssueUpdatePayload) => {
          void commands.updateIssue({ issueId, ...payload }).catch((error) => {
             console.error('Failed to persist issue update.', error);
          });
@@ -194,6 +197,9 @@ export function IssuesDataProvider({ issues, children }: { issues: Issue[]; chil
          },
          updateIssuePriority: (issueId, newPriority) => {
             persistIssuePatch(issueId, { priority: newPriority.id });
+         },
+         updateIssueEnvironment: (issueId, environment) => {
+            persistIssuePatch(issueId, { environment });
          },
          updateIssueAssignee: (issueId, newAssignee) => {
             persistIssuePatch(issueId, { assigneeId: newAssignee?.id ?? null });

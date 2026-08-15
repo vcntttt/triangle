@@ -17,6 +17,7 @@ import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { IssueContextMenu } from './issue-context-menu';
 import { cn } from '@/lib/utils';
 import { useIssueDisplay } from './issues-display-context';
+import { ProductionEnvironmentBadge } from './issue-environment';
 
 export const IssueDragType = 'ISSUE';
 type IssueGridProps = {
@@ -42,7 +43,10 @@ function IssueDragPreview({ issue }: { issue: Issue }) {
 
          <div className="block mb-3">
             <div className="mb-1 text-xs font-medium text-muted-foreground">{issue.identifier}</div>
-            <h3 className="text-sm font-semibold line-clamp-2 hover:underline">{issue.title}</h3>
+            <div className="flex items-start gap-2">
+               <h3 className="text-sm font-semibold line-clamp-2 hover:underline">{issue.title}</h3>
+               {issue.environment === 'production' && <ProductionEnvironmentBadge />}
+            </div>
          </div>
 
          <div className="flex flex-wrap gap-1.5 mb-3 min-h-[1.5rem]">
@@ -173,7 +177,10 @@ export const IssueGrid = memo(function IssueGrid({
                            {issue.identifier}
                         </div>
                      )}
-                     <h3 className="text-sm font-semibold line-clamp-2">{issue.title}</h3>
+                     <div className="flex items-start gap-2">
+                        <h3 className="text-sm font-semibold line-clamp-2">{issue.title}</h3>
+                        {issue.environment === 'production' && <ProductionEnvironmentBadge />}
+                     </div>
                   </div>
                   {(visibleProperties.labels ||
                      visibleProperties.project ||

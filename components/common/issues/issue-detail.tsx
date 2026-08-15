@@ -36,6 +36,7 @@ import { ParentIssueSelector } from './parent-issue-selector';
 import { cn } from '@/lib/utils';
 import { priorities, status as statusOptions } from '@/lib/ui-catalog';
 import { IssueChip, issueChipClassName } from './issue-chip';
+import { IssueEnvironmentSelector } from './issue-environment';
 import { parseIssueInlineTokens } from '@/lib/issue-inline-tokens';
 import { useProjectOptions } from '@/hooks/use-project-options';
 import { useLabelOptions } from '@/hooks/use-label-options';
@@ -83,7 +84,8 @@ function IssueDetailProperties({
    canBecomeSubissue: boolean;
    condensed?: boolean;
 }) {
-   const { updateIssueProject, updateIssueArea, updateIssueParent } = useIssuesData();
+   const { updateIssueProject, updateIssueArea, updateIssueParent, updateIssueEnvironment } =
+      useIssuesData();
 
    const handleProjectChange = (project: Issue['project']) => {
       updateIssueProject(issue.id, project);
@@ -108,6 +110,10 @@ function IssueDetailProperties({
       <div className="flex flex-wrap items-center gap-2">
          <StatusSelector status={issue.status} issueId={issue.id} display="chip" />
          <PrioritySelector priority={issue.priority} issueId={issue.id} display="chip" />
+         <IssueEnvironmentSelector
+            environment={issue.environment}
+            onChange={(environment) => updateIssueEnvironment(issue.id, environment)}
+         />
          <AssigneeUser user={issue.assignee} issueId={issue.id} />
          <ProjectSelector
             project={issue.project}
@@ -383,6 +389,7 @@ export function IssueDetail({
             description: newSubissueDescription.trim() || undefined,
             status: statusOptions.find((item) => item.id === 'to-do')?.id ?? statusOptions[0].id,
             priority: priorities.find((item) => item.id === 'no-priority')?.id ?? priorities[0].id,
+            environment: presentationIssue.environment,
             assigneeId: currentUser.id,
             parentIssueId: presentationIssue.id,
             projectId: finalProject?.id ?? null,

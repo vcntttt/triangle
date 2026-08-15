@@ -46,6 +46,8 @@ import { AreaSelector } from './area-selector';
 import { LabelSelector } from './label-selector';
 import { EstimatedHoursSelector } from './estimated-hours-selector';
 import { InlineTokenSuggestions } from './inline-token-suggestions';
+import { IssueEnvironmentSelector } from '@/components/common/issues/issue-environment';
+import { defaultIssueEnvironment } from '@/lib/issue-environment';
 import { useIssueCommands } from '@/src/data/issues';
 
 type TitlePreviewSegment =
@@ -207,6 +209,7 @@ export function CreateNewIssue() {
          title: '',
          description: '',
          status: defaultStatus || status.find((s) => s.id === 'to-do')!,
+         environment: defaultIssueEnvironment,
          assignee: currentUser,
          priority: priorities.find((p) => p.id === 'no-priority')!,
          labels: [],
@@ -218,6 +221,8 @@ export function CreateNewIssue() {
          parentIssueId: defaultParentIssue?.id ?? null,
          parent: defaultParentIssue ?? null,
          subissues: [],
+         blockedBy: [],
+         blocks: [],
          rank: Date.now().toString(36),
       };
    }, [currentUser, defaultArea, defaultParentIssue, defaultProject, defaultStatus]);
@@ -445,6 +450,7 @@ export function CreateNewIssue() {
             description: addIssueForm.description,
             status: addIssueForm.status.id,
             priority: addIssueForm.priority.id,
+            environment: addIssueForm.environment,
             assigneeId: addIssueForm.assignee?.id ?? null,
             estimatedHours: addIssueForm.estimatedHours ?? null,
             dueDate: addIssueForm.dueDate ?? null,
@@ -708,6 +714,12 @@ export function CreateNewIssue() {
                      priority={addIssueForm.priority}
                      onChange={(newPriority) =>
                         setAddIssueForm((current) => ({ ...current, priority: newPriority }))
+                     }
+                  />
+                  <IssueEnvironmentSelector
+                     environment={addIssueForm.environment}
+                     onChange={(environment) =>
+                        setAddIssueForm((current) => ({ ...current, environment }))
                      }
                   />
                   <AssigneeSelector

@@ -1,5 +1,6 @@
 import type { ProjectStatusOption } from './projects';
 import type { ProjectArea } from './projects';
+import type { IssueEnvironment } from '@/lib/issue-environment';
 
 export interface IssueSummary {
    id: string;
@@ -21,6 +22,7 @@ export interface IssueListItem {
    description: string | null;
    status: string;
    priority: string;
+   environment: IssueEnvironment;
    assigneeId: string | null;
    rank: string;
    estimatedHours: string | null;
@@ -66,6 +68,7 @@ export interface CreateIssueInput {
    description?: string;
    status: string;
    priority: string;
+   environment?: IssueEnvironment;
    assigneeId?: string | null;
    rank: string;
    estimatedHours?: number | null;
@@ -81,6 +84,7 @@ export interface UpdateIssueInput {
    description?: string | null;
    status?: string;
    priority?: string;
+   environment?: IssueEnvironment;
    assigneeId?: string | null;
    estimatedHours?: number | null;
    dueDate?: string | null;

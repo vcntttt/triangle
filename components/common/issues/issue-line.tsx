@@ -19,6 +19,7 @@ import { IssueChip, issueChipIconClassName } from './issue-chip';
 import { IssueDependencyIndicator } from './issue-dependencies';
 import { memo } from 'react';
 import { useIssueDisplay } from './issues-display-context';
+import { ProductionEnvironmentBadge } from './issue-environment';
 
 const formatEstimatedHours = (estimatedHours?: number) => {
    if (estimatedHours === undefined) {
@@ -138,6 +139,7 @@ export const IssueLine = memo(function IssueLine({
                            <span className="text-sm font-medium leading-5 truncate hover:underline">
                               {issue.title}
                            </span>
+                           {issue.environment === 'production' && <ProductionEnvironmentBadge />}
                            {childrenCount > 0 && (
                               <span className="inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[11px] text-muted-foreground">
                                  <GitBranchPlus className="size-3" />

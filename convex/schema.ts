@@ -275,6 +275,7 @@ export default defineSchema({
       description: v.optional(v.string()),
       status: v.string(),
       priority: v.string(),
+      environment: v.optional(v.union(v.literal('development'), v.literal('production'))),
       assigneeId: v.optional(v.string()),
       resolution: v.optional(v.string()),
       resolvedAt: v.optional(v.number()),

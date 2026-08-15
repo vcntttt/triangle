@@ -7,6 +7,7 @@ import { listOptions } from './projects';
 
 const nowIso = (value: number) => new Date(value).toISOString();
 const toNullable = <T>(value: T | undefined): T | null => value ?? null;
+const defaultIssueEnvironment = 'development' as const;
 const resolvedIssueStatusIds = new Set(['completed', 'archived', 'canceled', 'cancelled']);
 const isResolvedIssueStatus = (statusId: string) => resolvedIssueStatusIds.has(statusId);
 
@@ -286,6 +287,7 @@ function serializeIssueBase(
       description: toNullable(issue.description),
       status: issue.status,
       priority: issue.priority,
+      environment: issue.environment ?? defaultIssueEnvironment,
       assigneeId: toNullable(issue.assigneeId),
       resolution: toNullable(issue.resolution),
       resolvedAt: issue.resolvedAt ? nowIso(issue.resolvedAt) : null,
@@ -616,6 +618,7 @@ export const create = mutation({
       description: v.optional(v.string()),
       status: v.string(),
       priority: v.string(),
+      environment: v.optional(v.union(v.literal('development'), v.literal('production'))),
       assigneeId: v.optional(v.union(v.string(), v.null())),
       rank: v.optional(v.string()),
       estimatedHours: v.optional(v.union(v.number(), v.null())),
@@ -648,6 +651,7 @@ export const create = mutation({
          description: input.description || undefined,
          status: input.status,
          priority: input.priority,
+         environment: input.environment ?? defaultIssueEnvironment,
          assigneeId: input.assigneeId ?? undefined,
          rank: input.rank ?? (await createIssueRank(ctx)),
          estimatedHours:
@@ -688,6 +692,7 @@ export const createWithSubissues = mutation({
       description: v.optional(v.string()),
       status: v.string(),
       priority: v.string(),
+      environment: v.optional(v.union(v.literal('development'), v.literal('production'))),
       assigneeId: v.optional(v.union(v.string(), v.null())),
       estimatedHours: v.optional(v.union(v.number(), v.null())),
       dueDate: v.optional(v.union(v.string(), v.null())),
@@ -716,6 +721,7 @@ export const createWithSubissues = mutation({
          description: input.description || undefined,
          status: input.status,
          priority: input.priority,
+         environment: input.environment ?? defaultIssueEnvironment,
          assigneeId: input.assigneeId ?? undefined,
          rank,
          estimatedHours:
@@ -755,6 +761,7 @@ export const createWithSubissues = mutation({
             description: undefined,
             status: input.status,
             priority: input.priority,
+            environment: input.environment ?? defaultIssueEnvironment,
             assigneeId: input.assigneeId ?? undefined,
             rank: await createIssueRank(ctx),
             estimatedHours: undefined,
@@ -790,6 +797,7 @@ export const update = mutation({
       description: v.optional(v.union(v.string(), v.null())),
       status: v.optional(v.string()),
       priority: v.optional(v.string()),
+      environment: v.optional(v.union(v.literal('development'), v.literal('production'))),
       assigneeId: v.optional(v.union(v.string(), v.null())),
       estimatedHours: v.optional(v.union(v.number(), v.null())),
       dueDate: v.optional(v.union(v.string(), v.null())),
@@ -842,6 +850,7 @@ export const update = mutation({
             ? { description: input.description ?? undefined }
             : {}),
          ...(input.priority !== undefined ? { priority: input.priority } : {}),
+         ...(input.environment !== undefined ? { environment: input.environment } : {}),
          ...(input.assigneeId !== undefined ? { assigneeId: input.assigneeId ?? undefined } : {}),
          ...(input.estimatedHours !== undefined
             ? { estimatedHours: input.estimatedHours?.toString() ?? undefined }
@@ -901,6 +910,17 @@ export const update = mutation({
             message: 'cambió la prioridad',
             fromValue: activityValue(issue.priority),
             toValue: activityValue(input.priority),
+            createdAt: updatedAt,
+         });
+      }
+      const previousEnvironment = issue.environment ?? defaultIssueEnvironment;
+      if (input.environment !== undefined && input.environment !== previousEnvironment) {
+         await recordIssueActivity(ctx, {
+            issueId: id,
+            type: 'environment_changed',
+            message: 'cambió el entorno',
+            fromValue: previousEnvironment,
+            toValue: input.environment,
             createdAt: updatedAt,
          });
       }

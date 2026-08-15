@@ -1,4 +1,5 @@
 import type { ComponentType, FC, SVGProps } from 'react';
+import type { IssueEnvironment } from './issue-environment';
 
 export type ProjectIconType = 'lucide' | 'emoji';
 export type ProjectSource = 'internal' | 'external';
@@ -136,6 +137,7 @@ export interface Issue {
    title: string;
    description: string;
    status: Status;
+   environment: IssueEnvironment;
    assignee: User | null;
    priority: Priority;
    labels: LabelInterface[];

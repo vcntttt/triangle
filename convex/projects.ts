@@ -43,6 +43,7 @@ const projectSourceValues = ['internal', 'external'] as const;
 
 const nowIso = (value: number) => new Date(value).toISOString();
 const toNullable = <T>(value: T | undefined): T | null => value ?? null;
+const defaultIssueEnvironment = 'development' as const;
 
 function toOptionId(value: string): string {
    return value
@@ -235,6 +236,7 @@ function serializeIssueBase(
       description: toNullable(issue.description),
       status: issue.status,
       priority: issue.priority,
+      environment: issue.environment ?? defaultIssueEnvironment,
       assigneeId: toNullable(issue.assigneeId),
       rank: issue.rank,
       estimatedHours: toNullable(issue.estimatedHours),

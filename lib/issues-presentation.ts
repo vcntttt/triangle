@@ -8,6 +8,7 @@ import {
 } from '@/lib/ui-catalog';
 import { toPresentationProject } from './projects-presentation';
 import type { ProjectOptionLike } from './projects-presentation';
+import { defaultIssueEnvironment } from './issue-environment';
 
 const parseEstimatedHours = (estimatedHours: string | null): number | undefined => {
    if (estimatedHours === null) {
@@ -42,6 +43,7 @@ export const toPresentationIssue = (
       status: resolveStatus(issue.status),
       assignee: resolveCurrentAssignee(issue.assigneeId, viewer),
       priority: resolvePriority(issue.priority),
+      environment: issue.environment ?? defaultIssueEnvironment,
       labels: issue.labels,
       createdAt: issue.createdAt,
       lastActivityAt: issue.lastActivityAt,
