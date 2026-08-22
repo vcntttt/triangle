@@ -40,11 +40,19 @@ export const update = mutation({
       const id = input.labelId as Id<'labels'>;
       const label = await ctx.db.get(id);
       if (!label) throw new Error('Label not found.');
+      const nextName = input.name?.trim();
+      if (nextName && nextName !== label.name) {
+         const clash = await ctx.db
+            .query('labels')
+            .withIndex('by_name', (q) => q.eq('name', nextName))
+            .unique();
+         if (clash) throw new Error('A label with this name already exists.');
+      }
       await ctx.db.patch(id, {
-         ...(input.name ? { name: input.name.trim() } : {}),
+         ...(nextName ? { name: nextName } : {}),
          ...(input.color ? { color: input.color } : {}),
       });
-      return { id, name: input.name?.trim() ?? label.name, color: input.color ?? label.color };
+      return { id, name: nextName ?? label.name, color: input.color ?? label.color };
    },
 });
 
