@@ -1,4 +1,4 @@
-import { useViewerCommands, useViewerPreferences } from '@/src/data/viewer';
+import { useUpdatePreferences, useViewerPreferences } from '@/src/data/viewer';
 
 export type ProjectsSort =
    | 'title-asc'
@@ -20,7 +20,7 @@ const emptyProjectFilters = {
 
 export function useProjectsFilterStore() {
    const preferences = useViewerPreferences();
-   const { updatePreferences } = useViewerCommands();
+   const updatePreferences = useUpdatePreferences();
    const projectFilters = preferences?.projectFilters ?? emptyProjectFilters;
    const filters = {
       health: projectFilters.health,

@@ -1,4 +1,4 @@
-import { useViewerCommands, useViewerPreferences } from '@/src/data/viewer';
+import { useUpdatePreferences, useViewerPreferences } from '@/src/data/viewer';
 import {
    defaultIssueDisplay,
    type IssueDisplayConfig,
@@ -22,7 +22,7 @@ export type {
 
 export function useViewStore() {
    const preferences = useViewerPreferences();
-   const { updatePreferences } = useViewerCommands();
+   const updatePreferences = useUpdatePreferences();
    const issueView = {
       ...defaultIssueDisplay,
       ...(preferences?.issueView ?? {}),

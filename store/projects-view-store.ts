@@ -1,12 +1,7 @@
-import { useViewerCommands, useViewerPreferences } from '@/src/data/viewer';
+import { useUpdatePreferences, useViewerPreferences } from '@/src/data/viewer';
 
 export type ProjectDisplayProperty =
-   | 'health'
-   | 'priority'
-   | 'lead'
-   | 'targetDate'
-   | 'status'
-   | 'attention';
+   'health' | 'priority' | 'lead' | 'targetDate' | 'status' | 'attention';
 export type ProjectViewType = 'list' | 'board';
 export type ProjectBoardGroupBy = 'status' | 'priority' | 'attention' | 'health';
 
@@ -26,7 +21,7 @@ const defaultProjectView = {
 
 export function useProjectsViewStore() {
    const preferences = useViewerPreferences();
-   const { updatePreferences } = useViewerCommands();
+   const updatePreferences = useUpdatePreferences();
    const projectView = preferences?.projectView ?? defaultProjectView;
 
    return {

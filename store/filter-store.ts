@@ -1,4 +1,4 @@
-import { useViewerCommands, useViewerPreferences } from '@/src/data/viewer';
+import { useUpdatePreferences, useViewerPreferences } from '@/src/data/viewer';
 import { defaultIssueFilters, type IssueFilters } from '@/lib/issue-view';
 
 type IssueFilterType = 'status' | 'assignee' | 'priority' | 'labels' | 'project' | 'area';
@@ -7,7 +7,7 @@ export type { IssueFilters };
 
 export function useFilterStore() {
    const preferences = useViewerPreferences();
-   const { updatePreferences } = useViewerCommands();
+   const updatePreferences = useUpdatePreferences();
    const filters = { ...defaultIssueFilters, ...(preferences?.issueFilters ?? {}) };
 
    const setFilter = (type: IssueFilterType, ids: string[]) => {
