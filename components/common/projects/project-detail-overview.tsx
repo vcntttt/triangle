@@ -358,7 +358,12 @@ export function ProjectOverview({
       return router.navigate({
          to: '/projects/$projectSlug',
          params: { projectSlug: project.slug },
-         search: { tab: 'issues', issue: issue.identifier },
+         search: (prev) => ({
+            tab: 'issues' as const,
+            issue: issue.identifier,
+            scope: prev.scope,
+            view: prev.view,
+         }),
       });
    };
 
@@ -366,7 +371,7 @@ export function ProjectOverview({
       return router.navigate({
          to: '/projects/$projectSlug',
          params: { projectSlug: project.slug },
-         search: { tab: 'issues' },
+         search: (prev) => ({ tab: 'issues' as const, scope: prev.scope, view: prev.view }),
          replace: true,
       });
    };

@@ -690,7 +690,11 @@ function IssuesWorkspaceContent({
             navigate({
                to: '/issues/$issueIdentifier',
                params: { issueIdentifier: nextIssue.identifier },
-               search: projectFilterId ? { projectId: projectFilterId } : {},
+               search: (prev) => ({
+                  ...(projectFilterId ? { projectId: projectFilterId } : {}),
+                  scope: prev.scope,
+                  view: prev.view,
+               }),
                replace: true,
             })
          );
@@ -705,7 +709,11 @@ function IssuesWorkspaceContent({
       runSelectionChange(undefined, () =>
          navigate({
             to: '/issues',
-            search: projectFilterId ? { projectId: projectFilterId } : {},
+            search: (prev) => ({
+               ...(projectFilterId ? { projectId: projectFilterId } : {}),
+               scope: prev.scope,
+               view: prev.view,
+            }),
          })
       );
    }
@@ -720,7 +728,11 @@ function IssuesWorkspaceContent({
          navigate({
             to: '/issues/$issueIdentifier',
             params: { issueIdentifier: issue.identifier },
-            search: projectFilterId ? { projectId: projectFilterId } : {},
+            search: (prev) => ({
+               ...(projectFilterId ? { projectId: projectFilterId } : {}),
+               scope: prev.scope,
+               view: prev.view,
+            }),
          })
       );
    }
@@ -734,7 +746,11 @@ function IssuesWorkspaceContent({
       runSelectionChange(undefined, () =>
          navigate({
             to: '/issues',
-            search: projectFilterId ? { projectId: projectFilterId } : {},
+            search: (prev) => ({
+               ...(projectFilterId ? { projectId: projectFilterId } : {}),
+               scope: prev.scope,
+               view: prev.view,
+            }),
          })
       );
    }
