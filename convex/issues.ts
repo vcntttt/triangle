@@ -9,8 +9,17 @@ import { listOptions } from './projects';
 const nowIso = (value: number) => new Date(value).toISOString();
 const toNullable = <T>(value: T | undefined): T | null => value ?? null;
 const defaultIssueEnvironment = 'development' as const;
-const resolvedIssueStatusIds = new Set(['completed', 'archived', 'canceled', 'cancelled']);
-const isResolvedIssueStatus = (statusId: string) => resolvedIssueStatusIds.has(statusId);
+async function getStatusOption(ctx: MutationCtx, status: string) {
+   const stored = await ctx.db
+      .query('issueStatuses')
+      .withIndex('by_option_id', (q) => q.eq('id', status))
+      .unique();
+   return stored ?? defaultIssueStatuses.find((item) => item.id === status) ?? null;
+}
+
+async function getStatusType(ctx: MutationCtx, statusId: string): Promise<string | null> {
+   return (await getStatusOption(ctx, statusId))?.type ?? null;
+}
 
 function activityValue(value: string | null | undefined) {
    if (!value) return 'Ninguno';
@@ -222,11 +231,7 @@ async function listIssues(ctx: QueryCtx | MutationCtx, projectId?: Id<'projects'
 }
 
 async function assertCanEnterStatus(ctx: MutationCtx, issueId: Id<'issues'>, status: string) {
-   const stored = await ctx.db
-      .query('issueStatuses')
-      .withIndex('by_option_id', (q) => q.eq('id', status))
-      .unique();
-   const option = stored ?? defaultIssueStatuses.find((item) => item.id === status);
+   const option = await getStatusOption(ctx, status);
    if (!option) throw new Error(`Unknown issue status: ${status}.`);
    if (option.type === 'unstarted') return;
    const relations = await ctx.db
@@ -236,7 +241,14 @@ async function assertCanEnterStatus(ctx: MutationCtx, issueId: Id<'issues'>, sta
    const blockers = await Promise.all(
       relations.map((relation) => ctx.db.get(relation.blockerIssueId))
    );
-   const pending = blockers.filter((issue) => issue && !isResolvedIssueStatus(issue.status));
+   const pending = [];
+   for (const blocker of blockers) {
+      if (!blocker) continue;
+      const resolved =
+         (await getStatusType(ctx, blocker.status)) === 'completed' ||
+         blocker.status === 'archived';
+      if (!resolved) pending.push(blocker);
+   }
    if (pending.length > 0) {
       throw new Error(
          `Issue is blocked by: ${pending.map((issue) => issue!.identifier).join(', ')}. Complete every blocker before starting this issue.`
@@ -644,6 +656,9 @@ export const create = mutation({
          ctx,
          project?.key ?? 'TRI'
       );
+      if (!(await getStatusOption(ctx, input.status))) {
+         throw new Error(`Unknown issue status: ${input.status}.`);
+      }
       const now = Date.now();
       const issueId = await ctx.db.insert('issues', {
          identifier,
@@ -714,6 +729,9 @@ export const createWithSubissues = mutation({
          createIssueRank(ctx),
       ]);
       const { identifier, projectIssueNumber } = issueIdentifier;
+      if (!(await getStatusOption(ctx, input.status))) {
+         throw new Error(`Unknown issue status: ${input.status}.`);
+      }
       const now = Date.now();
       const issueId = await ctx.db.insert('issues', {
          identifier,
@@ -1066,20 +1084,33 @@ export const setStatus = mutation({
 
          await Promise.all(
             children.map(async (child) => {
-               if (isResolvedIssueStatus(child.status)) return;
+               const resolved =
+                  (await getStatusType(ctx, child.status)) === 'completed' ||
+                  child.status === 'archived';
+               if (resolved) return;
                await transitionIssueStatus(ctx, child, status, now);
             })
          );
       }
 
-      if (
-         advanceParent &&
-         issue.parentIssueId &&
-         (status === 'in-progress' || status === 'completed')
-      ) {
-         const parent = await ctx.db.get(issue.parentIssueId);
-         if (parent?.status === 'to-do') {
-            await transitionIssueStatus(ctx, parent, 'in-progress', now);
+      if (advanceParent && issue.parentIssueId) {
+         const statusType = await getStatusType(ctx, status);
+         if (statusType === 'started' || statusType === 'completed') {
+            const parent = await ctx.db.get(issue.parentIssueId);
+            const parentType = parent ? await getStatusType(ctx, parent.status) : null;
+            if (parent && parentType === 'unstarted') {
+               const startedStatuses = (
+                  await ctx.db.query('issueStatuses').withIndex('by_position').collect()
+               )
+                  .filter((row) => row.type === 'started')
+                  .toSorted((left, right) => left.position - right.position);
+               await transitionIssueStatus(
+                  ctx,
+                  parent,
+                  startedStatuses[0]?.id ?? 'in-progress',
+                  now
+               );
+            }
          }
       }
 
@@ -1300,10 +1331,11 @@ export const addBlocker = mutation({
             .unique(),
       ]);
       if (!blocked || !blocker) throw new Error('Issue not found.');
-      if (
-         !isResolvedIssueStatus(blocker.status) &&
-         ['in-progress', 'technical-review', 'completed'].includes(blocked.status)
-      )
+      const blockedType = await getStatusType(ctx, blocked.status);
+      const blockerResolved =
+         (await getStatusType(ctx, blocker.status)) === 'completed' ||
+         blocker.status === 'archived';
+      if (!blockerResolved && blockedType !== null && blockedType !== 'unstarted')
          throw new Error('Cannot add an incomplete blocker to an issue that has already started.');
       if (existing) return existing._id;
       const visited = new Set<string>();
