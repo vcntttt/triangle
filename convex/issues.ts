@@ -625,6 +625,55 @@ export const myWork = query({
    },
 });
 
+// Deletes an issue and everything attached to it: reparents children,
+// removes relations in both directions (including cross-project blockers),
+// comments, activity and artifacts. Shared by `remove` and project deletion.
+export async function removeIssueCompletely(ctx: MutationCtx, issueId: Id<'issues'>) {
+   const children = await ctx.db
+      .query('issues')
+      .withIndex('by_parent_issue', (q) => q.eq('parentIssueId', issueId))
+      .collect();
+
+   await Promise.all(
+      children.map((child) =>
+         ctx.db.patch(child._id, { parentIssueId: undefined, updatedAt: Date.now() })
+      )
+   );
+   const [outgoingRelations, incomingRelations] = await Promise.all([
+      ctx.db
+         .query('issueRelations')
+         .withIndex('by_blocker', (q) => q.eq('blockerIssueId', issueId))
+         .collect(),
+      ctx.db
+         .query('issueRelations')
+         .withIndex('by_blocked', (q) => q.eq('blockedIssueId', issueId))
+         .collect(),
+   ]);
+   await Promise.all(
+      [...outgoingRelations, ...incomingRelations].map((relation) => ctx.db.delete(relation._id))
+   );
+   const [comments, activity, artifacts] = await Promise.all([
+      ctx.db
+         .query('issueComments')
+         .withIndex('by_issue_createdAt', (q) => q.eq('issueId', issueId))
+         .collect(),
+      ctx.db
+         .query('issueActivity')
+         .withIndex('by_issue_createdAt', (q) => q.eq('issueId', issueId))
+         .collect(),
+      ctx.db
+         .query('issueArtifacts')
+         .withIndex('by_issue_createdAt', (q) => q.eq('issueId', issueId))
+         .collect(),
+   ]);
+   await Promise.all([
+      ...comments.map((comment) => ctx.db.delete(comment._id)),
+      ...activity.map((event) => ctx.db.delete(event._id)),
+      ...artifacts.map((artifact) => ctx.db.delete(artifact._id)),
+   ]);
+   await ctx.db.delete(issueId);
+}
+
 export const create = mutation({
    args: {
       title: v.string(),
@@ -1450,49 +1499,7 @@ export const remove = mutation({
       const issue = await ctx.db.get(id);
       if (!issue) return false;
 
-      const children = await ctx.db
-         .query('issues')
-         .withIndex('by_parent_issue', (q) => q.eq('parentIssueId', id))
-         .collect();
-
-      await Promise.all(
-         children.map((child) =>
-            ctx.db.patch(child._id, { parentIssueId: undefined, updatedAt: Date.now() })
-         )
-      );
-      const [outgoingRelations, incomingRelations] = await Promise.all([
-         ctx.db
-            .query('issueRelations')
-            .withIndex('by_blocker', (q) => q.eq('blockerIssueId', id))
-            .collect(),
-         ctx.db
-            .query('issueRelations')
-            .withIndex('by_blocked', (q) => q.eq('blockedIssueId', id))
-            .collect(),
-      ]);
-      await Promise.all(
-         [...outgoingRelations, ...incomingRelations].map((relation) => ctx.db.delete(relation._id))
-      );
-      const [comments, activity, artifacts] = await Promise.all([
-         ctx.db
-            .query('issueComments')
-            .withIndex('by_issue_createdAt', (q) => q.eq('issueId', id))
-            .collect(),
-         ctx.db
-            .query('issueActivity')
-            .withIndex('by_issue_createdAt', (q) => q.eq('issueId', id))
-            .collect(),
-         ctx.db
-            .query('issueArtifacts')
-            .withIndex('by_issue_createdAt', (q) => q.eq('issueId', id))
-            .collect(),
-      ]);
-      await Promise.all([
-         ...comments.map((comment) => ctx.db.delete(comment._id)),
-         ...activity.map((event) => ctx.db.delete(event._id)),
-         ...artifacts.map((artifact) => ctx.db.delete(artifact._id)),
-      ]);
-      await ctx.db.delete(id);
+      await removeIssueCompletely(ctx, id);
 
       return true;
    },

@@ -2,6 +2,7 @@ import { v } from 'convex/values';
 import type { Doc, Id } from './_generated/dataModel';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import { listIssueStatusOptions } from './issueStatusOptions';
+import { removeIssueCompletely } from './issues';
 
 type ProjectHealth = 'no-update' | 'off-track' | 'on-track' | 'at-risk';
 type ProjectSource = 'internal' | 'external';
@@ -1379,7 +1380,7 @@ export const deleteProject = mutation({
             )
          );
       } else {
-         await Promise.all(issues.map((issue) => ctx.db.delete(issue._id)));
+         await Promise.all(issues.map((issue) => removeIssueCompletely(ctx, issue._id)));
       }
 
       await Promise.all(updates.map((update) => ctx.db.delete(update._id)));
