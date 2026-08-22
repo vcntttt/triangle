@@ -34,33 +34,27 @@ self.addEventListener('fetch', (event) => {
    }
 
    if (request.mode === 'navigate') {
-      event.respondWith(
-         fetch(request)
-            .then((response) => {
-               if (response.ok) {
-                  const responseCopy = response.clone();
-                  caches.open(CACHE_NAME).then((cache) => cache.put(request, responseCopy));
-               }
-               return response;
-            })
-            .catch(() => caches.match(request).then((cachedResponse) => cachedResponse || caches.match('/projects')))
+      const responsePromise = fetch(request).catch(() =>
+         caches.match(request).then((cachedResponse) => cachedResponse || caches.match('/projects'))
+      );
+      event.respondWith(responsePromise);
+      event.waitUntil(
+         responsePromise.then((response) => {
+            if (!response.ok) return;
+            return caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
+         })
       );
       return;
    }
 
    if (url.pathname.startsWith('/assets/')) {
-      event.respondWith(
-         caches.match(request).then(
-            (cachedResponse) =>
-               cachedResponse ||
-               fetch(request).then((response) => {
-                  if (response.ok) {
-                     const responseCopy = response.clone();
-                     caches.open(CACHE_NAME).then((cache) => cache.put(request, responseCopy));
-                  }
-                  return response;
-               })
-         )
+      const responsePromise = caches.match(request).then((cachedResponse) => cachedResponse || fetch(request));
+      event.respondWith(responsePromise);
+      event.waitUntil(
+         responsePromise.then((response) => {
+            if (!response.ok) return;
+            return caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
+         })
       );
    }
 });
