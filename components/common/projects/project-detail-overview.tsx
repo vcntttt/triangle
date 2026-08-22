@@ -534,14 +534,6 @@ export function ProjectOverview({
                      <ProjectAreasSection projectId={project.id} initialAreas={areas} />
 
                      <section className="mt-8 border-t pt-5">
-                        <button
-                           type="button"
-                           className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground"
-                           onClick={() => setEditingDescription(true)}
-                        >
-                           Description
-                           <span className="text-xs">⌄</span>
-                        </button>
                         <div className="mt-3 max-w-5xl whitespace-pre-wrap text-sm leading-6 text-foreground">
                            <InlineEditableText
                               value={project.description || ''}
