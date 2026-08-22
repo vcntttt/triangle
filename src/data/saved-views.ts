@@ -3,6 +3,7 @@ import { useMutation } from 'convex/react';
 import { api } from '@convex/_generated/api';
 import type { Id } from '@convex/_generated/dataModel';
 import type { IssueDisplayConfig, IssueFilters } from '@/lib/issue-view';
+import { asConvexId } from './id-guard';
 
 export type SavedViewTarget = 'global' | 'project';
 export type SavedViewScope = 'active' | 'backlog' | 'all';
@@ -26,13 +27,13 @@ export function savedViewsQuery(
 ) {
    return convexQuery(api.savedViews.list, {
       target: args.target,
-      projectId: args.projectId as Id<'projects'> | undefined,
+      projectId: asConvexId(args.projectId) as Id<'projects'> | undefined,
    });
 }
 
 export function savedViewQuery(viewId?: string) {
    return convexQuery(api.savedViews.get, {
-      viewId: viewId as Id<'savedViews'>,
+      viewId: asConvexId(viewId) as Id<'savedViews'> | undefined,
    });
 }
 

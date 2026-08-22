@@ -2,6 +2,7 @@ import { convexQuery } from '@convex-dev/react-query';
 import { useMutation } from 'convex/react';
 import { api } from '@convex/_generated/api';
 import type { Id } from '@convex/_generated/dataModel';
+import { asConvexId } from './id-guard';
 
 export interface IssuesPageArgs {
    projectId?: Id<'projects'> | string | null;
@@ -9,7 +10,7 @@ export interface IssuesPageArgs {
 
 export function issuesPageQuery(args: IssuesPageArgs = {}) {
    return convexQuery(api.issues.page, {
-      projectId: args.projectId ?? undefined,
+      projectId: asConvexId(args.projectId ?? undefined),
    });
 }
 
