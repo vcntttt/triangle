@@ -6,7 +6,7 @@ export interface ExecutionPathIssue {
    status: string;
    priority: string;
    assigneeId: string | null;
-   estimatedHours: number | null;
+   estimatedHours: string | null;
    dueDate: string | null;
    project: { id: string; name: string; slug: string } | null;
    area: { id: string; name: string } | null;
