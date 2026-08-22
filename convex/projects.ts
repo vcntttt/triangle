@@ -1054,11 +1054,14 @@ export const updateProjectUpdate = mutation({
          areaMentions,
          updatedAt: now,
       });
-      await ctx.db.patch(update.projectId, {
-         health: input.health,
-         attention: input.attention ?? update.attention,
-         updatedAt: now,
-      });
+      const latest = await getLatestProjectUpdate(ctx, update.projectId);
+      if (latest && latest._id === updateId) {
+         await ctx.db.patch(update.projectId, {
+            health: input.health,
+            attention: input.attention ?? update.attention,
+            updatedAt: now,
+         });
+      }
 
       return serializeProjectUpdate(ctx, (await ctx.db.get(updateId))!);
    },
