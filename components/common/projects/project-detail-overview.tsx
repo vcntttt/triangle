@@ -76,7 +76,7 @@ export function ProjectToolbar({
          </div>
          <div className="flex items-center gap-2">
             {showIssueDisplay && project ? (
-               <SaveViewButton projectId={project.id} scope={scope} />
+               <SaveViewButton projectId={project.id} scope={scope} captureFilters={false} />
             ) : null}
             {showIssueDisplay ? <DisplayMenu /> : null}
             {showIssueDisplay ? <IssueInsightsToggle /> : null}

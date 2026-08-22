@@ -30,6 +30,7 @@ function MyWorkPage() {
             initialPriorities={data.priorityOptions}
             databaseError={data.databaseError}
             scope="all"
+            applyIssueFilters={false}
             emptyCopy={{
                title: tab === 'assigned' ? 'No assigned issues' : 'No issue activity yet',
                description:

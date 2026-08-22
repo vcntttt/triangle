@@ -23,6 +23,7 @@ import {
    type SavedViewScope,
 } from '@/src/data/saved-views';
 import type { IssueDisplayConfig, IssueFilters } from '@/lib/issue-view';
+import { defaultIssueFilters } from '@/lib/issue-view';
 
 export interface SavedViewLike {
    id: Id<'savedViews'>;
@@ -41,12 +42,19 @@ export function SavedViewDialog({
    projectId,
    scope = 'all',
    existing,
+   captureFilters = true,
 }: {
    open: boolean;
    onOpenChange: (open: boolean) => void;
    projectId?: string;
    scope?: SavedViewScope;
    existing?: SavedViewLike;
+   /**
+    * When false, the saved view persists default filters instead of reading
+    * the global filter store. Use on surfaces that render with hidden or
+    * inapplicable global filters (e.g. the project issues tab).
+    */
+   captureFilters?: boolean;
 }) {
    const [name, setName] = useState('');
    const { filters } = useFilterStore();
@@ -88,7 +96,7 @@ export function SavedViewDialog({
                target: projectId ? 'project' : 'global',
                projectId: projectId as Id<'projects'> | undefined,
                scope,
-               filters: existing?.filters ?? filters,
+               filters: existing?.filters ?? (captureFilters ? filters : defaultIssueFilters),
                display: currentDisplay,
             };
             await createSavedView(input);
@@ -139,9 +147,11 @@ export function SavedViewDialog({
 export function SaveViewButton({
    projectId,
    scope = 'all',
+   captureFilters = true,
 }: {
    projectId?: string;
    scope?: SavedViewScope;
+   captureFilters?: boolean;
 }) {
    const [open, setOpen] = useState(false);
    const preferences = useViewerPreferences();
@@ -155,7 +165,13 @@ export function SaveViewButton({
          <Button size="xs" variant="ghost" onClick={() => setOpen(true)}>
             <BookmarkPlus className="mr-1 size-4" /> Save view
          </Button>
-         <SavedViewDialog open={open} onOpenChange={setOpen} projectId={projectId} scope={scope} />
+         <SavedViewDialog
+            open={open}
+            onOpenChange={setOpen}
+            projectId={projectId}
+            scope={scope}
+            captureFilters={captureFilters}
+         />
       </>
    );
 }
