@@ -36,65 +36,44 @@ export function getIssueListRows(
          completedChildrenCount: 0,
       }));
    }
-   const issueMap = new Map(sortedIssues.map((issue) => [issue.id, issue]));
+   const issueIds = new Set(sortedIssues.map((issue) => issue.id));
+   const childrenOf = new Map<string, Issue[]>();
+   const roots: Issue[] = [];
+
+   for (const issue of sortedIssues) {
+      if (issue.parentIssueId && issueIds.has(issue.parentIssueId)) {
+         const siblings = childrenOf.get(issue.parentIssueId);
+         if (siblings) siblings.push(issue);
+         else childrenOf.set(issue.parentIssueId, [issue]);
+      } else {
+         roots.push(issue);
+      }
+   }
+
    const rows: IssueListRow[] = [];
-   const seen = new Set<string>();
+   const emitted = new Set<string>();
+   const done = (issue: Issue) => issue.status.id === 'completed' || issue.status.id === 'archived';
 
-   for (const issue of sortedIssues) {
-      if (seen.has(issue.id)) {
-         continue;
-      }
+   // Depth-first walk: emits each issue once with its direct-children counts,
+   // recursing into subtrees unless the parent is collapsed.
+   const emit = (issue: Issue, level: number) => {
+      if (emitted.has(issue.id)) return;
+      emitted.add(issue.id);
 
-      const visibleParent = issue.parentIssueId ? issueMap.get(issue.parentIssueId) : null;
-      if (visibleParent) {
-         continue;
-      }
-
-      const visibleChildren = sortedIssues.filter(
-         (candidate) => candidate.parentIssueId === issue.id
-      );
-
+      const kids = childrenOf.get(issue.id) ?? [];
       rows.push({
          issue,
-         nestingLevel: 0,
-         childrenCount: visibleChildren.length,
-         completedChildrenCount: visibleChildren.filter(
-            (child) => child.status.id === 'completed' || child.status.id === 'archived'
-         ).length,
+         nestingLevel: level,
+         childrenCount: kids.length,
+         completedChildrenCount: kids.filter(done).length,
       });
-      seen.add(issue.id);
 
-      if (collapsedParentIds.has(issue.id)) {
-         for (const child of visibleChildren) {
-            seen.add(child.id);
-         }
-
-         continue;
+      if (!collapsedParentIds.has(issue.id)) {
+         for (const kid of kids) emit(kid, level + 1);
       }
+   };
 
-      for (const child of visibleChildren) {
-         rows.push({
-            issue: child,
-            nestingLevel: 1,
-            childrenCount: 0,
-            completedChildrenCount: 0,
-         });
-         seen.add(child.id);
-      }
-   }
-
-   for (const issue of sortedIssues) {
-      if (seen.has(issue.id)) {
-         continue;
-      }
-
-      rows.push({
-         issue,
-         nestingLevel: 0,
-         childrenCount: 0,
-         completedChildrenCount: 0,
-      });
-   }
+   for (const root of roots) emit(root, 0);
 
    return rows;
 }
