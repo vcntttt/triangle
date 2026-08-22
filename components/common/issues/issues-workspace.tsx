@@ -678,6 +678,9 @@ function IssuesWorkspaceContent({
 
    function navigateToAdjacentIssue(issueId: string) {
       const currentIndex = filteredIssues.findIndex((issue) => issue.id === issueId);
+      if (currentIndex === -1) {
+         return;
+      }
       const nextIssue = filteredIssues[currentIndex + 1] ?? filteredIssues[currentIndex - 1];
 
       if (nextIssue) {
