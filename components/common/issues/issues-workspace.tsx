@@ -501,11 +501,14 @@ function IssuesWorkspaceContent({
             return sortIssuesByConfiguredPriority(statusIssues, initialPriorities);
          }
 
-         return getIssueListRows(statusIssues, listMode, collapsedParentIds, initialPriorities).map(
-            (row) => row.issue
-         );
+         return getIssueListRows(statusIssues, listMode, collapsedParentIds, {
+            kind: 'display',
+            display: activeDisplay,
+            priorities: initialPriorities,
+         }).map((row) => row.issue);
       });
    }, [
+      activeDisplay,
       collapsedParentIds,
       collapsedStatusIds,
       displayIssues,

@@ -52,12 +52,18 @@ export function GroupIssues({
    priorities,
 }: GroupIssuesProps) {
    const configuredPriorities = priorities ?? emptyPriorities;
-   const { viewType, listMode } = useIssueDisplay();
+   const display = useIssueDisplay();
+   const { viewType, listMode } = display;
    const isViewTypeGrid = viewType === 'grid';
    const { openModal } = useCreateIssueStore();
    const listRows = useMemo(
-      () => getIssueListRows(issues, listMode, collapsedParentIds, configuredPriorities),
-      [collapsedParentIds, configuredPriorities, issues, listMode]
+      () =>
+         getIssueListRows(issues, listMode, collapsedParentIds, {
+            kind: 'display',
+            display,
+            priorities: configuredPriorities,
+         }),
+      [collapsedParentIds, configuredPriorities, display, issues, listMode]
    );
 
    return (

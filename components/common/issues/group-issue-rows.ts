@@ -1,5 +1,10 @@
 import type { Issue } from '@/lib/models';
-import { sortIssuesByConfiguredPriority, type IssueOrderOption } from '@/lib/issue-view';
+import {
+   sortIssuesByConfiguredPriority,
+   sortIssuesForDisplay,
+   type IssueDisplayConfig,
+   type IssueOrderOption,
+} from '@/lib/issue-view';
 
 export type IssueListRow = {
    issue: Issue;
@@ -8,13 +13,20 @@ export type IssueListRow = {
    completedChildrenCount: number;
 };
 
+export type IssueOrderConfig =
+   | { kind: 'priority'; priorities: IssueOrderOption[] }
+   | { kind: 'display'; display: IssueDisplayConfig; priorities: IssueOrderOption[] };
+
 export function getIssueListRows(
    issues: Issue[],
    listMode: 'hierarchy' | 'flat' = 'hierarchy',
    collapsedParentIds: ReadonlySet<string> = new Set(),
-   priorities: IssueOrderOption[] = []
+   order: IssueOrderConfig = { kind: 'priority', priorities: [] }
 ): IssueListRow[] {
-   const sortedIssues = sortIssuesByConfiguredPriority(issues, priorities);
+   const sortedIssues =
+      order.kind === 'display'
+         ? sortIssuesForDisplay(issues, order.display, order.priorities)
+         : sortIssuesByConfiguredPriority(issues, order.priorities);
 
    if (listMode === 'flat') {
       return sortedIssues.map((issue) => ({
