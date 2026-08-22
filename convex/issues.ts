@@ -3,6 +3,7 @@ import type { Doc, Id } from './_generated/dataModel';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import { applyIssueStatusAutomations } from './issueAutomations';
 import { listIssueStatusOptions } from './issueStatusOptions';
+import { defaultIssueStatuses } from './issueStatuses';
 import { listOptions } from './projects';
 
 const nowIso = (value: number) => new Date(value).toISOString();
