@@ -23,6 +23,7 @@
       "deploy": "deploy triangle --with-convex",
       "lint": "eslint .",
       "format": "prettier --write .",
+      "typecheck": "tsc --noEmit",
       "prepare": "husky"
    },
    "dependencies": {

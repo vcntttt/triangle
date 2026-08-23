@@ -1,7 +1,16 @@
 /// <reference types="vite/client" />
 
 import type { ReactNode } from 'react';
-import { HeadContent, Outlet, Scripts, createRootRoute, Link } from '@tanstack/react-router';
+import {
+   HeadContent,
+   Outlet,
+   Scripts,
+   createRootRouteWithContext,
+   Link,
+} from '@tanstack/react-router';
+import type { QueryClient } from '@tanstack/react-query';
+import type { ConvexReactClient } from 'convex/react';
+import type { ConvexQueryClient } from '@convex-dev/react-query';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import '@fontsource/inter/400.css';
@@ -24,7 +33,13 @@ import {
    projectStatusListQuery,
 } from '@/src/data/projects';
 
-export const Route = createRootRoute({
+interface RouterContext {
+   queryClient: QueryClient;
+   convexClient: ConvexReactClient;
+   convexQueryClient: ConvexQueryClient;
+}
+
+export const Route = createRootRouteWithContext<RouterContext>()({
    loader: ({ context }) =>
       Promise.all([
          context.queryClient.ensureQueryData(projectOptionsQuery()),

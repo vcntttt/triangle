@@ -16,9 +16,6 @@ export function getRouter() {
    }
 
    const convexClient = new ConvexReactClient(convexUrl, {
-      // SSR queries are executed through ConvexQueryClient's HTTP client.
-      // Avoid constructing the browser WebSocket client in Node runtimes.
-      disabled: typeof window === 'undefined',
       unsavedChangesWarning: false,
    });
    const convexQueryClient = new ConvexQueryClient(convexClient);
