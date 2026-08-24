@@ -443,7 +443,15 @@ export const detail = query({
             .withIndex('by_issue_createdAt', (q) => q.eq('issueId', issueId))
             .collect(),
       ]);
-      const serializedActivity = activity.map((event) => ({
+      const serializedActivity: Array<{
+         id: string;
+         actorId: string;
+         type: string;
+         message: string;
+         fromValue: string | null;
+         toValue: string | null;
+         createdAt: string;
+      }> = activity.map((event) => ({
          id: event._id,
          actorId: event.actorId,
          type: event.type,
@@ -454,7 +462,9 @@ export const detail = query({
       }));
       if (!serializedActivity.some((event) => event.type === 'created')) {
          serializedActivity.unshift({
-            id: issueId as Id<'issueActivity'>,
+            // Synthetic entry for issues created before activity tracking;
+            // its id is only a client-side list key, never persisted.
+            id: issueId,
             actorId: 'me',
             type: 'created',
             message: 'creó el issue',

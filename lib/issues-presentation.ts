@@ -1,6 +1,6 @@
 import type { IssueListItem } from '@/lib/db/issues';
 import { resolveCurrentAssignee } from '@/lib/current-user';
-import type { User } from '@/lib/models';
+import type { Priority, Status, User } from '@/lib/models';
 import {
    priorities as fallbackPriorities,
    type Issue,
@@ -9,6 +9,14 @@ import {
 import { toPresentationProject } from './projects-presentation';
 import type { ProjectOptionLike } from './projects-presentation';
 import { defaultIssueEnvironment } from './issue-environment';
+
+const statusIconMap: Record<string, Status['icon']> = Object.fromEntries(
+   fallbackStatuses.map((item) => [item.id, item.icon])
+);
+
+const priorityIconMap: Record<string, Priority['icon']> = Object.fromEntries(
+   fallbackPriorities.map((item) => [item.id, item.icon])
+);
 
 const parseEstimatedHours = (estimatedHours: string | null): number | undefined => {
    if (estimatedHours === null) {
@@ -25,15 +33,31 @@ export const toPresentationIssue = (
    viewer?: User,
    priorityOptions?: ProjectOptionLike[]
 ): Issue => {
-   const resolveStatus = (statusId: string) =>
-      statusOptions?.find((item) => item.id === statusId) ??
-      fallbackStatuses.find((item) => item.id === statusId) ??
-      fallbackStatuses[fallbackStatuses.length - 1];
+   const resolveStatus = (statusId: string): Status => {
+      const option = statusOptions?.find((item) => item.id === statusId);
+      const fallback =
+         fallbackStatuses.find((item) => item.id === statusId) ??
+         fallbackStatuses[fallbackStatuses.length - 1];
 
-   const resolvePriority = (priorityId: string) =>
-      priorityOptions?.find((item) => item.id === priorityId) ??
-      fallbackPriorities.find((item) => item.id === priorityId) ??
-      fallbackPriorities[0];
+      return {
+         id: statusId,
+         name: option?.name ?? fallback.name,
+         color: option?.color ?? fallback.color,
+         icon: statusIconMap[statusId] ?? fallback.icon,
+      };
+   };
+
+   const resolvePriority = (priorityId: string): Priority => {
+      const option = priorityOptions?.find((item) => item.id === priorityId);
+      const fallback =
+         fallbackPriorities.find((item) => item.id === priorityId) ?? fallbackPriorities[0];
+
+      return {
+         id: priorityId,
+         name: option?.name ?? fallback.name,
+         icon: priorityIconMap[priorityId] ?? fallback.icon,
+      };
+   };
 
    return {
       id: issue.id,

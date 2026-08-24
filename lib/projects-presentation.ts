@@ -32,7 +32,9 @@ export interface ProjectLike {
    key: string;
    source?: ProjectSource;
    externalUrl?: string | null;
-   iconType?: ProjectIconType;
+   // Serialized projects store iconType as a plain schema string, so this
+   // stays wide here and narrows to ProjectIconType at construction sites.
+   iconType?: string;
    iconValue?: string;
    status: string;
    priority?: string;
@@ -140,7 +142,8 @@ export const toPresentationProject = (
       source: project.source ?? 'internal',
       externalUrl: project.externalUrl ?? null,
       iconConfig: {
-         type: project.iconType ?? 'lucide',
+         // Unknown serialized values render as the lucide glyph downstream.
+         type: (project.iconType ?? 'lucide') as ProjectIconType,
          value: project.iconValue ?? 'box',
       },
       status: resolvedStatus,

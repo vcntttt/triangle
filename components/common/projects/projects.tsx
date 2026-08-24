@@ -151,7 +151,8 @@ export default function Projects({
          onProjectHealthChange={(projectId, healthId) => {
             setProjectFieldOverrides((overrides) => ({
                ...overrides,
-               [projectId]: { ...overrides[projectId], health: healthId },
+               // Board group ids come from the health catalog.
+               [projectId]: { ...overrides[projectId], health: healthId as ProjectLike['health'] },
             }));
          }}
       />

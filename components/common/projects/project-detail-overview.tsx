@@ -16,7 +16,13 @@ import { PrioritySelector } from '@/components/common/projects/priority-selector
 import { StatusWithPercent } from '@/components/common/projects/status-with-percent';
 import { AttentionSelector } from '@/components/common/projects/attention-selector';
 import { viewerProfileToUser } from '@/lib/current-user';
-import type { Issue, ProjectArea, ProjectIconConfig, ProjectUpdate } from '@/lib/models';
+import type {
+   Issue,
+   ProjectArea,
+   ProjectIconConfig,
+   ProjectIconType,
+   ProjectUpdate,
+} from '@/lib/models';
 import {
    type ProjectLike,
    type ProjectOptionLike,
@@ -60,7 +66,11 @@ export function ProjectToolbar({
             <SidebarTrigger className="shrink-0" />
             {project ? (
                <ProjectIcon
-                  icon={{ type: project.iconType ?? 'lucide', value: project.iconValue ?? 'box' }}
+                  // Serialized iconType is a free string; unknown values render as lucide.
+                  icon={{
+                     type: (project.iconType ?? 'lucide') as ProjectIconType,
+                     value: project.iconValue ?? 'box',
+                  }}
                   className="size-5 rounded"
                   iconClassName="size-3.5"
                />
@@ -172,7 +182,8 @@ export function ProjectOverview({
    const viewer = useMemo(() => viewerProfileToUser(viewerProfile), [viewerProfile]);
    const [project, setProject] = useState<ProjectLike>(() => initialProject);
    const [iconConfig, setIconConfig] = useState<ProjectIconConfig>(() => ({
-      type: initialProject.iconType ?? 'lucide',
+      // Serialized iconType is a free string; unknown values render as lucide.
+      type: (initialProject.iconType ?? 'lucide') as ProjectIconType,
       value: initialProject.iconValue ?? 'box',
    }));
    const [isSavingDetails, setIsSavingDetails] = useState(false);
@@ -270,7 +281,8 @@ export function ProjectOverview({
             iconValue: updated.iconValue,
             updatedAt: updated.updatedAt,
          }));
-         setIconConfig({ type: updated.iconType, value: updated.iconValue });
+         // Serialized iconType is a free string; unknown values render as lucide.
+         setIconConfig({ type: updated.iconType as ProjectIconType, value: updated.iconValue });
          toast.success('Project icon updated');
          await router.invalidate();
       } catch (error) {
