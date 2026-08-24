@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type ComponentType } from 'react';
+import { useMemo, useState, type ComponentType, type SVGProps } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { DndProvider, useDragLayer } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -38,7 +38,7 @@ interface ProjectGroup {
    id: string;
    name: string;
    color: string;
-   icon: ComponentType<{ className?: string; size?: string | number }>;
+   icon: ComponentType<SVGProps<SVGSVGElement>>;
 }
 
 const statusIconMap = Object.fromEntries(allStatuses.map((item) => [item.id, item.icon]));

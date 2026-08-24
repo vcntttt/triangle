@@ -92,6 +92,9 @@ function buildTitlePreviewSegments(
 
    let cursor = 0;
 
+   const suffixSegment = (key: string, value: string): TitlePreviewSegment[] =>
+      value ? [{ type: 'text', key: `${key}-suffix`, value }] : [];
+
    return title.split(/(\s+)/).flatMap((chunk) => {
       if (!chunk) {
          return [];
@@ -111,36 +114,35 @@ function buildTitlePreviewSegments(
 
       if ((prefix === '@' || prefix === '#') && token) {
          const normalizedToken = normalizeInlineToken(token);
-         const matchedItem =
-            prefix === '@' ? projectLookup.get(normalizedToken) : labelLookup.get(normalizedToken);
 
-         if (matchedItem) {
-            const displayToken = normalizeInlineToken(matchedItem.name);
+         if (prefix === '@') {
+            const matchedProject = projectLookup.get(normalizedToken);
 
-            return [
-               prefix === '@'
-                  ? ({
-                       type: 'project',
-                       key,
-                       value: `@${displayToken}`,
-                       project: matchedItem,
-                    } satisfies TitlePreviewSegment)
-                  : ({
-                       type: 'label',
-                       key,
-                       value: `#${displayToken}`,
-                       label: matchedItem,
-                    } satisfies TitlePreviewSegment),
-               ...(suffix
-                  ? [
-                       {
-                          type: 'text',
-                          key: `${key}-suffix`,
-                          value: suffix,
-                       } satisfies TitlePreviewSegment,
-                    ]
-                  : []),
-            ];
+            if (matchedProject) {
+               return [
+                  {
+                     type: 'project',
+                     key,
+                     value: `@${normalizeInlineToken(matchedProject.name)}`,
+                     project: matchedProject,
+                  } satisfies TitlePreviewSegment,
+                  ...suffixSegment(key, suffix),
+               ];
+            }
+         } else {
+            const matchedLabel = labelLookup.get(normalizedToken);
+
+            if (matchedLabel) {
+               return [
+                  {
+                     type: 'label',
+                     key,
+                     value: `#${normalizeInlineToken(matchedLabel.name)}`,
+                     label: matchedLabel,
+                  } satisfies TitlePreviewSegment,
+                  ...suffixSegment(key, suffix),
+               ];
+            }
          }
       }
 
@@ -391,7 +393,7 @@ export function CreateNewIssue() {
       setDraftSubIssues((current) => current.filter((subIssue) => subIssue.id !== id));
    };
 
-   const handleTitleKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+   const handleTitleKeyDown = (event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
       if (!inlineSuggestion || inlineSuggestion.items.length === 0) {
          return;
       }

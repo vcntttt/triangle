@@ -85,7 +85,9 @@ export function ProjectBoardCard({
       <ContextMenu>
          <ContextMenuTrigger asChild>
             <m.div
-               ref={drag}
+               ref={(node) => {
+                  drag(node);
+               }}
                layoutId={`project-board-${project.id}`}
                className={cn(
                   'group rounded-md border border-border/60 bg-background p-3 shadow-xs transition-colors',

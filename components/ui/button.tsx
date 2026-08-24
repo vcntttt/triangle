@@ -5,16 +5,12 @@ import type { VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from './button-variants';
 
-function Button({
-   className,
-   variant,
-   size,
-   asChild = false,
-   ...props
-}: React.ComponentProps<'button'> &
+type ButtonProps = React.ComponentProps<'button'> &
    VariantProps<typeof buttonVariants> & {
       asChild?: boolean;
-   }) {
+   };
+
+function Button({ className, variant, size, asChild = false, ...props }: ButtonProps) {
    const Comp = asChild ? Slot : 'button';
 
    return (
@@ -26,4 +22,4 @@ function Button({
    );
 }
 
-export { Button };
+export { Button, type ButtonProps };

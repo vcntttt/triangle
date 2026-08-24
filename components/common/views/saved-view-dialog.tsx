@@ -96,7 +96,7 @@ export function SavedViewDialog({
                target: projectId ? 'project' : 'global',
                projectId: projectId as Id<'projects'> | undefined,
                scope,
-               filters: existing?.filters ?? (captureFilters ? filters : defaultIssueFilters),
+               filters: captureFilters ? filters : defaultIssueFilters,
                display: currentDisplay,
             };
             await createSavedView(input);

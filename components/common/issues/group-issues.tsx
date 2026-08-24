@@ -126,7 +126,7 @@ export function GroupIssues({
                      variant="ghost"
                      onClick={(e) => {
                         e.stopPropagation();
-                        openModal(status, null, null);
+                        openModal(status, undefined, null);
                      }}
                   >
                      <Plus className="size-4" />

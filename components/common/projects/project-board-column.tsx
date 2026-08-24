@@ -7,13 +7,13 @@ import type { ProjectOptionLike } from '@/lib/projects-presentation';
 import { cn } from '@/lib/utils';
 import type { ProjectBoardGroupBy, ProjectDisplayProperty } from '@/store/projects-view-store';
 import { ProjectBoardCard, ProjectDragType } from './project-board-card';
-import type { ComponentType } from 'react';
+import type { ComponentType, SVGProps } from 'react';
 
 interface ProjectBoardGroup {
    id: string;
    name: string;
    color: string;
-   icon: ComponentType<{ className?: string; size?: string | number }>;
+   icon: ComponentType<SVGProps<SVGSVGElement>>;
 }
 
 interface ProjectBoardColumnProps {
