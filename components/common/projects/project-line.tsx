@@ -53,7 +53,7 @@ function ProjectLineContent({
    const navigate = useNavigate();
    const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-   const { pinnedProjectIds, togglePinnedProject } = usePinnedProjectsStore();
+   const { togglePinnedProject, isPinned } = usePinnedProjectsStore();
    const {
       currentStatus,
       currentPriority,
@@ -70,8 +70,6 @@ function ProjectLineContent({
          params: { projectSlug: project.slug ?? project.id },
       });
    };
-
-   const isPinned = pinnedProjectIds.includes(project.id);
 
    return (
       <ContextMenu>
@@ -167,7 +165,7 @@ function ProjectLineContent({
             </div>
          </ContextMenuTrigger>
          <ProjectContextMenu
-            isPinned={isPinned}
+            isPinned={isPinned(project.id)}
             statusId={currentStatus.id}
             priorityId={currentPriority.id}
             attentionId={currentAttention.id}

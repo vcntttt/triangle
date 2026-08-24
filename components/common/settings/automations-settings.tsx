@@ -29,6 +29,7 @@ import {
    SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import type { Id } from '@convex/_generated/dataModel';
 import type { IssueAutomation, IssueStatusOption, LabelInterface } from '@/lib/models';
 import { useIssueAutomationCommands } from '@/src/data/issue-automations';
 
@@ -66,7 +67,8 @@ export function AutomationsSettings({
       try {
          if (automation) {
             const updated = await commands.updateAutomation({
-               automationId: automation.id,
+               // Serialized automation docs carry real issueAutomations ids.
+               automationId: automation.id as Id<'issueAutomations'>,
                ...input,
             });
             setAutomations((current) =>
@@ -90,7 +92,11 @@ export function AutomationsSettings({
          current.map((item) => (item.id === automation.id ? { ...item, enabled } : item))
       );
       try {
-         await commands.setAutomationEnabled({ automationId: automation.id, enabled });
+         // Serialized automation docs carry real issueAutomations ids.
+         await commands.setAutomationEnabled({
+            automationId: automation.id as Id<'issueAutomations'>,
+            enabled,
+         });
          toast.success(enabled ? 'Automation enabled' : 'Automation disabled');
       } catch (error) {
          setAutomations((current) =>
@@ -105,7 +111,8 @@ export function AutomationsSettings({
    const deleteAutomation = async (automation: IssueAutomation) => {
       if (!window.confirm(`Delete "${automation.name}"?`)) return;
       try {
-         await commands.deleteAutomation({ automationId: automation.id });
+         // Serialized automation docs carry real issueAutomations ids.
+         await commands.deleteAutomation({ automationId: automation.id as Id<'issueAutomations'> });
          setAutomations((current) => current.filter((item) => item.id !== automation.id));
          toast.success('Automation deleted');
       } catch (error) {
@@ -216,7 +223,7 @@ interface AutomationInput {
    enabled: boolean;
    fromStatus?: string;
    toStatus: string;
-   actions: Array<{ type: 'removeLabel'; labelId: string }>;
+   actions: Array<{ type: 'removeLabel'; labelId: Id<'labels'> }>;
 }
 
 function AutomationDialog({
@@ -259,7 +266,11 @@ function AutomationDialog({
             enabled: automation?.enabled ?? true,
             fromStatus: fromStatus === anyStatus ? undefined : fromStatus,
             toStatus,
-            actions: selectedLabelIds.map((labelId) => ({ type: 'removeLabel', labelId })),
+            // Selected ids come from serialized label/automation docs.
+            actions: selectedLabelIds.map((labelId) => ({
+               type: 'removeLabel' as const,
+               labelId: labelId as Id<'labels'>,
+            })),
          });
          onOpenChange(false);
       } finally {

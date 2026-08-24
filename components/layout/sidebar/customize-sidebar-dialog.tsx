@@ -27,6 +27,8 @@ const sectionNames = [
    { id: 'saved-views', name: 'Saved views' },
 ] as const;
 
+type SidebarItemId = (typeof sidebarItems)[number]['id'];
+
 export function CustomizeSidebarDialog({
    open,
    onOpenChange,
@@ -77,7 +79,7 @@ export function CustomizeSidebarDialog({
       void patchSidebar({ hiddenItems: next });
    };
 
-   const moveItem = (id: string, direction: -1 | 1) => {
+   const moveItem = (id: SidebarItemId, direction: -1 | 1) => {
       const index = order.indexOf(id);
       const nextIndex = index + direction;
       if (index < 0 || nextIndex < 0 || nextIndex >= order.length) return;

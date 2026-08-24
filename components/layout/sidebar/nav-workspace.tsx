@@ -34,7 +34,9 @@ export function NavWorkspace() {
    const configuredProjectOrder = preferences?.sidebar?.projectOrder?.length
       ? preferences.sidebar.projectOrder
       : (preferences?.pinnedProjectIds ?? []);
-   const projectOrderMap = new Map(configuredProjectOrder.map((id, index) => [id, index]));
+   const projectOrderMap = new Map<string, number>(
+      configuredProjectOrder.map((id, index): [string, number] => [id, index])
+   );
    const projects = useProjectOptions()
       .filter((project) => project.source !== 'external')
       .toSorted((left, right) => {

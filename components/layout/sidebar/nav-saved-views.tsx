@@ -44,7 +44,7 @@ export function NavSavedViews() {
 
    const handleDelete = async (viewId: SavedViewLike['id'], name: string) => {
       try {
-         await removeSavedView(viewId);
+         await removeSavedView({ viewId });
          toast.success(`${name} deleted`);
       } catch (error) {
          toast.error(error instanceof Error ? error.message : 'Saved view could not be deleted.');

@@ -62,10 +62,10 @@ export function ProjectBoardCard({
    onAttentionChange,
    onProjectUpdate,
 }: ProjectBoardCardProps) {
-   const { pinnedProjectIds, togglePinnedProject } = usePinnedProjectsStore();
+   const { togglePinnedProject, isPinned } = usePinnedProjectsStore();
    const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-   const isPinned = pinnedProjectIds.includes(project.id);
+   const isProjectPinned = isPinned(project.id);
    const startDateLabel = format(new Date(project.startDate), 'MMM dd, yyyy');
 
    const [{ isDragging }, drag, preview] = useDrag(() => ({
@@ -196,7 +196,7 @@ export function ProjectBoardCard({
             </m.div>
          </ContextMenuTrigger>
          <ProjectContextMenu
-            isPinned={isPinned}
+            isPinned={isProjectPinned}
             statusId={project.status.id}
             priorityId={project.priority.id}
             attentionId={project.attention.id}
