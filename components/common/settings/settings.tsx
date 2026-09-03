@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { useViewerCommands, useViewerPreferences } from '@/src/data/viewer';
 import type { IssueAutomation, IssueStatusOption, LabelInterface } from '@/lib/models';
 import { AutomationsSettings } from './automations-settings';
+import { IssueStatusesSettings } from './issue-statuses-settings';
 import { LabelsSettings } from './labels-settings';
 import { ProjectOptionsSettings } from './project-options-settings';
 import { CustomizeSidebarDialog } from '@/components/layout/sidebar/customize-sidebar-dialog';
@@ -32,11 +33,22 @@ export default function Settings({
          <SidebarSettings />
          <SavedViewsSettings />
 
+         <section className="mb-10" id="issue-workflow">
+            <div className="mb-6">
+               <h2 className="text-lg font-semibold">Issue workflow</h2>
+               <p className="text-sm text-muted-foreground">
+                  Statuses used to group issues in lists, boards, filters, and forms.
+               </p>
+            </div>
+            <IssueStatusesSettings />
+         </section>
+
          <section className="mb-10" id="project-workflow">
             <div className="mb-6">
                <h2 className="text-lg font-semibold">Project workflow</h2>
                <p className="text-sm text-muted-foreground">
-                  Statuses and priorities available across projects.
+                  Statuses and priorities available across projects. These do not change issue
+                  groups; use the issue workflow above for that.
                </p>
             </div>
             <ProjectOptionsSettings />

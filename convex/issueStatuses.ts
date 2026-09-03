@@ -142,3 +142,35 @@ export const remove = mutation({
       return { ok: true };
    },
 });
+
+export const reorder = mutation({
+   args: { ids: v.array(v.string()) },
+   handler: async (ctx, { ids }) => {
+      await ensureDefaults(ctx);
+      const now = Date.now();
+      const defaults = new Map(defaultIssueStatuses.map((option) => [option.id, option]));
+      await Promise.all(
+         ids.map(async (id, position) => {
+            const existing = await ctx.db
+               .query('issueStatuses')
+               .withIndex('by_option_id', (q) => q.eq('id', id))
+               .unique();
+            if (existing) {
+               await ctx.db.patch(existing._id, { position, updatedAt: now });
+               return;
+            }
+
+            const defaultOption = defaults.get(id);
+            if (defaultOption) {
+               await ctx.db.insert('issueStatuses', {
+                  ...defaultOption,
+                  position,
+                  createdAt: now,
+                  updatedAt: now,
+               });
+            }
+         })
+      );
+      return { ok: true };
+   },
+});

@@ -23,3 +23,11 @@ export function useIssueAutomationCommands() {
       deleteAutomation,
    };
 }
+
+export function useIssueStatusCommands() {
+   const reorderIssueStatuses = useMutation(api.issueStatuses.reorder);
+
+   return {
+      reorderIssueStatuses,
+   };
+}

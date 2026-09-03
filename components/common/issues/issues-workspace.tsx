@@ -483,8 +483,13 @@ function IssuesWorkspaceContent({
 
       const issuesByStatus = groupIssuesForDisplayByStatus(displayIssues);
       const statusIds: string[] = [];
+      const orderedStatuses = [...initialStatuses].sort(
+         (left, right) =>
+            (left.listPosition ?? left.position ?? 0) -
+               (right.listPosition ?? right.position ?? 0) || left.name.localeCompare(right.name)
+      );
 
-      for (const status of initialStatuses) {
+      for (const status of orderedStatuses) {
          if (showEmptyStatuses || (issuesByStatus[status.id] ?? []).length > 0) {
             statusIds.push(status.id);
          }
