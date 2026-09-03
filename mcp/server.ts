@@ -360,7 +360,7 @@ export function createTriangleMcpServer(
       {
          title: 'Update a Triangle project',
          description:
-            'Update a project status, priority, or its details. Passing null clears its description.',
+            'Update a project status, priority, target date, or its details. Passing null clears its description or target date.',
          inputSchema: {
             projectId: z.string().min(1),
             status: z.string().min(1).optional(),
@@ -370,9 +370,20 @@ export function createTriangleMcpServer(
             description: z.string().nullable().optional(),
             iconType: z.string().optional(),
             iconValue: z.string().optional(),
+            targetDate: z.string().datetime().nullable().optional(),
          },
       },
-      async ({ projectId, status, priority, name, key, description, iconType, iconValue }) =>
+      async ({
+         projectId,
+         status,
+         priority,
+         name,
+         key,
+         description,
+         iconType,
+         iconValue,
+         targetDate,
+      }) =>
          run(async () => {
             const statusOrPriorityChanged = status !== undefined || priority !== undefined;
             const detailsChanged =
@@ -380,7 +391,8 @@ export function createTriangleMcpServer(
                key !== undefined ||
                description !== undefined ||
                iconType !== undefined ||
-               iconValue !== undefined;
+               iconValue !== undefined ||
+               targetDate !== undefined;
 
             if (!statusOrPriorityChanged && !detailsChanged) {
                throw new Error('Provide at least one project field to update.');
@@ -394,6 +406,7 @@ export function createTriangleMcpServer(
                   description,
                   iconType,
                   iconValue,
+                  targetDate,
                });
             }
 

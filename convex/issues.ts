@@ -910,9 +910,15 @@ export const update = mutation({
          input.areaId !== undefined
             ? await findProjectAreaById(ctx, input.areaId, nextProjectId)
             : undefined;
-      const shouldClearAreaForProjectChange =
+      // Moving an issue to another project clears its area and renumbers the
+      // identifier so the key always matches the current project
+      // (e.g. HOME-7 becomes TRI-12).
+      const projectChanged =
          (input.projectId !== undefined || input.projectName !== undefined) &&
          issue.projectId !== nextProjectId;
+      const renumberedIdentifier = projectChanged
+         ? await createIssueIdentifier(ctx, project?.key ?? 'TRI')
+         : null;
 
       if (input.parentIssueId !== undefined) {
          await validateParentAssignment(
@@ -947,9 +953,15 @@ export const update = mutation({
          ...(input.projectId !== undefined || input.projectName !== undefined
             ? { projectId: project?._id }
             : {}),
+         ...(renumberedIdentifier
+            ? {
+                 identifier: renumberedIdentifier.identifier,
+                 projectIssueNumber: renumberedIdentifier.projectIssueNumber,
+              }
+            : {}),
          ...(input.areaId !== undefined
             ? { areaId: area?._id }
-            : shouldClearAreaForProjectChange
+            : projectChanged
               ? { areaId: undefined }
               : {}),
          ...(labels !== undefined ? { labelIds: labels.map((label) => label._id) } : {}),
@@ -1057,10 +1069,7 @@ export const update = mutation({
             createdAt: updatedAt,
          });
       }
-      if (
-         (input.areaId !== undefined || shouldClearAreaForProjectChange) &&
-         issue.areaId !== area?._id
-      ) {
+      if ((input.areaId !== undefined || projectChanged) && issue.areaId !== area?._id) {
          const previousArea = issue.areaId ? await ctx.db.get(issue.areaId) : null;
          await recordIssueActivity(ctx, {
             issueId: id,

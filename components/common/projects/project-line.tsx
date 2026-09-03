@@ -1,5 +1,6 @@
 import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import type { Project, ProjectUpdate } from '@/lib/models';
 import type { ProjectOptionLike } from '@/lib/projects-presentation';
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
@@ -16,6 +17,7 @@ import { CreateProjectUpdateDialog } from './create-project-update-dialog';
 import { DeleteProjectDialog } from './delete-project-dialog';
 import { ProjectIcon } from './project-icon';
 import { useProjectFieldUpdates } from './use-project-field-updates';
+import { useProjectCommands } from '@/src/data/projects';
 import { ProjectExternalLink, ProjectSourceBadge } from './project-source';
 
 interface ProjectLineProps {
@@ -54,6 +56,7 @@ function ProjectLineContent({
    const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
    const { togglePinnedProject, isPinned } = usePinnedProjectsStore();
+   const { updateProjectFields } = useProjectCommands();
    const {
       currentStatus,
       currentPriority,
@@ -62,7 +65,19 @@ function ProjectLineContent({
       handlePriorityChange,
       handleAttentionChange,
    } = useProjectFieldUpdates(project, statusOptions, priorityOptions, attentionOptions);
-   const startDate = project.startDate ? new Date(project.startDate) : undefined;
+   const targetDate = project.targetDate ? new Date(project.targetDate) : undefined;
+
+   const handleTargetDateChange = async (date: Date | undefined) => {
+      try {
+         await updateProjectFields({
+            projectId: project.id,
+            targetDate: date ? date.toISOString() : null,
+         });
+      } catch (error) {
+         console.error('Failed to update project target date.', error);
+         toast.error('Target date could not be updated');
+      }
+   };
 
    const handleOpenIssues = () => {
       void navigate({
@@ -135,7 +150,7 @@ function ProjectLineContent({
 
                {visibleProperties.targetDate && (
                   <div className="hidden xl:block xl:w-[13%] shrink-0">
-                     <DatePicker date={startDate} />
+                     <DatePicker date={targetDate} onDateChange={handleTargetDateChange} />
                   </div>
                )}
 

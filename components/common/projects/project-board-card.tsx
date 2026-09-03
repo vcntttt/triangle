@@ -66,7 +66,9 @@ export function ProjectBoardCard({
    const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
    const isProjectPinned = isPinned(project.id);
-   const startDateLabel = format(new Date(project.startDate), 'MMM dd, yyyy');
+   const targetDateLabel = project.targetDate
+      ? format(new Date(project.targetDate), 'MMM dd, yyyy')
+      : 'No date';
 
    const [{ isDragging }, drag, preview] = useDrag(() => ({
       type: ProjectDragType,
@@ -191,7 +193,7 @@ export function ProjectBoardCard({
 
                   {visibleProperties.targetDate && (
                      <div className="inline-flex items-center gap-1.5 rounded-md border border-border/50 px-2 py-1 text-xs text-muted-foreground">
-                        <span suppressHydrationWarning>{startDateLabel}</span>
+                        <span suppressHydrationWarning>{targetDateLabel}</span>
                      </div>
                   )}
                </div>

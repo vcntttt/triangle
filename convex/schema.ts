@@ -70,6 +70,7 @@ export default defineSchema({
       priority: v.string(),
       health: v.optional(v.string()),
       attention: v.optional(v.string()),
+      targetDate: v.optional(v.number()),
       createdAt: v.number(),
       updatedAt: v.number(),
    })

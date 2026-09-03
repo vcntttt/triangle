@@ -93,6 +93,7 @@ export interface Project {
    iconConfig: ProjectIconConfig;
    percentComplete: number;
    startDate: string;
+   targetDate?: string | null;
    lead: User;
    priority: Priority;
    attention: ProjectAttention;

@@ -159,6 +159,7 @@ async function serializeProject(
       priority: project.priority,
       health: toProjectHealth(project.health ?? latestUpdate?.health ?? 'no-update'),
       attention: getProjectAttentionId(project),
+      targetDate: project.targetDate ? nowIso(project.targetDate) : null,
       latestUpdate: latestUpdate ? await serializeProjectUpdate(ctx, latestUpdate) : null,
       createdAt: nowIso(project.createdAt),
       updatedAt: nowIso(project.updatedAt),
@@ -217,6 +218,7 @@ function serializeProjectForIssue(project: Doc<'projects'>) {
       description: toNullable(project.description),
       source: toProjectSource(project.source),
       externalUrl: toNullable(project.externalUrl),
+      targetDate: project.targetDate ? nowIso(project.targetDate) : null,
       createdAt: nowIso(project.createdAt),
       updatedAt: nowIso(project.updatedAt),
    };
@@ -907,6 +909,7 @@ export const updateFields = mutation({
       description: v.optional(v.union(v.string(), v.null())),
       iconType: v.optional(v.string()),
       iconValue: v.optional(v.string()),
+      targetDate: v.optional(v.union(v.string(), v.null())),
    },
    handler: async (ctx, { projectId, ...input }) => {
       const id = projectId as Id<'projects'>;
@@ -942,6 +945,9 @@ export const updateFields = mutation({
             : {}),
          ...(input.iconType !== undefined ? { iconType: input.iconType } : {}),
          ...(input.iconValue !== undefined ? { iconValue: input.iconValue } : {}),
+         ...(input.targetDate !== undefined
+            ? { targetDate: input.targetDate ? new Date(input.targetDate).getTime() : undefined }
+            : {}),
          updatedAt: Date.now(),
       });
 

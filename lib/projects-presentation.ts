@@ -42,6 +42,7 @@ export interface ProjectLike {
    attention?: string;
    subtitle?: string | null;
    description?: string | null;
+   targetDate?: string | null;
    latestUpdate?: {
       id: string;
       projectId: string;
@@ -149,6 +150,7 @@ export const toPresentationProject = (
       status: resolvedStatus,
       percentComplete: 0,
       startDate: project.createdAt,
+      targetDate: project.targetDate ?? null,
       lead: viewer,
       priority: resolvePriority(project.priority, priorityOptions),
       attention: resolveAttention(project.attention, attentionOptions),
