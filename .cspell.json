@@ -1,0 +1,13 @@
+{
+   "version": "0.2",
+   "language": "en,es",
+   "import": ["@cspell/dict-es-es/cspell-ext.json"],
+   "ignorePaths": [
+      "node_modules",
+      ".output",
+      "src/routeTree.gen.ts",
+      "convex/_generated",
+      "bun.lock"
+   ],
+   "words": ["cmdk", "subissue", "subissues", "unstarted", "Convex", "Triangle"]
+}
