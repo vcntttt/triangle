@@ -182,6 +182,33 @@ export function filterIssuesByScope(
    return issues.filter((issue) => statusTypes.get(issue.status.id) === expectedType);
 }
 
+// Display options hide issues on purpose, so they never count as "hidden by filters".
+export function filterIssuesForDisplay(
+   issues: Issue[],
+   display: Pick<IssueDisplayConfig, 'hideCompletedIssues' | 'showSubissues'>
+) {
+   return issues.filter(
+      (issue) =>
+         (!display.hideCompletedIssues || issue.status.id !== 'completed') &&
+         (display.showSubissues || !issue.parentIssueId)
+   );
+}
+
+export type IssueInsightsDimension = 'status' | 'priority' | 'project' | 'area';
+
+// Temporary narrowing picked from the Insights panel; a null value means "no project/area".
+export interface IssueInsightsFocus {
+   dimension: IssueInsightsDimension;
+   value: string | null;
+}
+
+export const issueInsightsValue: Record<IssueInsightsDimension, (issue: Issue) => string | null> = {
+   status: (issue) => issue.status.id,
+   priority: (issue) => issue.priority.id,
+   project: (issue) => issue.project?.id ?? null,
+   area: (issue) => issue.area?.id ?? null,
+};
+
 export function buildIssueDisplayGroups(
    issues: Issue[],
    display: IssueDisplayConfig,

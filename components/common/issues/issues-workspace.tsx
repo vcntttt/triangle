@@ -13,7 +13,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import type { ImperativePanelHandle } from 'react-resizable-panels';
-import { Crosshair } from 'lucide-react';
+import { Crosshair, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { IssueListItem } from '@/lib/db/issues';
 import { viewerProfileToUser } from '@/lib/current-user';
@@ -50,7 +50,10 @@ import { groupIssuesForDisplayByStatus } from '@/lib/issue-status-groups';
 import {
    buildIssueDisplayGroups,
    filterIssuesByScope,
+   filterIssuesForDisplay,
+   issueInsightsValue,
    sortIssuesByConfiguredPriority,
+   type IssueInsightsFocus,
    type IssueScope,
    type IssueFilters,
    type IssueDisplayConfig,
@@ -312,7 +315,7 @@ function IssuesWorkspaceContent({
 }) {
    const { issues, filterIssues } = useIssuesData();
    const { isSearchOpen, searchQuery } = useSearchStore();
-   const { filters, hasActiveFilters } = useFilterStore();
+   const { filters, hasActiveFilters, clearFilters } = useFilterStore();
    const {
       hideCompletedIssues,
       showEmptyStatuses,
@@ -335,6 +338,10 @@ function IssuesWorkspaceContent({
    const [collapsedStatusIds, setCollapsedStatusIds, statusCollapseStateReady] =
       usePersistentStringSet(collapsedStatusStorageKey);
    const [issueAction, setIssueAction] = useState<IssueActionKind | null>(null);
+   const [insightsFocusChoice, setInsightsFocus] = useState<IssueInsightsFocus | null>(null);
+   const isInsightsOpen = useIssueInsightsStore((state) => state.isOpen);
+   // The focus only exists while its panel is visible, so it can never narrow the list unseen.
+   const insightsFocus = isDesktopWorkspace && isInsightsOpen ? insightsFocusChoice : null;
    const [selectionOverride, setSelectionOverride] = useState<{
       identifier?: string;
    } | null>(null);
@@ -452,17 +459,31 @@ function IssuesWorkspaceContent({
    const storeFilteredIssues = isFiltering
       ? filterIssues(activeFilters).filter((issue) => scopedIssueIds.has(issue.id))
       : visibleIssues;
-   const filteredIssues = projectFilterId
+   const insightsIssues = projectFilterId
       ? storeFilteredIssues.filter((issue) => issue.project?.id === projectFilterId)
       : storeFilteredIssues;
+   const filteredIssues = insightsFocus
+      ? insightsIssues.filter(
+           (issue) => issueInsightsValue[insightsFocus.dimension](issue) === insightsFocus.value
+        )
+      : insightsIssues;
    const displayIssues = useMemo(
-      () =>
-         (activeDisplay.hideCompletedIssues
-            ? filteredIssues.filter((issue) => issue.status.id !== 'completed')
-            : filteredIssues
-         ).filter((issue) => activeDisplay.showSubissues || !issue.parentIssueId),
+      () => filterIssuesForDisplay(filteredIssues, activeDisplay),
       [activeDisplay, filteredIssues]
    );
+   const unfilteredIssues = projectFilterId
+      ? visibleIssues.filter((issue) => issue.project?.id === projectFilterId)
+      : visibleIssues;
+   const hiddenByFiltersCount =
+      filterIssuesForDisplay(unfilteredIssues, activeDisplay).length - displayIssues.length;
+   const canClearStoredFilters = applyIssueFilters && !viewOverride && hasActiveFilters();
+   const clearVisibleFilters =
+      insightsFocus || canClearStoredFilters
+         ? () => {
+              setInsightsFocus(null);
+              if (canClearStoredFilters) clearFilters();
+           }
+         : undefined;
    const searchResults = useMemo(() => {
       const normalizedQuery = searchQuery.trim().toLowerCase();
 
@@ -630,12 +651,16 @@ function IssuesWorkspaceContent({
                            collapsedStatusIds,
                            onToggleParentCollapse: toggleParentCollapse,
                            onToggleStatusCollapse: toggleStatusCollapse,
+                           hiddenByFiltersCount,
+                           onClearFilters: clearVisibleFilters,
                         }}
                         onDeleteOrArchive={navigateToAdjacentIssue}
                         onClearSelectedIssue={handleClearSelectedIssue}
-                        insightsIssues={filteredIssues}
+                        insightsIssues={insightsIssues}
                         insightsStatuses={initialStatuses}
                         insightsPriorities={initialPriorities}
+                        insightsFocus={insightsFocus}
+                        onInsightsFocusChange={setInsightsFocus}
                      />
                   ) : selectedIssue ? (
                      <div className="h-full">
@@ -668,6 +693,8 @@ function IssuesWorkspaceContent({
                         collapsedStatusIds={collapsedStatusIds}
                         onToggleParentCollapse={toggleParentCollapse}
                         onToggleStatusCollapse={toggleStatusCollapse}
+                        hiddenByFiltersCount={hiddenByFiltersCount}
+                        onClearFilters={clearVisibleFilters}
                      />
                   )}
                </div>
@@ -807,6 +834,8 @@ interface IssuesListPanelProps {
    collapsedStatusIds: ReadonlySet<string>;
    onToggleParentCollapse: (issueId: string) => void;
    onToggleStatusCollapse: (statusId: string) => void;
+   hiddenByFiltersCount: number;
+   onClearFilters?: () => void;
 }
 
 function DesktopIssuesWorkspace({
@@ -817,6 +846,8 @@ function DesktopIssuesWorkspace({
    insightsIssues,
    insightsStatuses,
    insightsPriorities,
+   insightsFocus,
+   onInsightsFocusChange,
 }: {
    selectedIssue?: Issue;
    listPanelProps: IssuesListPanelProps;
@@ -825,6 +856,8 @@ function DesktopIssuesWorkspace({
    insightsIssues: Issue[];
    insightsStatuses: ProjectOptionLike[];
    insightsPriorities: ProjectOptionLike[];
+   insightsFocus: IssueInsightsFocus | null;
+   onInsightsFocusChange: (focus: IssueInsightsFocus | null) => void;
 }) {
    const detailPanelRef = useRef<ImperativePanelHandle>(null);
    const isInsightsOpen = useIssueInsightsStore((state) => state.isOpen);
@@ -880,6 +913,8 @@ function DesktopIssuesWorkspace({
                      issues={insightsIssues}
                      statuses={insightsStatuses}
                      priorities={insightsPriorities}
+                     focus={insightsFocus}
+                     onFocusChange={onInsightsFocusChange}
                   />
                </ResizablePanel>
             </>
@@ -932,6 +967,8 @@ function IssuesListPanel({
    collapsedStatusIds,
    onToggleParentCollapse,
    onToggleStatusCollapse,
+   hiddenByFiltersCount,
+   onClearFilters,
 }: IssuesListPanelProps) {
    const { objectiveIssueIds } = useViewStore();
    const { viewType, hideCompletedIssues, showSubissues } = display;
@@ -944,11 +981,7 @@ function IssuesListPanel({
       [issues]
    );
    const displayIssues = useMemo(
-      () =>
-         (hideCompletedIssues
-            ? issues.filter((issue) => issue.status.id !== 'completed')
-            : issues
-         ).filter((issue) => showSubissues || !issue.parentIssueId),
+      () => filterIssuesForDisplay(issues, { hideCompletedIssues, showSubissues }),
       [hideCompletedIssues, issues, showSubissues]
    );
    const displayGroups = useMemo(() => {
@@ -1066,6 +1099,35 @@ function IssuesListPanel({
                </div>
             )}
          </div>
+         {!isSearching && hiddenByFiltersCount > 0 && (
+            <HiddenByFiltersFooter count={hiddenByFiltersCount} onClear={onClearFilters} />
+         )}
+      </div>
+   );
+}
+
+function HiddenByFiltersFooter({ count, onClear }: { count: number; onClear?: () => void }) {
+   return (
+      <div
+         className="flex h-9 shrink-0 items-center justify-center gap-3 border-t border-border/60 px-6 text-xs text-muted-foreground"
+         role="status"
+      >
+         <span>
+            <span className="font-medium text-foreground tabular-nums">
+               {count} {count === 1 ? 'issue oculto' : 'issues ocultos'}
+            </span>{' '}
+            por filtros
+         </span>
+         {onClear ? (
+            <button
+               type="button"
+               onClick={onClear}
+               className="inline-flex items-center gap-1 rounded-sm transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            >
+               Limpiar filtros
+               <X className="size-3" aria-hidden="true" />
+            </button>
+         ) : null}
       </div>
    );
 }
