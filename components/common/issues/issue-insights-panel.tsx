@@ -105,17 +105,19 @@ export function IssueInsightsPanel({
                   {statusCounts.map((status) => (
                      <div
                         key={status.id}
-                        className="flex min-w-0 flex-1 flex-col items-center gap-1"
+                        className="flex h-full min-w-0 flex-1 flex-col items-center gap-1"
                      >
-                        <div
-                           className="w-full max-w-7 rounded-t-sm transition-[height]"
-                           style={{
-                              height: `${Math.max((status.count / maxStatusCount) * 100, status.count ? 8 : 2)}%`,
-                              backgroundColor: status.color,
-                              opacity: status.count ? 0.9 : 0.18,
-                           }}
-                           title={`${status.name}: ${status.count}`}
-                        />
+                        <div className="flex min-h-0 w-full flex-1 items-end justify-center">
+                           <div
+                              className="w-full max-w-7 rounded-t-sm transition-[height]"
+                              style={{
+                                 height: `${Math.max((status.count / maxStatusCount) * 100, status.count ? 8 : 2)}%`,
+                                 backgroundColor: status.color,
+                                 opacity: status.count ? 0.9 : 0.18,
+                              }}
+                              title={`${status.name}: ${status.count}`}
+                           />
+                        </div>
                         <span className="max-w-full truncate text-[9px] text-muted-foreground">
                            {status.name}
                         </span>
