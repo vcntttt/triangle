@@ -340,6 +340,12 @@ function IssuesWorkspaceContent({
    const [issueAction, setIssueAction] = useState<IssueActionKind | null>(null);
    const [insightsFocusChoice, setInsightsFocus] = useState<IssueInsightsFocus | null>(null);
    const isInsightsOpen = useIssueInsightsStore((state) => state.isOpen);
+   const [wasInsightsOpen, setWasInsightsOpen] = useState(isInsightsOpen);
+   // Closing the panel drops its focus, so reopening it starts from the full list.
+   if (wasInsightsOpen !== isInsightsOpen) {
+      setWasInsightsOpen(isInsightsOpen);
+      if (!isInsightsOpen) setInsightsFocus(null);
+   }
    // The focus only exists while its panel is visible, so it can never narrow the list unseen.
    const insightsFocus = isDesktopWorkspace && isInsightsOpen ? insightsFocusChoice : null;
    const [selectionOverride, setSelectionOverride] = useState<{
