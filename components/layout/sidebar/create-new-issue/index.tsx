@@ -31,6 +31,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useProjectOptions } from '@/hooks/use-project-options';
 import { useLabelOptions } from '@/hooks/use-label-options';
 import { useViewerUser } from '@/hooks/use-viewer-user';
+import { usePendingAction } from '@/hooks/use-pending-action';
 import { normalizeInlineToken, parseIssueInlineTokens } from '@/lib/issue-inline-tokens';
 import {
    applyInlineTokenSuggestion,
@@ -182,6 +183,7 @@ function renderTitlePreviewSegment(segment: TitlePreviewSegment): ReactNode {
 
 export function CreateNewIssue() {
    const [createMore, setCreateMore] = useState<boolean>(false);
+   const [isCreating, runCreate] = usePendingAction();
    const [draftSubIssues, setDraftSubIssues] = useState<DraftSubIssue[]>([]);
    const [projectSelectorOpen, setProjectSelectorOpen] = useState(false);
    const [areaSelectorOpen, setAreaSelectorOpen] = useState(false);
@@ -508,12 +510,12 @@ export function CreateNewIssue() {
          }
 
          event.preventDefault();
-         void createIssue();
+         void runCreate(createIssue);
       };
 
       window.addEventListener('keydown', handleSubmitShortcut);
       return () => window.removeEventListener('keydown', handleSubmitShortcut);
-   }, [createIssue, isOpen]);
+   }, [createIssue, isOpen, runCreate]);
 
    return (
       <Dialog open={isOpen} onOpenChange={(value) => (value ? openModal() : closeModal())}>
@@ -751,8 +753,9 @@ export function CreateNewIssue() {
                </div>
                <Button
                   size="sm"
+                  disabled={isCreating}
                   onClick={() => {
-                     void createIssue();
+                     void runCreate(createIssue);
                   }}
                >
                   Create issue

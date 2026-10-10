@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { usePendingAction } from '@/hooks/use-pending-action';
 import type { Id } from '@convex/_generated/dataModel';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -57,6 +58,7 @@ export function SavedViewDialog({
    captureFilters?: boolean;
 }) {
    const [name, setName] = useState('');
+   const [isSaving, runSave] = usePendingAction();
    const { filters } = useFilterStore();
    const view = useViewStore();
    const { createSavedView, updateSavedView } = useSavedViewCommands();
@@ -80,33 +82,34 @@ export function SavedViewDialog({
       [existing?.display, view]
    );
 
-   const handleSave = async () => {
-      const trimmedName = name.trim();
-      if (!trimmedName) {
-         toast.error('Saved view name is required');
-         return;
-      }
-
-      try {
-         if (existing) {
-            await updateSavedView({ viewId: existing.id, name: trimmedName });
-         } else {
-            const input: SavedViewInput = {
-               name: trimmedName,
-               target: projectId ? 'project' : 'global',
-               projectId: projectId as Id<'projects'> | undefined,
-               scope,
-               filters: captureFilters ? filters : defaultIssueFilters,
-               display: currentDisplay,
-            };
-            await createSavedView(input);
+   const handleSave = () =>
+      runSave(async () => {
+         const trimmedName = name.trim();
+         if (!trimmedName) {
+            toast.error('Saved view name is required');
+            return;
          }
-         toast.success(existing ? 'Saved view updated' : 'Saved view created');
-         onOpenChange(false);
-      } catch (error) {
-         toast.error(error instanceof Error ? error.message : 'Saved view could not be saved.');
-      }
-   };
+
+         try {
+            if (existing) {
+               await updateSavedView({ viewId: existing.id, name: trimmedName });
+            } else {
+               const input: SavedViewInput = {
+                  name: trimmedName,
+                  target: projectId ? 'project' : 'global',
+                  projectId: projectId as Id<'projects'> | undefined,
+                  scope,
+                  filters: captureFilters ? filters : defaultIssueFilters,
+                  display: currentDisplay,
+               };
+               await createSavedView(input);
+            }
+            toast.success(existing ? 'Saved view updated' : 'Saved view created');
+            onOpenChange(false);
+         } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Saved view could not be saved.');
+         }
+      });
 
    return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -135,7 +138,7 @@ export function SavedViewDialog({
                <Button variant="ghost" onClick={() => onOpenChange(false)}>
                   Cancel
                </Button>
-               <Button onClick={() => void handleSave()}>
+               <Button disabled={isSaving} onClick={() => void handleSave()}>
                   {existing ? 'Rename' : 'Save view'}
                </Button>
             </DialogFooter>
