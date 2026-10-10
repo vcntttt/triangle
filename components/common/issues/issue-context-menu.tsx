@@ -385,17 +385,21 @@ export function IssueContextMenu({ issueId }: IssueContextMenuProps) {
                <ContextMenuSubTrigger>
                   <Folder className="mr-2 size-4" /> Project
                </ContextMenuSubTrigger>
-               <ContextMenuSubContent className="w-64">
+               <ContextMenuSubContent className="max-h-80 w-64 overflow-y-auto">
                   <ContextMenuItem onClick={() => handleProjectChange(null)}>
                      <Folder className="size-4" /> No Project
+                     {issue && !issue.project && <CheckIcon className="ml-auto size-4" />}
                   </ContextMenuItem>
-                  {projects.slice(0, 5).map((project) => (
+                  {projects.map((project) => (
                      <ContextMenuItem
                         key={project.id}
                         onClick={() => handleProjectChange(project.id)}
                      >
                         <ProjectIconGlyph icon={project.iconConfig} className="size-4" />{' '}
-                        {project.name}
+                        <span className="truncate">{project.name}</span>
+                        {issue?.project?.id === project.id && (
+                           <CheckIcon className="ml-auto size-4" />
+                        )}
                      </ContextMenuItem>
                   ))}
                   <ContextMenuSeparator />
