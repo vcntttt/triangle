@@ -1082,6 +1082,32 @@ export const update = mutation({
             toValue: project?.name,
             createdAt: updatedAt,
          });
+
+         // Subissues move with their parent and take numbers from the new project key.
+         const children = await ctx.db
+            .query('issues')
+            .withIndex('by_parent_issue', (q) => q.eq('parentIssueId', id))
+            .collect();
+         for (const child of children) {
+            if (child.projectId === nextProjectId) continue;
+            const childPreviousProject = child.projectId ? await ctx.db.get(child.projectId) : null;
+            const childIdentifier = await createIssueIdentifier(ctx, project?.key ?? 'TRI');
+            await ctx.db.patch(child._id, {
+               projectId: nextProjectId,
+               areaId: undefined,
+               identifier: childIdentifier.identifier,
+               projectIssueNumber: childIdentifier.projectIssueNumber,
+               updatedAt,
+            });
+            await recordIssueActivity(ctx, {
+               issueId: child._id,
+               type: 'project_changed',
+               message: 'cambió el proyecto',
+               fromValue: childPreviousProject?.name,
+               toValue: project?.name,
+               createdAt: updatedAt,
+            });
+         }
       }
       if ((input.areaId !== undefined || projectChanged) && issue.areaId !== area?._id) {
          const previousArea = issue.areaId ? await ctx.db.get(issue.areaId) : null;
