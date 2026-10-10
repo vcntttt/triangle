@@ -1,6 +1,7 @@
 import { v } from 'convex/values';
 import type { Doc, Id } from './_generated/dataModel';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
+import { keepLiveIds, keepLiveIssueFilters } from './liveReferences';
 
 const singletonKey = 'me';
 
@@ -168,10 +169,20 @@ function serializeProfile(profile: Doc<'viewerProfiles'> | null) {
    };
 }
 
-function serializePreferences(preferences: Doc<'viewerPreferences'> | null) {
+async function serializePreferences(ctx: QueryCtx, preferences: Doc<'viewerPreferences'> | null) {
    if (!preferences) {
       return defaultPreferences;
    }
+
+   const sidebar = { ...defaultPreferences.sidebar, ...preferences.sidebar };
+   const [issueFilters, pinnedProjectIds, projectOrder] = await Promise.all([
+      keepLiveIssueFilters(ctx, {
+         ...defaultPreferences.issueFilters,
+         ...preferences.issueFilters,
+      }),
+      keepLiveIds(ctx, 'projects', preferences.pinnedProjectIds),
+      keepLiveIds(ctx, 'projects', sidebar.projectOrder),
+   ]);
 
    return {
       issueView: {
@@ -182,10 +193,7 @@ function serializePreferences(preferences: Doc<'viewerPreferences'> | null) {
             ...preferences.issueView.visibleProperties,
          },
       },
-      issueFilters: {
-         ...defaultPreferences.issueFilters,
-         ...preferences.issueFilters,
-      },
+      issueFilters,
       projectView: {
          ...defaultPreferences.projectView,
          ...preferences.projectView,
@@ -198,12 +206,9 @@ function serializePreferences(preferences: Doc<'viewerPreferences'> | null) {
          ...defaultPreferences.projectFilters,
          ...preferences.projectFilters,
       },
-      pinnedProjectIds: preferences.pinnedProjectIds,
+      pinnedProjectIds,
       savedViewsEnabled: preferences.savedViewsEnabled ?? defaultPreferences.savedViewsEnabled,
-      sidebar: {
-         ...defaultPreferences.sidebar,
-         ...preferences.sidebar,
-      },
+      sidebar: { ...sidebar, projectOrder },
       sidebarOpen: preferences.sidebarOpen,
    };
 }
@@ -284,7 +289,7 @@ export const updateProfile = mutation({
 
 export const preferences = query({
    args: {},
-   handler: async (ctx) => serializePreferences(await getPreferences(ctx)),
+   handler: async (ctx) => serializePreferences(ctx, await getPreferences(ctx)),
 });
 
 export const updatePreferences = mutation({
@@ -351,7 +356,7 @@ export const updatePreferences = mutation({
          updatedAt: Date.now(),
       });
 
-      return serializePreferences((await ctx.db.get(existing._id))!);
+      return serializePreferences(ctx, (await ctx.db.get(existing._id))!);
    },
 });
 
@@ -368,7 +373,7 @@ export const togglePinnedProject = mutation({
          updatedAt: Date.now(),
       });
 
-      return serializePreferences((await ctx.db.get(existing._id))!);
+      return serializePreferences(ctx, (await ctx.db.get(existing._id))!);
    },
 });
 
@@ -382,6 +387,6 @@ export const setSidebarOpen = mutation({
          updatedAt: Date.now(),
       });
 
-      return serializePreferences((await ctx.db.get(existing._id))!);
+      return serializePreferences(ctx, (await ctx.db.get(existing._id))!);
    },
 });

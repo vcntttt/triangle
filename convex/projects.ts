@@ -1425,8 +1425,13 @@ export const deleteProject = mutation({
          await Promise.all(issues.map((issue) => removeIssueCompletely(ctx, issue._id)));
       }
 
+      const views = await ctx.db
+         .query('savedViews')
+         .withIndex('by_project_position', (q) => q.eq('projectId', id))
+         .collect();
       await Promise.all(updates.map((update) => ctx.db.delete(update._id)));
       await Promise.all(areas.map((area) => ctx.db.delete(area._id)));
+      await Promise.all(views.map((view) => ctx.db.delete(view._id)));
       await ctx.db.delete(id);
 
       return { ok: true };

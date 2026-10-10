@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useNavigate, useRouterState } from '@tanstack/react-router';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import {
    AlertDialog,
@@ -17,18 +18,16 @@ interface DeleteProjectDialogProps {
    project: Project;
    open: boolean;
    onOpenChange: (open: boolean) => void;
-   onDeleted?: () => void;
 }
 
 type DeleteMode = 'unlink' | 'withIssues';
 
-export function DeleteProjectDialog({
-   project,
-   open,
-   onOpenChange,
-   onDeleted,
-}: DeleteProjectDialogProps) {
+export function DeleteProjectDialog({ project, open, onOpenChange }: DeleteProjectDialogProps) {
    const { deleteProject } = useProjectCommands();
+   const navigate = useNavigate();
+   const isOnProjectPage = useRouterState({
+      select: (state) => state.location.pathname === `/projects/${project.slug}`,
+   });
    const [mode, setMode] = useState<DeleteMode | null>(null);
    const [error, setError] = useState<string | null>(null);
    const isPending = mode !== null;
@@ -40,7 +39,9 @@ export function DeleteProjectDialog({
       try {
          await deleteProject({ projectId: project.id, mode: selectedMode });
          onOpenChange(false);
-         onDeleted?.();
+         if (isOnProjectPage) {
+            void navigate({ to: '/projects' });
+         }
       } catch (err) {
          setMode(null);
          setError(err instanceof Error ? err.message : 'No se pudo eliminar el proyecto.');

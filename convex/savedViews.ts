@@ -1,6 +1,7 @@
 import { v } from 'convex/values';
 import type { Doc, Id } from './_generated/dataModel';
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
+import { keepLiveIssueFilters } from './liveReferences';
 
 const filtersValidator = v.object({
    status: v.array(v.string()),
@@ -40,7 +41,7 @@ const displayValidator = v.object({
 const targetValidator = v.union(v.literal('global'), v.literal('project'));
 const scopeValidator = v.union(v.literal('active'), v.literal('backlog'), v.literal('all'));
 
-function serializeSavedView(view: Doc<'savedViews'>) {
+async function serializeSavedView(ctx: QueryCtx, view: Doc<'savedViews'>) {
    return {
       id: view._id,
       name: view.name,
@@ -48,7 +49,7 @@ function serializeSavedView(view: Doc<'savedViews'>) {
       target: view.target,
       projectId: view.projectId ?? null,
       scope: view.scope,
-      filters: view.filters,
+      filters: await keepLiveIssueFilters(ctx, view.filters),
       display: view.display,
       position: view.position,
       createdAt: new Date(view.createdAt).toISOString(),
@@ -112,10 +113,19 @@ export const list = query({
                    .collect()
               : await ctx.db.query('savedViews').collect();
 
-      return views
-         .filter((view) => !projectId || view.projectId === projectId)
-         .toSorted((left, right) => left.position - right.position)
-         .map(serializeSavedView);
+      const liveViews = await Promise.all(
+         views
+            .filter((view) => !projectId || view.projectId === projectId)
+            .map(async (view) =>
+               view.projectId && !(await ctx.db.get(view.projectId)) ? null : view
+            )
+      );
+      return Promise.all(
+         liveViews
+            .filter((view) => view !== null)
+            .toSorted((left, right) => left.position - right.position)
+            .map((view) => serializeSavedView(ctx, view))
+      );
    },
 });
 
@@ -124,7 +134,7 @@ export const get = query({
    handler: async (ctx, { viewId }) => {
       if (!viewId) return null;
       const view = await ctx.db.get(viewId);
-      return view ? serializeSavedView(view) : null;
+      return view ? serializeSavedView(ctx, view) : null;
    },
 });
 
@@ -156,7 +166,7 @@ export const create = mutation({
          createdAt: now,
          updatedAt: now,
       });
-      return serializeSavedView((await ctx.db.get(id))!);
+      return serializeSavedView(ctx, (await ctx.db.get(id))!);
    },
 });
 
@@ -198,7 +208,7 @@ export const update = mutation({
          ...(input.position === undefined ? {} : { position: input.position }),
          updatedAt: Date.now(),
       });
-      return serializeSavedView((await ctx.db.get(input.viewId))!);
+      return serializeSavedView(ctx, (await ctx.db.get(input.viewId))!);
    },
 });
 
