@@ -165,8 +165,9 @@ export function SaveViewButton({
 
    return (
       <>
-         <Button size="xs" variant="ghost" onClick={() => setOpen(true)}>
-            <BookmarkPlus className="mr-1 size-4" /> Save view
+         <Button size="xs" variant="ghost" aria-label="Save view" onClick={() => setOpen(true)}>
+            <BookmarkPlus className="size-4 sm:mr-1" />
+            <span className="hidden sm:inline">Save view</span>
          </Button>
          <SavedViewDialog
             open={open}

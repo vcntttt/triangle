@@ -67,9 +67,9 @@ export function DisplayMenu() {
    return (
       <DropdownMenu>
          <DropdownMenuTrigger asChild>
-            <Button className="relative" size="xs" variant="secondary">
-               <SlidersHorizontal className="size-4 mr-1" />
-               Display
+            <Button className="relative" size="xs" variant="secondary" aria-label="Display">
+               <SlidersHorizontal className="size-4 sm:mr-1" />
+               <span className="hidden sm:inline">Display</span>
                {viewType === 'grid' && (
                   <span className="absolute right-0 top-0 size-2 bg-orange-500 rounded-full" />
                )}

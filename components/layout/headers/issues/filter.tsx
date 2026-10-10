@@ -84,9 +84,9 @@ export function Filter() {
    return (
       <Popover open={open} onOpenChange={setOpen}>
          <PopoverTrigger asChild>
-            <Button size="xs" variant="ghost" className="relative">
-               <ListFilter className="size-4 mr-1" />
-               Filter
+            <Button size="xs" variant="ghost" className="relative" aria-label="Filter">
+               <ListFilter className="size-4 sm:mr-1" />
+               <span className="hidden sm:inline">Filter</span>
                {getActiveFiltersCount() > 0 && (
                   <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] rounded-full size-4 flex items-center justify-center">
                      {getActiveFiltersCount()}

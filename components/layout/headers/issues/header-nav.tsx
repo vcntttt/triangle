@@ -64,17 +64,17 @@ export default function HeaderNav({
    }, [isSearchOpen, closeSearch, searchQuery]);
 
    return (
-      <div className="w-full flex justify-between items-center border-b py-1.5 px-6 h-10">
-         <div className="flex items-center gap-3">
+      <div className="w-full flex justify-between items-center gap-2 border-b py-1.5 px-4 sm:px-6 h-10">
+         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <SidebarTrigger className="" />
-            <div className="flex items-center gap-1">
-               <span className="text-sm font-medium">{projectTitle ?? 'Issues'}</span>
+            <div className="flex min-w-0 items-center gap-1">
+               <span className="truncate text-sm font-medium">{projectTitle ?? 'Issues'}</span>
                <span className="text-xs bg-accent rounded-md px-1.5 py-1">{count}</span>
             </div>
             {isSearchOpen ? (
                <div
                   ref={searchContainerRef}
-                  className="relative flex items-center justify-center w-64 transition-all duration-200 ease-in-out"
+                  className="relative flex items-center justify-center w-36 sm:w-64 transition-all duration-200 ease-in-out"
                >
                   <SearchIcon className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground size-4" />
                   <Input
@@ -144,7 +144,7 @@ export default function HeaderNav({
             </div>
          </div>
 
-         <div className="flex items-center gap-2">
+         <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             {rightActions}
             <Button
                className="relative"
