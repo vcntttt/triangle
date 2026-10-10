@@ -110,19 +110,23 @@ export function IssueActionCommand({
          return;
       }
 
+      // A mixed selection converges on having the label; only a uniform one toggles it off.
+      const hasLabel = (issue: Issue) => issue.labels.some((label) => label.id === nextLabel.id);
+      const removing = targetIssues.every(hasLabel);
+
       targetIssues.forEach((issue) => {
-         const hasLabel = issue.labels.some((label) => label.id === nextLabel.id);
-
-         if (hasLabel) {
+         if (removing) {
             removeIssueLabel(issue.id, nextLabel.id);
-            return;
+         } else if (!hasLabel(issue)) {
+            addIssueLabel(issue.id, nextLabel);
          }
-
-         addIssueLabel(issue.id, nextLabel);
       });
 
       close();
-      showUpdatedToast(targetIssues, `Label updated: ${nextLabel.name}`);
+      showUpdatedToast(
+         targetIssues,
+         `${removing ? 'Label removed' : 'Label added'}: ${nextLabel.name}`
+      );
    };
 
    const handleProjectSelect = (projectId: string) => {
