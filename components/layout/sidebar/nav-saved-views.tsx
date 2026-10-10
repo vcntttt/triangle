@@ -14,7 +14,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useProjectOptions } from '@/hooks/use-project-options';
 import { savedViewsQuery, useSavedViewCommands } from '@/src/data/saved-views';
-import { useViewerCommands, useViewerPreferences } from '@/src/data/viewer';
+import { useUpdatePreferences, useViewerPreferences } from '@/src/data/viewer';
 import { useQuery } from '@tanstack/react-query';
 import { SavedViewDialog, type SavedViewLike } from '@/components/common/views/saved-view-dialog';
 
@@ -22,7 +22,7 @@ export function NavSavedViews() {
    const { data: views = [] } = useQuery(savedViewsQuery());
    const projects = useProjectOptions();
    const preferences = useViewerPreferences();
-   const { updatePreferences } = useViewerCommands();
+   const updatePreferences = useUpdatePreferences();
    const { removeSavedView } = useSavedViewCommands();
    const [createOpen, setCreateOpen] = useState(false);
    const [editing, setEditing] = useState<SavedViewLike | undefined>();

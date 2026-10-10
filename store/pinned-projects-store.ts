@@ -1,4 +1,5 @@
 import type { Id } from '@convex/_generated/dataModel';
+import { toast } from 'sonner';
 import { useViewerCommands, useViewerPreferences } from '@/src/data/viewer';
 
 export function usePinnedProjectsStore() {
@@ -9,7 +10,10 @@ export function usePinnedProjectsStore() {
    return {
       pinnedProjectIds,
       togglePinnedProject: (projectId: string) => {
-         void togglePinnedProject({ projectId: projectId as Id<'projects'> });
+         togglePinnedProject({ projectId: projectId as Id<'projects'> }).catch((error) => {
+            console.error('Failed to toggle a pinned project.', error);
+            toast.error('No se pudo fijar el proyecto.');
+         });
       },
       isPinned: (projectId: string) => pinnedProjectIds.includes(projectId as Id<'projects'>),
    };

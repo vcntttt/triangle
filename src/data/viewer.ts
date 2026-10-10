@@ -1,6 +1,7 @@
 import { convexQuery } from '@convex-dev/react-query';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMutation } from 'convex/react';
+import { toast } from 'sonner';
 import type { FunctionArgs, FunctionReturnType } from 'convex/server';
 import { api } from '@convex/_generated/api';
 
@@ -66,16 +67,24 @@ function mergePreferencesPatch(
 
 // Optimistic wrapper around the updatePreferences mutation: patches the
 // TanStack Query cache immediately so rapid toggles read their own previous
-// write instead of a stale render-time snapshot.
+// write instead of a stale render-time snapshot. A failed write reloads the
+// server value, so the UI never keeps a preference that was not saved.
 export function useUpdatePreferences() {
    const queryClient = useQueryClient();
    const updatePreferences = useMutation(api.viewer.updatePreferences);
 
-   return (patch: UpdatePreferencesPatch) => {
-      queryClient.setQueryData<ViewerPreferences>(viewerPreferencesQuery().queryKey, (prev) =>
+   return async (patch: UpdatePreferencesPatch) => {
+      const { queryKey } = viewerPreferencesQuery();
+      queryClient.setQueryData<ViewerPreferences>(queryKey, (prev) =>
          prev === undefined ? prev : mergePreferencesPatch(prev, patch)
       );
-      void updatePreferences(patch);
+      try {
+         await updatePreferences(patch);
+      } catch (error) {
+         console.error('Failed to save preferences.', error);
+         toast.error('No se pudieron guardar las preferencias.');
+         await queryClient.invalidateQueries({ queryKey });
+      }
    };
 }
 

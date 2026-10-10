@@ -26,11 +26,11 @@ import { ProjectIconGlyph } from '@/components/common/projects/project-icon';
 import { workspaceItems } from '@/lib/ui-catalog';
 import type { Project } from '@/lib/projects-presentation';
 import { useProjectOptions } from '@/hooks/use-project-options';
-import { useViewerCommands, useViewerPreferences } from '@/src/data/viewer';
+import { useUpdatePreferences, useViewerPreferences } from '@/src/data/viewer';
 
 export function NavWorkspace() {
    const preferences = useViewerPreferences();
-   const { updatePreferences } = useViewerCommands();
+   const updatePreferences = useUpdatePreferences();
    const configuredProjectOrder = preferences?.sidebar?.projectOrder?.length
       ? preferences.sidebar.projectOrder
       : (preferences?.pinnedProjectIds ?? []);
