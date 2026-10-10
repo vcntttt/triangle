@@ -8,7 +8,7 @@ import * as m from 'motion/react-m';
 import { CheckCircle2, CircleAlert, CircleDashed, CircleHelp } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
-import type { Project, ProjectUpdate } from '@/lib/models';
+import type { Project } from '@/lib/models';
 import type { ProjectOptionLike } from '@/lib/projects-presentation';
 import { cn } from '@/lib/utils';
 import { usePinnedProjectsStore } from '@/store/pinned-projects-store';
@@ -36,7 +36,6 @@ interface ProjectBoardCardProps {
    onStatusChange: (projectId: string, statusId: string) => void;
    onPriorityChange: (projectId: string, priorityId: string) => void;
    onAttentionChange: (projectId: string, attentionId: string) => void;
-   onProjectUpdate: (projectId: string, update: ProjectUpdate) => void;
 }
 
 interface ProjectBoardCardPreviewProps {
@@ -60,7 +59,6 @@ export function ProjectBoardCard({
    onStatusChange,
    onPriorityChange,
    onAttentionChange,
-   onProjectUpdate,
 }: ProjectBoardCardProps) {
    const { togglePinnedProject, isPinned } = usePinnedProjectsStore();
    const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
@@ -219,7 +217,6 @@ export function ProjectBoardCard({
             project={project}
             open={updateDialogOpen}
             onOpenChange={setUpdateDialogOpen}
-            onProjectUpdate={onProjectUpdate}
          />
          <DeleteProjectDialog
             project={project}

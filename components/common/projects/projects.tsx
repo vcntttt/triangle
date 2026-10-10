@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import ProjectLine from '@/components/common/projects/project-line';
 import { ProjectBoard } from '@/components/common/projects/project-board';
 import {
@@ -9,7 +8,6 @@ import {
    toPresentationProject,
 } from '@/lib/projects-presentation';
 import { viewerProfileToUser } from '@/lib/current-user';
-import type { ProjectUpdate } from '@/lib/models';
 import { useProjectsFilterStore } from '@/store/projects-filter-store';
 import { useProjectsViewStore } from '@/store/projects-view-store';
 import { useViewerProfile } from '@/src/data/viewer';
@@ -31,34 +29,11 @@ export default function Projects({
 }: ProjectsProps) {
    const { viewType, visibleProperties } = useProjectsViewStore();
    const { filters, sort } = useProjectsFilterStore();
-   const [projectUpdates, setProjectUpdates] = useState<Record<string, ProjectUpdate>>({});
-   const [projectFieldOverrides, setProjectFieldOverrides] = useState<
-      Record<string, Pick<ProjectLike, 'health' | 'attention'>>
-   >({});
    const viewer = viewerProfileToUser(useViewerProfile());
 
-   const handleProjectUpdate = (projectId: string, update: ProjectUpdate) => {
-      setProjectUpdates((updates) => ({ ...updates, [projectId]: update }));
-      setProjectFieldOverrides((overrides) => ({
-         ...overrides,
-         [projectId]: { health: update.health, attention: update.attention.id },
-      }));
-   };
-
-   const presentationProjects = projects.map((project) => {
-      const latestUpdate = projectUpdates[project.id] ?? project.latestUpdate;
-      return toPresentationProject(
-         {
-            ...project,
-            ...projectFieldOverrides[project.id],
-            latestUpdate,
-         },
-         statusOptions,
-         priorityOptions,
-         attentionOptions,
-         viewer
-      );
-   });
+   const presentationProjects = projects.map((project) =>
+      toPresentationProject(project, statusOptions, priorityOptions, attentionOptions, viewer)
+   );
    const healthFilterIds = new Set(filters.health);
    const priorityFilterIds = new Set(filters.priority);
 
@@ -142,19 +117,6 @@ export default function Projects({
          statusOptions={statusOptions}
          priorityOptions={priorityOptions}
          attentionOptions={attentionOptions}
-         onProjectAttentionChange={(projectId, attentionId) => {
-            setProjectFieldOverrides((overrides) => ({
-               ...overrides,
-               [projectId]: { ...overrides[projectId], attention: attentionId },
-            }));
-         }}
-         onProjectHealthChange={(projectId, healthId) => {
-            setProjectFieldOverrides((overrides) => ({
-               ...overrides,
-               // Board group ids come from the health catalog.
-               [projectId]: { ...overrides[projectId], health: healthId as ProjectLike['health'] },
-            }));
-         }}
       />
    ) : (
       <div className="w-full">
@@ -189,7 +151,6 @@ export default function Projects({
                   statusOptions={statusOptions}
                   priorityOptions={priorityOptions}
                   attentionOptions={attentionOptions}
-                  onProjectUpdate={handleProjectUpdate}
                />
             ))}
          </div>

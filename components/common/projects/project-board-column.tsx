@@ -2,7 +2,7 @@
 
 import { useRef } from 'react';
 import { useDrop } from 'react-dnd';
-import type { Project, ProjectUpdate } from '@/lib/models';
+import type { Project } from '@/lib/models';
 import type { ProjectOptionLike } from '@/lib/projects-presentation';
 import { cn } from '@/lib/utils';
 import type { ProjectBoardGroupBy, ProjectDisplayProperty } from '@/store/projects-view-store';
@@ -29,7 +29,6 @@ interface ProjectBoardColumnProps {
    onStatusChange: (projectId: string, statusId: string) => void;
    onPriorityChange: (projectId: string, priorityId: string) => void;
    onAttentionChange: (projectId: string, attentionId: string) => void;
-   onProjectUpdate: (projectId: string, update: ProjectUpdate) => void;
    onMoveProject: (projectId: string, targetGroupId: string) => void;
 }
 
@@ -46,7 +45,6 @@ export function ProjectBoardColumn({
    onStatusChange,
    onPriorityChange,
    onAttentionChange,
-   onProjectUpdate,
    onMoveProject,
 }: ProjectBoardColumnProps) {
    const ref = useRef<HTMLDivElement>(null);
@@ -114,7 +112,6 @@ export function ProjectBoardColumn({
                         onStatusChange={onStatusChange}
                         onPriorityChange={onPriorityChange}
                         onAttentionChange={onAttentionChange}
-                        onProjectUpdate={onProjectUpdate}
                      />
                   ))}
                </div>

@@ -13,7 +13,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { CircleCheck, CircleX, AlertCircle, HelpCircle, Bell, Send } from 'lucide-react';
 import { toast } from 'sonner';
-import type { Project, ProjectUpdate } from '@/lib/models';
+import type { Project } from '@/lib/models';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
@@ -42,10 +42,9 @@ function getHealthIcon(healthId: string) {
 
 interface HealthPopoverProps {
    project: Project;
-   onProjectUpdate?: (projectId: string, update: ProjectUpdate) => void;
 }
 
-export function HealthPopover({ project, onProjectUpdate }: HealthPopoverProps) {
+export function HealthPopover({ project }: HealthPopoverProps) {
    const [isComposing, setIsComposing] = useState(false);
    const defaultHealth = project.health.id === 'no-update' ? 'on-track' : project.health.id;
    const [draftHealth, setDraftHealth] = useState<Project['health']['id'] | null>(null);
@@ -73,14 +72,13 @@ export function HealthPopover({ project, onProjectUpdate }: HealthPopoverProps) 
       setIsSubmitting(true);
 
       try {
-         const update = await createProjectUpdate({
+         await createProjectUpdate({
             projectId: project.id,
             health: selectedHealth,
             attention: selectedAttention,
             body: trimmedBody,
          });
 
-         onProjectUpdate?.(project.id, update);
          setBody('');
          setDraftHealth(null);
          setDraftAttention(null);

@@ -7,7 +7,7 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { LazyMotion, domAnimation } from 'motion/react';
 import * as m from 'motion/react-m';
 import { toast } from 'sonner';
-import type { Project, ProjectUpdate } from '@/lib/models';
+import type { Project } from '@/lib/models';
 import type { ProjectOptionLike } from '@/lib/projects-presentation';
 import type { ProjectDisplayProperty, ProjectBoardGroupBy } from '@/store/projects-view-store';
 import { useProjectsViewStore } from '@/store/projects-view-store';
@@ -30,8 +30,6 @@ interface ProjectBoardProps {
    statusOptions: ProjectOptionLike[];
    priorityOptions: ProjectOptionLike[];
    attentionOptions: ProjectOptionLike[];
-   onProjectAttentionChange?: (projectId: string, attentionId: string) => void;
-   onProjectHealthChange?: (projectId: string, healthId: string) => void;
 }
 
 interface ProjectGroup {
@@ -55,8 +53,6 @@ export function ProjectBoard({
    statusOptions,
    priorityOptions,
    attentionOptions,
-   onProjectAttentionChange,
-   onProjectHealthChange,
 }: ProjectBoardProps) {
    const { groupBy, showEmptyGroups, visibleProperties } = useProjectsViewStore();
    const navigate = useNavigate();
@@ -123,20 +119,6 @@ export function ProjectBoard({
       );
    };
 
-   const handleProjectUpdate = (projectId: string, update: ProjectUpdate) => {
-      const nextHealth = allHealth.find((item) => item.id === update.health) ?? allHealth[0];
-
-      setProjectOverrides((overrides) => ({
-         ...overrides,
-         [projectId]: {
-            ...overrides[projectId],
-            latestUpdate: update,
-            health: nextHealth,
-            attention: update.attention,
-         },
-      }));
-   };
-
    const handleMoveProject = async (projectId: string, targetGroupId: string) => {
       const project = boardProjects.find((item) => item.id === projectId);
       if (!project) {
@@ -184,7 +166,6 @@ export function ProjectBoard({
       value: string,
       successMessage: string
    ) {
-      const previousOverride = projectOverrides[projectId];
       const project = boardProjects.find((item) => item.id === projectId);
       if (!project) {
          return;
@@ -244,19 +225,15 @@ export function ProjectBoard({
                    ? { health: value }
                    : { attention: value }),
          });
-         if (field === 'health') {
-            onProjectHealthChange?.(projectId, value);
-         } else if (field === 'attention') {
-            onProjectAttentionChange?.(projectId, value);
-         }
          toast.success(successMessage);
       } catch (error) {
          console.error(`Failed to update project ${field}.`, error);
-         setProjectOverrides((overrides) => ({
-            ...overrides,
-            [projectId]: previousOverride ?? {},
-         }));
          toast.error(`Project ${field} could not be updated`);
+      } finally {
+         // The live query already reflects a successful write, so the optimistic copy can go.
+         setProjectOverrides((overrides) =>
+            Object.fromEntries(Object.entries(overrides).filter(([id]) => id !== projectId))
+         );
       }
    }
 
@@ -281,7 +258,6 @@ export function ProjectBoard({
                         onStatusChange={handleStatusChange}
                         onPriorityChange={handlePriorityChange}
                         onAttentionChange={handleAttentionChange}
-                        onProjectUpdate={handleProjectUpdate}
                         onMoveProject={handleMoveProject}
                      />
                   ))}

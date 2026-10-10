@@ -1,7 +1,7 @@
 import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import type { Project, ProjectUpdate } from '@/lib/models';
+import type { Project } from '@/lib/models';
 import type { ProjectOptionLike } from '@/lib/projects-presentation';
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { usePinnedProjectsStore } from '@/store/pinned-projects-store';
@@ -26,7 +26,6 @@ interface ProjectLineProps {
    statusOptions: ProjectOptionLike[];
    priorityOptions: ProjectOptionLike[];
    attentionOptions: ProjectOptionLike[];
-   onProjectUpdate?: (projectId: string, update: ProjectUpdate) => void;
 }
 
 export default function ProjectLine(props: ProjectLineProps) {
@@ -50,7 +49,6 @@ function ProjectLineContent({
    statusOptions,
    priorityOptions,
    attentionOptions,
-   onProjectUpdate,
 }: ProjectLineProps) {
    const navigate = useNavigate();
    const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
@@ -125,7 +123,6 @@ function ProjectLineContent({
                            priority: currentPriority,
                            attention: currentAttention,
                         }}
-                        onProjectUpdate={onProjectUpdate}
                      />
                   </div>
                )}
@@ -205,7 +202,6 @@ function ProjectLineContent({
             project={project}
             open={updateDialogOpen}
             onOpenChange={setUpdateDialogOpen}
-            onProjectUpdate={onProjectUpdate}
          />
          <DeleteProjectDialog
             project={project}

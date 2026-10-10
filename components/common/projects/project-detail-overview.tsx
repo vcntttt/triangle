@@ -16,13 +16,7 @@ import { PrioritySelector } from '@/components/common/projects/priority-selector
 import { StatusWithPercent } from '@/components/common/projects/status-with-percent';
 import { AttentionSelector } from '@/components/common/projects/attention-selector';
 import { viewerProfileToUser } from '@/lib/current-user';
-import type {
-   Issue,
-   ProjectArea,
-   ProjectIconConfig,
-   ProjectIconType,
-   ProjectUpdate,
-} from '@/lib/models';
+import type { Issue, ProjectArea, ProjectIconConfig, ProjectIconType } from '@/lib/models';
 import {
    type ProjectLike,
    type ProjectOptionLike,
@@ -180,12 +174,25 @@ export function ProjectOverview({
    const { updateProject, updateProjectFields } = useProjectCommands();
    const viewerProfile = useViewerProfile();
    const viewer = useMemo(() => viewerProfileToUser(viewerProfile), [viewerProfile]);
-   const [project, setProject] = useState<ProjectLike>(() => initialProject);
-   const [iconConfig, setIconConfig] = useState<ProjectIconConfig>(() => ({
+   // The live query is the source of truth; `pending` only holds optimistic edits whose
+   // mutation hasn't settled yet, so changes made elsewhere (MCP, another tab) still show.
+   const [pending, setPending] = useState<Partial<ProjectLike>>({});
+   const project = useMemo(() => ({ ...initialProject, ...pending }), [initialProject, pending]);
+   const iconConfig: ProjectIconConfig = {
       // Serialized iconType is a free string; unknown values render as lucide.
-      type: (initialProject.iconType ?? 'lucide') as ProjectIconType,
-      value: initialProject.iconValue ?? 'box',
-   }));
+      type: (project.iconType ?? 'lucide') as ProjectIconType,
+      value: project.iconValue ?? 'box',
+   };
+   const saveOptimistically = async (patch: Partial<ProjectLike>, save: () => Promise<unknown>) => {
+      setPending((current) => ({ ...current, ...patch }));
+      try {
+         await save();
+      } finally {
+         setPending((current) =>
+            Object.fromEntries(Object.entries(current).filter(([key]) => !(key in patch)))
+         );
+      }
+   };
    const [isSavingDetails, setIsSavingDetails] = useState(false);
    const presentationProject = useMemo(
       () =>
@@ -234,14 +241,6 @@ export function ProjectOverview({
             throw new Error('Project no longer exists.');
          }
 
-         setProject((current) => ({
-            ...current,
-            name: updated.name,
-            key: updated.key,
-            subtitle: updated.subtitle,
-            description: updated.description,
-            updatedAt: updated.updatedAt,
-         }));
          toast.success('Project updated');
          await router.invalidate();
 
@@ -256,107 +255,49 @@ export function ProjectOverview({
    };
 
    const handleIconChange = async (nextIcon: ProjectIconConfig) => {
-      const previousIcon = iconConfig;
-      setIconConfig(nextIcon);
-      setProject((current) => ({
-         ...current,
-         iconType: nextIcon.type,
-         iconValue: nextIcon.value,
-      }));
-
       try {
-         const updated = await updateProjectFields({
-            projectId: project.id,
-            iconType: nextIcon.type,
-            iconValue: nextIcon.value,
-         });
-
-         if (!updated) {
-            throw new Error('Project no longer exists.');
-         }
-
-         setProject((current) => ({
-            ...current,
-            iconType: updated.iconType,
-            iconValue: updated.iconValue,
-            updatedAt: updated.updatedAt,
-         }));
-         // Serialized iconType is a free string; unknown values render as lucide.
-         setIconConfig({ type: updated.iconType as ProjectIconType, value: updated.iconValue });
+         await saveOptimistically(
+            { iconType: nextIcon.type, iconValue: nextIcon.value },
+            async () => {
+               const updated = await updateProjectFields({
+                  projectId: project.id,
+                  iconType: nextIcon.type,
+                  iconValue: nextIcon.value,
+               });
+               if (!updated) throw new Error('Project no longer exists.');
+            }
+         );
          toast.success('Project icon updated');
          await router.invalidate();
       } catch (error) {
-         const message =
-            error instanceof Error ? error.message : 'Project icon could not be updated.';
-         setIconConfig(previousIcon);
-         setProject((current) => ({
-            ...current,
-            iconType: previousIcon.type,
-            iconValue: previousIcon.value,
-         }));
-         toast.error(message);
+         toast.error(error instanceof Error ? error.message : 'Project icon could not be updated.');
       }
    };
 
-   const handleStatusChange = async (statusId: string) => {
-      const nextStatus = statusOptions.find((option) => option.id === statusId);
-      if (!nextStatus || statusId === project.status) return;
-
-      const previous = project;
-      setProject((current) => ({ ...current, status: statusId }));
+   const handleOptionChange = async (
+      field: 'status' | 'priority' | 'attention',
+      optionId: string,
+      options: ProjectOptionLike[]
+   ) => {
+      if (!options.some((option) => option.id === optionId) || optionId === project[field]) return;
 
       try {
-         await updateProject({ projectId: project.id, status: statusId });
-         toast.success('Project status updated');
+         await saveOptimistically({ [field]: optionId }, () =>
+            updateProject({ projectId: project.id, [field]: optionId })
+         );
+         toast.success(`Project ${field} updated`);
       } catch (error) {
-         console.error('Failed to update project status.', error);
-         setProject(previous);
-         toast.error('Project status could not be updated');
+         console.error(`Failed to update project ${field}.`, error);
+         toast.error(`Project ${field} could not be updated`);
       }
    };
 
-   const handlePriorityChange = async (priorityId: string) => {
-      const nextPriority = priorityOptions.find((option) => option.id === priorityId);
-      if (!nextPriority || priorityId === project.priority) return;
-
-      const previous = project;
-      setProject((current) => ({ ...current, priority: priorityId }));
-
-      try {
-         await updateProject({ projectId: project.id, priority: priorityId });
-         toast.success('Project priority updated');
-      } catch (error) {
-         console.error('Failed to update project priority.', error);
-         setProject(previous);
-         toast.error('Project priority could not be updated');
-      }
-   };
-
-   const handleAttentionChange = async (attentionId: string) => {
-      const nextAttention = attentionOptions.find((option) => option.id === attentionId);
-      if (!nextAttention || attentionId === project.attention) return;
-
-      const previous = project;
-      setProject((current) => ({ ...current, attention: attentionId }));
-
-      try {
-         await updateProject({ projectId: project.id, attention: attentionId });
-         toast.success('Project attention updated');
-      } catch (error) {
-         console.error('Failed to update project attention.', error);
-         setProject(previous);
-         toast.error('Project attention could not be updated');
-      }
-   };
-
-   const handleProjectUpdate = (_projectId: string, update: ProjectUpdate) => {
-      setProject((current) => ({
-         ...current,
-         health: update.health,
-         attention: update.attention.id,
-         latestUpdate: update,
-      }));
-   };
+   const handleStatusChange = (statusId: string) =>
+      handleOptionChange('status', statusId, statusOptions);
+   const handlePriorityChange = (priorityId: string) =>
+      handleOptionChange('priority', priorityId, priorityOptions);
+   const handleAttentionChange = (attentionId: string) =>
+      handleOptionChange('attention', attentionId, attentionOptions);
 
    useEffect(() => {
       setDefaultProject(presentationProject);
@@ -541,11 +482,7 @@ export function ProjectOverview({
                      </div>
 
                      <div className="mt-8">
-                        <LatestUpdateCard
-                           project={presentationProject}
-                           isConnected={isConnected}
-                           onProjectUpdate={handleProjectUpdate}
-                        />
+                        <LatestUpdateCard project={presentationProject} isConnected={isConnected} />
                      </div>
 
                      <ProjectAreasSection projectId={project.id} initialAreas={areas} />
@@ -799,11 +736,9 @@ function InlineEditableText({
 function LatestUpdateCard({
    project,
    isConnected,
-   onProjectUpdate,
 }: {
    project: ReturnType<typeof toPresentationProject>;
    isConnected: boolean;
-   onProjectUpdate: (projectId: string, update: ProjectUpdate) => void;
 }) {
    const latestUpdateDate = project.latestUpdate
       ? updateDateFormatter.format(new Date(project.latestUpdate.createdAt))
@@ -815,7 +750,6 @@ function LatestUpdateCard({
             <h2 className="text-sm font-medium text-muted-foreground">Latest update</h2>
             <CreateProjectUpdateDialog
                project={project}
-               onProjectUpdate={onProjectUpdate}
                trigger={
                   <Button size="sm" variant="ghost" className="h-7 gap-1.5">
                      <Pencil className="size-3.5" />
@@ -875,7 +809,6 @@ function LatestUpdateCard({
                </div>
                <CreateProjectUpdateDialog
                   project={project}
-                  onProjectUpdate={onProjectUpdate}
                   trigger={
                      <Button size="sm" disabled={!isConnected}>
                         New update
