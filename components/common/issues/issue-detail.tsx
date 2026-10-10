@@ -38,6 +38,7 @@ import { priorities, status as statusOptions } from '@/lib/ui-catalog';
 import { IssueChip, issueChipClassName } from './issue-chip';
 import { IssueEnvironmentSelector } from './issue-environment';
 import { parseIssueInlineTokens } from '@/lib/issue-inline-tokens';
+import { usePendingAction } from '@/hooks/use-pending-action';
 import { useProjectOptions } from '@/hooks/use-project-options';
 import { useLabelOptions } from '@/hooks/use-label-options';
 import { useViewerUser } from '@/hooks/use-viewer-user';
@@ -49,6 +50,20 @@ const agentAvatars: Record<string, string> = {
    opencode: 'https://opencode.ai/favicon.ico',
    codex: 'https://chatgpt.com/favicon.ico',
 };
+
+// Local copy of a server-backed text field. Server changes replace it unless the user has
+// unsaved edits in progress, so autosave echoes never eat keystrokes typed meanwhile.
+function useFieldDraft(serverValue: string, isEditing: boolean) {
+   const [draft, setDraft] = useState(serverValue);
+   const [syncedValue, setSyncedValue] = useState(serverValue);
+
+   if (serverValue !== syncedValue) {
+      setSyncedValue(serverValue);
+      if (!isEditing || draft === syncedValue) setDraft(serverValue);
+   }
+
+   return [draft, setDraft] as const;
+}
 
 function resolveCommentAuthor(authorId: string, viewer: User): User {
    if (authorId === 'me' || authorId === viewer.id) {
@@ -197,16 +212,20 @@ export function IssueDetail({
    const createdAtLabel = presentationIssue
       ? format(new Date(presentationIssue.createdAt), 'MMM dd, yyyy')
       : '';
-   const [title, setTitle] = useState(presentationIssue?.title ?? '');
-   const [description, setDescription] = useState(presentationIssue?.description ?? '');
+   const [editingTitle, setEditingTitle] = useState(false);
    const [editingDescription, setEditingDescription] = useState(false);
+   const [title, setTitle] = useFieldDraft(presentationIssue?.title ?? '', editingTitle);
+   const [description, setDescription] = useFieldDraft(
+      presentationIssue?.description ?? '',
+      editingDescription
+   );
    const [subissueComposerOpen, setSubissueComposerOpen] = useState(false);
    const [newSubissueTitle, setNewSubissueTitle] = useState('');
    const [newSubissueDescription, setNewSubissueDescription] = useState('');
-   const [creatingSubissue, setCreatingSubissue] = useState(false);
+   const [creatingSubissue, runSubissueCreate] = usePendingAction();
    const newSubissueTitleRef = useRef<HTMLInputElement | null>(null);
    const [commentBody, setCommentBody] = useState('');
-   const [submittingComment, setSubmittingComment] = useState(false);
+   const [submittingComment, runCommentSubmit] = usePendingAction();
 
    const issueDetailIdentifier = presentationIssue?.identifier ?? '';
    const { data: issueDetail } = useQuery({
@@ -234,34 +253,20 @@ export function IssueDetail({
       [addIssueLabel, issueId, labelOptions, projectOptions, updateIssueProject]
    );
 
-   useEffect(() => {
-      setTitle(presentationIssue?.title ?? '');
-      setDescription(presentationIssue?.description ?? '');
-   }, [presentationIssue?.title, presentationIssue?.description]);
-
+   // Inline #label and @project tokens wait for blur or Enter, so a pause mid-word can't apply them.
    useEffect(() => {
       if (!presentationIssue) return;
       const inlineDraft = parseIssueInlineTokens(title, projectOptions, labelOptions);
-      const nextTitle = inlineDraft.title || title.trim();
-      if (!nextTitle) return;
-      if (nextTitle === presentationIssue.title.trim() && !inlineDraft.hasInlineTokens) return;
+      if (inlineDraft.hasInlineTokens) return;
+      const nextTitle = title.trim();
+      if (!nextTitle || nextTitle === presentationIssue.title.trim()) return;
 
       const timeout = setTimeout(() => {
-         const finalTitle = applyInlineTokenMetadata(title);
-         setTitle(finalTitle);
-         updateIssueContent(issueId, { title: finalTitle });
+         updateIssueContent(issueId, { title: nextTitle });
       }, 1000);
 
       return () => clearTimeout(timeout);
-   }, [
-      applyInlineTokenMetadata,
-      labelOptions,
-      presentationIssue,
-      projectOptions,
-      title,
-      issueId,
-      updateIssueContent,
-   ]);
+   }, [labelOptions, presentationIssue, projectOptions, title, issueId, updateIssueContent]);
 
    useEffect(() => {
       if (!presentationIssue) return;
@@ -313,11 +318,10 @@ export function IssueDetail({
       updateIssueContent(issueId, { description: nextDescription });
    };
 
+   // Edits autosave as you type, so Escape finishes editing and keeps the text.
    const handleEditorShortcuts = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (event.key === 'Escape') {
          event.preventDefault();
-         setTitle(presentationIssue.title);
-         setDescription(presentationIssue.description);
          event.currentTarget.blur();
       }
    };
@@ -348,68 +352,64 @@ export function IssueDetail({
       void navigate({ to: '/issues', replace: true });
    };
 
-   const handleSubmitComment = async () => {
-      const body = commentBody.trim();
-      if (!body || !presentationIssue) return;
+   const handleSubmitComment = () =>
+      runCommentSubmit(async () => {
+         const body = commentBody.trim();
+         if (!body || !presentationIssue) return;
 
-      setSubmittingComment(true);
-      try {
-         await addIssueComment({
-            issueId: presentationIssue.id,
-            body,
-            kind: 'comment',
-         });
-         setCommentBody('');
-         toast.success('Comment added');
-      } catch (error) {
-         console.error('Failed to add comment.', error);
-         toast.error('Comment could not be added');
-      } finally {
-         setSubmittingComment(false);
-      }
-   };
+         try {
+            await addIssueComment({
+               issueId: presentationIssue.id,
+               body,
+               kind: 'comment',
+            });
+            setCommentBody('');
+            toast.success('Comment added');
+         } catch (error) {
+            console.error('Failed to add comment.', error);
+            toast.error('Comment could not be added');
+         }
+      });
 
-   const handleCreateSubissue = async () => {
-      const inlineDraft = parseIssueInlineTokens(newSubissueTitle, projectOptions, labelOptions);
-      const finalTitle = inlineDraft.title || newSubissueTitle.trim();
-      const finalProject = inlineDraft.project ?? presentationIssue.project;
-      const finalArea =
-         finalProject?.id === presentationIssue.project?.id ? presentationIssue.area : null;
+   const handleCreateSubissue = () =>
+      runSubissueCreate(async () => {
+         const inlineDraft = parseIssueInlineTokens(newSubissueTitle, projectOptions, labelOptions);
+         const finalTitle = inlineDraft.title || newSubissueTitle.trim();
+         const finalProject = inlineDraft.project ?? presentationIssue.project;
+         const finalArea =
+            finalProject?.id === presentationIssue.project?.id ? presentationIssue.area : null;
 
-      if (!finalTitle) {
-         toast.error('Subissue title is required');
-         return;
-      }
+         if (!finalTitle) {
+            toast.error('Subissue title is required');
+            return;
+         }
 
-      setCreatingSubissue(true);
-
-      try {
-         await createIssue({
-            title: finalTitle,
-            description: newSubissueDescription.trim() || undefined,
-            status: statusOptions.find((item) => item.id === 'to-do')?.id ?? statusOptions[0].id,
-            priority: priorities.find((item) => item.id === 'no-priority')?.id ?? priorities[0].id,
-            environment: presentationIssue.environment,
-            assigneeId: currentUser.id,
-            parentIssueId: presentationIssue.id,
-            projectId: finalProject?.id ?? null,
-            areaId: finalArea?.id ?? null,
-            labelIds: inlineDraft.labels.map((label) => label.id),
-         });
-         setNewSubissueTitle('');
-         setNewSubissueDescription('');
-         setSubissueComposerOpen(true);
-         requestAnimationFrame(() => {
-            newSubissueTitleRef.current?.focus();
-         });
-         toast.success('Subissue created');
-      } catch (error) {
-         console.error('Failed to create subissue.', error);
-         toast.error('Subissue could not be created');
-      } finally {
-         setCreatingSubissue(false);
-      }
-   };
+         try {
+            await createIssue({
+               title: finalTitle,
+               description: newSubissueDescription.trim() || undefined,
+               status: statusOptions.find((item) => item.id === 'to-do')?.id ?? statusOptions[0].id,
+               priority:
+                  priorities.find((item) => item.id === 'no-priority')?.id ?? priorities[0].id,
+               environment: presentationIssue.environment,
+               assigneeId: currentUser.id,
+               parentIssueId: presentationIssue.id,
+               projectId: finalProject?.id ?? null,
+               areaId: finalArea?.id ?? null,
+               labelIds: inlineDraft.labels.map((label) => label.id),
+            });
+            setNewSubissueTitle('');
+            setNewSubissueDescription('');
+            setSubissueComposerOpen(true);
+            requestAnimationFrame(() => {
+               newSubissueTitleRef.current?.focus();
+            });
+            toast.success('Subissue created');
+         } catch (error) {
+            console.error('Failed to create subissue.', error);
+            toast.error('Subissue could not be created');
+         }
+      });
 
    const handleAddBlocker = async () => {
       const identifier = window.prompt('Identificador de la tarea que bloquea esta issue');
@@ -527,7 +527,11 @@ export function IssueDetail({
                      <Textarea
                         value={title}
                         onChange={(event) => setTitle(event.target.value)}
-                        onBlur={persistTitle}
+                        onFocus={() => setEditingTitle(true)}
+                        onBlur={() => {
+                           persistTitle();
+                           setEditingTitle(false);
+                        }}
                         onKeyDown={(event) => {
                            if (event.key === 'Enter') {
                               event.preventDefault();
