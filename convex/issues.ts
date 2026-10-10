@@ -792,6 +792,9 @@ export const createWithSubissues = mutation({
       subissues: v.array(v.object({ title: v.string() })),
    },
    handler: async (ctx, input) => {
+      if (input.parentIssueId && input.subissues.some((subissue) => subissue.title.trim())) {
+         throw new Error('Subissues cannot have subissues.');
+      }
       const [project, matchedLabels] = await Promise.all([
          findProjectById(ctx, input.projectId),
          findLabelsByIds(ctx, input.labelIds ?? []),
