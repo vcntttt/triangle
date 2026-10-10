@@ -327,13 +327,27 @@ function serializeIssueBase(
    };
 }
 
+// Numbers only move forward: the counter keeps the highest number ever issued for a key,
+// and the scan covers issues created before the counter existed.
 async function createIssueIdentifier(ctx: MutationCtx, identifierKey: string) {
-   const issues = await ctx.db.query('issues').collect();
+   const [counter, issues] = await Promise.all([
+      ctx.db
+         .query('issueCounters')
+         .withIndex('by_key', (q) => q.eq('key', identifierKey))
+         .unique(),
+      ctx.db.query('issues').collect(),
+   ]);
    const projectIssueNumber =
       issues.reduce((max, issue) => {
          if (!issue.identifier.startsWith(`${identifierKey}-`)) return max;
          return Math.max(max, issue.projectIssueNumber ?? 0);
-      }, 0) + 1;
+      }, counter?.lastNumber ?? 0) + 1;
+
+   if (counter) {
+      await ctx.db.patch(counter._id, { lastNumber: projectIssueNumber });
+   } else {
+      await ctx.db.insert('issueCounters', { key: identifierKey, lastNumber: projectIssueNumber });
+   }
 
    return {
       identifier: `${identifierKey}-${projectIssueNumber}`,

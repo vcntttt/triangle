@@ -291,6 +291,11 @@ export default defineSchema({
       .index('by_project', ['projectId'])
       .index('by_parent_issue', ['parentIssueId'])
       .index('by_rank', ['rank']),
+   // Last issue number handed out per identifier key, so deleted numbers are never reused.
+   issueCounters: defineTable({
+      key: v.string(),
+      lastNumber: v.number(),
+   }).index('by_key', ['key']),
    issueComments: defineTable({
       issueId: v.id('issues'),
       body: v.string(),
