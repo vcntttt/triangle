@@ -46,7 +46,6 @@ import { IssuesPriorityProvider } from './issues-priority-context';
 import { IssuesDisplayProvider } from './issues-display-context';
 import { useIssueInsightsStore } from '@/store/issue-insights-store';
 import type { ProjectOptionLike } from '@/lib/projects-presentation';
-import { groupIssuesForDisplayByStatus } from '@/lib/issue-status-groups';
 import {
    buildIssueDisplayGroups,
    filterIssuesByScope,
@@ -503,37 +502,29 @@ function IssuesWorkspaceContent({
             issue.identifier.toLowerCase().includes(normalizedQuery)
       );
    }, [displayIssues, searchQuery]);
+   const projects = useProjectOptions();
+   // Keyboard navigation walks the same groups and rows the list renders, in the same order.
    const visibleNavigationIssues = useMemo(() => {
       if (isSearching) {
          return searchResults;
       }
 
-      const issuesByStatus = groupIssuesForDisplayByStatus(displayIssues);
-      const statusIds: string[] = [];
-      const orderedStatuses = [...initialStatuses].sort(
-         (left, right) =>
-            (left.listPosition ?? left.position ?? 0) -
-               (right.listPosition ?? right.position ?? 0) || left.name.localeCompare(right.name)
-      );
-
-      for (const status of orderedStatuses) {
-         if (showEmptyStatuses || (issuesByStatus[status.id] ?? []).length > 0) {
-            statusIds.push(status.id);
+      return buildWorkspaceIssueGroups(displayIssues, activeDisplay, showEmptyStatuses, {
+         statuses: initialStatuses,
+         priorities: initialPriorities,
+         projects,
+      }).flatMap((group) => {
+         if (activeDisplay.viewType === 'graph') {
+            return sortIssuesByConfiguredPriority(group.issues, initialPriorities);
          }
-      }
-
-      return statusIds.flatMap((statusId) => {
-         if (viewType !== 'graph' && collapsedStatusIds.has(statusId)) {
+         if (collapsedStatusIds.has(group.id)) {
             return [];
          }
-
-         const statusIssues = issuesByStatus[statusId] ?? [];
-
-         if (viewType === 'grid' || viewType === 'graph') {
-            return sortIssuesByConfiguredPriority(statusIssues, initialPriorities);
+         if (activeDisplay.viewType === 'grid') {
+            return sortIssuesByConfiguredPriority(group.issues, initialPriorities);
          }
 
-         return getIssueListRows(statusIssues, listMode, collapsedParentIds, {
+         return getIssueListRows(group.issues, activeDisplay.listMode, collapsedParentIds, {
             kind: 'display',
             display: activeDisplay,
             priorities: initialPriorities,
@@ -547,10 +538,9 @@ function IssuesWorkspaceContent({
       initialStatuses,
       initialPriorities,
       isSearching,
-      listMode,
+      projects,
       searchResults,
       showEmptyStatuses,
-      viewType,
    ]);
    // Bulk actions only touch selected issues the list still shows; filters can hide the rest.
    const visibleSelectedIssues = useMemo(
@@ -730,11 +720,12 @@ function IssuesWorkspaceContent({
    }
 
    function navigateToAdjacentIssue(issueId: string) {
-      const currentIndex = filteredIssues.findIndex((issue) => issue.id === issueId);
+      const currentIndex = visibleNavigationIssues.findIndex((issue) => issue.id === issueId);
       if (currentIndex === -1) {
          return;
       }
-      const nextIssue = filteredIssues[currentIndex + 1] ?? filteredIssues[currentIndex - 1];
+      const nextIssue =
+         visibleNavigationIssues[currentIndex + 1] ?? visibleNavigationIssues[currentIndex - 1];
 
       if (nextIssue) {
          if (onSelectAdjacentIssue) {
@@ -1004,27 +995,15 @@ function IssuesListPanel({
       () => filterIssuesForDisplay(issues, { hideCompletedIssues, showSubissues }),
       [hideCompletedIssues, issues, showSubissues]
    );
-   const displayGroups = useMemo(() => {
-      const groupDisplay = {
-         ...display,
-         showEmptyGroups: display.showEmptyGroups && showEmptyStatuses,
-         ...(isViewTypeGrid ? { groupBy: 'status' as const } : {}),
-      };
-
-      return buildIssueDisplayGroups(displayIssues, groupDisplay, {
-         statuses: initialStatuses,
-         priorities: initialPriorities,
-         projects,
-      });
-   }, [
-      displayIssues,
-      display,
-      initialPriorities,
-      initialStatuses,
-      isViewTypeGrid,
-      projects,
-      showEmptyStatuses,
-   ]);
+   const displayGroups = useMemo(
+      () =>
+         buildWorkspaceIssueGroups(displayIssues, display, showEmptyStatuses, {
+            statuses: initialStatuses,
+            priorities: initialPriorities,
+            projects,
+         }),
+      [displayIssues, display, initialPriorities, initialStatuses, projects, showEmptyStatuses]
+   );
    const showCompletedSummary = hideCompletedIssues && completedIssuesCount > 0 && completedStatus;
 
    return (
@@ -1133,6 +1112,24 @@ function IssuesListPanel({
             <HiddenByFiltersFooter count={hiddenByFiltersCount} onClear={onClearFilters} />
          )}
       </div>
+   );
+}
+
+// The board always groups by status; the list follows the configured grouping.
+function buildWorkspaceIssueGroups(
+   issues: Issue[],
+   display: IssueDisplayConfig,
+   showEmptyStatuses: boolean,
+   options: Parameters<typeof buildIssueDisplayGroups>[2]
+) {
+   return buildIssueDisplayGroups(
+      issues,
+      {
+         ...display,
+         showEmptyGroups: display.showEmptyGroups && showEmptyStatuses,
+         ...(display.viewType === 'list' ? {} : { groupBy: 'status' as const }),
+      },
+      options
    );
 }
 
