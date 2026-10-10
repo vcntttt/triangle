@@ -1,5 +1,6 @@
 import { v } from 'convex/values';
 import { mutation, query, type MutationCtx } from './_generated/server';
+import { listIssueStatusOptions } from './issueStatusOptions';
 
 const statusType = v.union(v.literal('unstarted'), v.literal('started'), v.literal('completed'));
 export const defaultIssueStatuses = [
@@ -46,16 +47,14 @@ export const seedDefaults = mutation({
 
 export const list = query({
    args: {},
-   handler: async (ctx) => {
-      const rows = await ctx.db.query('issueStatuses').withIndex('by_position').collect();
-      const values = new Map(
-         defaultIssueStatuses.map((item, position) => [item.id, { ...item, position }])
-      );
-      rows.forEach((row) => values.set(row.id, row));
-      return Array.from(values.values())
-         .map(({ id, name, color, position, type }) => ({ id, name, color, position, type }))
-         .toSorted((a, b) => a.position - b.position);
-   },
+   handler: async (ctx) =>
+      (await listIssueStatusOptions(ctx)).map(({ id, name, color, position, type }) => ({
+         id,
+         name,
+         color,
+         position,
+         type,
+      })),
 });
 
 export const create = mutation({
@@ -65,15 +64,29 @@ export const create = mutation({
       const name = input.name.trim();
       const id = slug(name);
       if (!id) throw new Error('Status name is required.');
-      if (
-         await ctx.db
-            .query('issueStatuses')
-            .withIndex('by_option_id', (q) => q.eq('id', id))
-            .unique()
-      )
+      const existing = await ctx.db
+         .query('issueStatuses')
+         .withIndex('by_option_id', (q) => q.eq('id', id))
+         .unique();
+      if (existing && existing.deletedAt === undefined)
          throw new Error('A status with this name already exists.');
-      const position = (await ctx.db.query('issueStatuses').collect()).length;
+      const position =
+         Math.max(
+            -1,
+            ...(await ctx.db.query('issueStatuses').collect()).map((row) => row.position)
+         ) + 1;
       const now = Date.now();
+      if (existing) {
+         await ctx.db.patch(existing._id, {
+            name,
+            color: input.color,
+            type: input.type,
+            position,
+            deletedAt: undefined,
+            updatedAt: now,
+         });
+         return { id, name, color: input.color, type: input.type, position };
+      }
       await ctx.db.insert('issueStatuses', {
          id,
          name,
@@ -100,7 +113,7 @@ export const update = mutation({
          .query('issueStatuses')
          .withIndex('by_option_id', (q) => q.eq('id', input.id))
          .unique();
-      if (!row) throw new Error('Status not found.');
+      if (!row || row.deletedAt !== undefined) throw new Error('Status not found.');
       await ctx.db.patch(row._id, {
          ...(input.name ? { name: input.name.trim() } : {}),
          ...(input.color ? { color: input.color } : {}),
@@ -127,7 +140,7 @@ export const remove = mutation({
          .query('issueStatuses')
          .withIndex('by_option_id', (q) => q.eq('id', id))
          .unique();
-      if (!row) return { ok: true };
+      if (!row || row.deletedAt !== undefined) return { ok: true };
       if (
          (await ctx.db.query('issueAutomations').collect()).some(
             (automation) =>
@@ -138,7 +151,8 @@ export const remove = mutation({
          throw new Error('Cannot delete a status used by an automation.');
       if ((await ctx.db.query('issues').collect()).some((issue) => issue.status === id))
          throw new Error('Cannot delete a status used by issues.');
-      await ctx.db.delete(row._id);
+      // A tombstone, not a delete: ensureDefaults would otherwise recreate default statuses.
+      await ctx.db.patch(row._id, { deletedAt: Date.now(), updatedAt: Date.now() });
       return { ok: true };
    },
 });
@@ -155,6 +169,7 @@ export const reorder = mutation({
                .query('issueStatuses')
                .withIndex('by_option_id', (q) => q.eq('id', id))
                .unique();
+            if (existing?.deletedAt !== undefined) return;
             if (existing) {
                await ctx.db.patch(existing._id, { position, updatedAt: now });
                return;

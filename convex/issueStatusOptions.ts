@@ -7,7 +7,13 @@ export async function listIssueStatusOptions(ctx: QueryCtx) {
       defaultIssueStatuses.map((item, position) => [item.id, { ...item, position }])
    );
 
-   rows.forEach((row) => values.set(row.id, row));
+   rows.forEach((row) => {
+      if (row.deletedAt === undefined) {
+         values.set(row.id, row);
+      } else {
+         values.delete(row.id);
+      }
+   });
 
    return Array.from(values.values()).toSorted((left, right) => left.position - right.position);
 }

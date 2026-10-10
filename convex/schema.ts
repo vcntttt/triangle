@@ -9,6 +9,7 @@ export default defineSchema({
       listPosition: v.optional(v.number()),
       boardPosition: v.optional(v.number()),
       position: v.optional(v.number()),
+      deletedAt: v.optional(v.number()),
       createdAt: v.number(),
       updatedAt: v.number(),
    })
@@ -22,6 +23,7 @@ export default defineSchema({
       color: v.string(),
       position: v.number(),
       type: v.union(v.literal('unstarted'), v.literal('started'), v.literal('completed')),
+      deletedAt: v.optional(v.number()),
       createdAt: v.number(),
       updatedAt: v.number(),
    })
@@ -35,6 +37,7 @@ export default defineSchema({
       listPosition: v.optional(v.number()),
       boardPosition: v.optional(v.number()),
       position: v.optional(v.number()),
+      deletedAt: v.optional(v.number()),
       createdAt: v.number(),
       updatedAt: v.number(),
    })
@@ -49,6 +52,7 @@ export default defineSchema({
       listPosition: v.optional(v.number()),
       boardPosition: v.optional(v.number()),
       position: v.optional(v.number()),
+      deletedAt: v.optional(v.number()),
       createdAt: v.number(),
       updatedAt: v.number(),
    })

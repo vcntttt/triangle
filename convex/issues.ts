@@ -14,7 +14,8 @@ async function getStatusOption(ctx: MutationCtx, status: string) {
       .query('issueStatuses')
       .withIndex('by_option_id', (q) => q.eq('id', status))
       .unique();
-   return stored ?? defaultIssueStatuses.find((item) => item.id === status) ?? null;
+   if (stored) return stored.deletedAt === undefined ? stored : null;
+   return defaultIssueStatuses.find((item) => item.id === status) ?? null;
 }
 
 async function getStatusType(ctx: MutationCtx, statusId: string): Promise<string | null> {
@@ -1213,7 +1214,7 @@ export const setStatus = mutation({
                const startedStatuses = (
                   await ctx.db.query('issueStatuses').withIndex('by_position').collect()
                )
-                  .filter((row) => row.type === 'started')
+                  .filter((row) => row.type === 'started' && row.deletedAt === undefined)
                   .toSorted((left, right) => left.position - right.position);
                await transitionIssueStatus(
                   ctx,

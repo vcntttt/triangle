@@ -12,14 +12,13 @@ const defaultTemplateKey = 'remove-ready-labels-on-completion';
 const defaultLabelNames = ['ready-for-agent', 'ready-for-human'];
 
 async function statusExists(ctx: QueryCtx | MutationCtx, status: string) {
-   if (status === 'archived' || defaultIssueStatuses.some((item) => item.id === status))
-      return true;
-   return Boolean(
-      await ctx.db
-         .query('issueStatuses')
-         .withIndex('by_option_id', (q) => q.eq('id', status))
-         .unique()
-   );
+   if (status === 'archived') return true;
+   const stored = await ctx.db
+      .query('issueStatuses')
+      .withIndex('by_option_id', (q) => q.eq('id', status))
+      .unique();
+   if (stored) return stored.deletedAt === undefined;
+   return defaultIssueStatuses.some((item) => item.id === status);
 }
 
 async function validateInput(

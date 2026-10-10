@@ -392,6 +392,7 @@ function serializeOption(
    };
 }
 
+// Defaults stay implicit until edited; a row with deletedAt hides its default for good.
 export async function listOptions(ctx: QueryCtx, table: ProjectOptionTable) {
    const rows = await ctx.db.query(table).collect();
    const defaults =
@@ -403,7 +404,11 @@ export async function listOptions(ctx: QueryCtx, table: ProjectOptionTable) {
 
    const values = new Map(defaults.map((item) => [item.id, { ...item }]));
    for (const row of rows) {
-      values.set(row.id, serializeOption(row));
+      if (row.deletedAt === undefined) {
+         values.set(row.id, serializeOption(row));
+      } else {
+         values.delete(row.id);
+      }
    }
 
    return Array.from(values.values()).toSorted(
@@ -479,10 +484,19 @@ async function findOptionByName(
    table: ProjectOptionTable,
    name: string
 ) {
-   return ctx.db
+   const rows = await ctx.db
       .query(table)
       .withIndex('by_name', (q) => q.eq('name', name))
-      .unique();
+      .collect();
+   return rows.find((row) => row.deletedAt === undefined) ?? null;
+}
+
+function defaultOptionsFor(table: ProjectOptionTable) {
+   return table === 'projectStatuses'
+      ? defaultProjectStatuses
+      : table === 'projectPriorities'
+        ? defaultProjectPriorities
+        : defaultProjectAttentions;
 }
 
 async function saveOption(
@@ -497,32 +511,28 @@ async function saveOption(
    }
 
    const existing = await findOptionById(ctx, table, id);
-   if (existing) {
+   if (existing && existing.deletedAt === undefined) {
       throw new Error('An option with that name already exists.');
    }
 
-   const rows = await ctx.db.query(table).collect();
-   const defaults =
-      table === 'projectStatuses'
-         ? defaultProjectStatuses
-         : table === 'projectPriorities'
-           ? defaultProjectPriorities
-           : defaultProjectAttentions;
-   const currentOptions = new Map(defaults.map((option) => [option.id, option]));
-   for (const row of rows) {
-      currentOptions.set(row.id, serializeOption(row));
-   }
+   const currentOptions = await listOptions(ctx, table);
    const nextListPosition =
-      Array.from(currentOptions.values()).reduce(
-         (max, option) => Math.max(max, option.listPosition),
-         -1
-      ) + 1;
+      currentOptions.reduce((max, option) => Math.max(max, option.listPosition), -1) + 1;
    const nextBoardPosition =
-      Array.from(currentOptions.values()).reduce(
-         (max, option) => Math.max(max, option.boardPosition),
-         -1
-      ) + 1;
+      currentOptions.reduce((max, option) => Math.max(max, option.boardPosition), -1) + 1;
    const now = Date.now();
+   if (existing) {
+      await ctx.db.patch(existing._id, {
+         name: input.name,
+         color: input.color,
+         listPosition: nextListPosition,
+         boardPosition: nextBoardPosition,
+         deletedAt: undefined,
+         updatedAt: now,
+      });
+      return serializeOption((await ctx.db.get(existing._id))!);
+   }
+
    const optionId = await ctx.db.insert(table, {
       id,
       name: input.name,
@@ -552,14 +562,12 @@ async function updateOption(
 
    const now = Date.now();
 
+   if (existing?.deletedAt !== undefined) {
+      throw new Error('Option not found.');
+   }
+
    if (!existing) {
-      const defaultOption = (
-         table === 'projectStatuses'
-            ? defaultProjectStatuses
-            : table === 'projectPriorities'
-              ? defaultProjectPriorities
-              : defaultProjectAttentions
-      ).find((option) => option.id === input.id);
+      const defaultOption = defaultOptionsFor(table).find((option) => option.id === input.id);
       const optionId = await ctx.db.insert(table, {
          id: input.id,
          name: input.name,
@@ -581,27 +589,49 @@ async function updateOption(
    return serializeOption((await ctx.db.get(existing._id))!);
 }
 
+// Options in use are kept: deleting them would leave projects or issues with dangling ids.
 async function deleteOption(ctx: MutationCtx, table: ProjectOptionTable, id: string) {
-   const existing = await findOptionById(ctx, table, id);
-   if (existing) {
-      await ctx.db.delete(existing._id);
+   const options = await listOptions(ctx, table);
+   if (!options.some((option) => option.id === id)) {
+      return;
+   }
+   if (options.length === 1) {
+      throw new Error('At least one option is required.');
+   }
+   if (table === 'projectAttentions' && id === defaultProjectAttentionId) {
+      throw new Error('The default attention option cannot be deleted.');
    }
 
-   if (table === 'projectAttentions') {
-      const projects = await ctx.db.query('projects').collect();
-      const projectPatches: Array<Promise<void>> = [];
-      for (const project of projects) {
-         if (getProjectAttentionId(project) === id) {
-            projectPatches.push(
-               ctx.db.patch(project._id, {
-                  attention: defaultProjectAttentionId,
-                  updatedAt: Date.now(),
-               })
-            );
-         }
-      }
-      await Promise.all(projectPatches);
+   const projects = await ctx.db.query('projects').collect();
+   const projectsInUse = projects.filter((project) =>
+      table === 'projectStatuses'
+         ? project.status === id
+         : table === 'projectPriorities'
+           ? project.priority === id
+           : project.attention === id
+   ).length;
+   const issuesInUse =
+      table === 'projectPriorities'
+         ? (await ctx.db.query('issues').collect()).filter((issue) => issue.priority === id).length
+         : 0;
+   if (projectsInUse > 0 || issuesInUse > 0) {
+      const usage = [
+         projectsInUse > 0 ? `${projectsInUse} project${projectsInUse === 1 ? '' : 's'}` : null,
+         issuesInUse > 0 ? `${issuesInUse} issue${issuesInUse === 1 ? '' : 's'}` : null,
+      ]
+         .filter(Boolean)
+         .join(' and ');
+      throw new Error(`Cannot delete an option used by ${usage}. Reassign them first.`);
    }
+
+   const now = Date.now();
+   const existing = await findOptionById(ctx, table, id);
+   if (existing) {
+      await ctx.db.patch(existing._id, { deletedAt: now, updatedAt: now });
+      return;
+   }
+   const defaultOption = defaultOptionsFor(table).find((option) => option.id === id)!;
+   await ctx.db.insert(table, { ...defaultOption, deletedAt: now, createdAt: now, updatedAt: now });
 }
 
 export const options = query({
@@ -1210,6 +1240,7 @@ export const reorderStatuses = mutation({
       await Promise.all(
          ids.map(async (id, position) => {
             const existing = await findOptionById(ctx, 'projectStatuses', id);
+            if (existing?.deletedAt !== undefined) return;
             if (existing) {
                await ctx.db.patch(existing._id, {
                   listPosition: existing.listPosition ?? existing.position ?? position,
@@ -1268,6 +1299,7 @@ export const reorderPriorities = mutation({
       await Promise.all(
          ids.map(async (id, position) => {
             const existing = await findOptionById(ctx, 'projectPriorities', id);
+            if (existing?.deletedAt !== undefined) return;
             if (existing) {
                await ctx.db.patch(existing._id, {
                   listPosition: existing.listPosition ?? existing.position ?? position,
@@ -1326,6 +1358,7 @@ export const reorderAttentions = mutation({
       await Promise.all(
          ids.map(async (id, position) => {
             const existing = await findOptionById(ctx, 'projectAttentions', id);
+            if (existing?.deletedAt !== undefined) return;
             if (existing) {
                await ctx.db.patch(existing._id, {
                   listPosition: existing.listPosition ?? existing.position ?? position,
