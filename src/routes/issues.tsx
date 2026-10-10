@@ -39,7 +39,7 @@ function IssuesLayout() {
    const { data: savedView } = useQuery(savedViewQuery(savedViewsEnabled ? viewId : undefined));
    const { issues, isConnected } = pageData;
    const projects = useProjectOptions();
-   const { setDefaultProject } = useCreateIssueStore();
+   const setDefaultProject = useCreateIssueStore((state) => state.setDefaultProject);
    const selectedIssueIdentifier = useMatches({
       select: (matches) => {
          const issueMatch = matches.find((match) => match.routeId === '/issues/$issueIdentifier');

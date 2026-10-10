@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
    type Project,
@@ -16,20 +17,26 @@ import {
 import { useViewerProfile } from '@/src/data/viewer';
 import { viewerProfileToUser } from '@/lib/current-user';
 
-export function useProjectOptions() {
-   const { data: projects = [] } = useQuery(projectOptionsQuery());
-   const { data: statuses = [] } = useQuery(projectStatusListQuery());
-   const { data: priorities = [] } = useQuery(projectPriorityListQuery());
-   const { data: attentions = [] } = useQuery(projectAttentionListQuery());
-   const viewer = viewerProfileToUser(useViewerProfile());
+const noOptions: never[] = [];
 
-   return (projects as ProjectLike[]).map((project) =>
-      toPresentationProject(
-         project,
-         statuses as ProjectOptionLike[],
-         priorities as ProjectOptionLike[],
-         attentions as ProjectOptionLike[],
-         viewer
-      )
-   ) satisfies Project[];
+// Memoized so consumers can use the result as an effect or memo dependency.
+export function useProjectOptions() {
+   const { data: projects = noOptions } = useQuery(projectOptionsQuery());
+   const { data: statuses = noOptions } = useQuery(projectStatusListQuery());
+   const { data: priorities = noOptions } = useQuery(projectPriorityListQuery());
+   const { data: attentions = noOptions } = useQuery(projectAttentionListQuery());
+   const viewerProfile = useViewerProfile();
+
+   return useMemo(() => {
+      const viewer = viewerProfileToUser(viewerProfile);
+      return (projects as ProjectLike[]).map((project) =>
+         toPresentationProject(
+            project,
+            statuses as ProjectOptionLike[],
+            priorities as ProjectOptionLike[],
+            attentions as ProjectOptionLike[],
+            viewer
+         )
+      ) satisfies Project[];
+   }, [attentions, priorities, projects, statuses, viewerProfile]);
 }

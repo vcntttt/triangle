@@ -170,7 +170,7 @@ export function ProjectOverview({
    isConnected: boolean;
 }) {
    const router = useRouter();
-   const { setDefaultProject } = useCreateIssueStore();
+   const setDefaultProject = useCreateIssueStore((state) => state.setDefaultProject);
    const { updateProject, updateProjectFields } = useProjectCommands();
    const viewerProfile = useViewerProfile();
    const viewer = useMemo(() => viewerProfileToUser(viewerProfile), [viewerProfile]);
