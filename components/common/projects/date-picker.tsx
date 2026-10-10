@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar as CalendarIcon, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -43,7 +43,21 @@ export function DatePicker({ date, onDateChange }: DatePickerProps) {
             </Button>
          </PopoverTrigger>
          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar mode="single" selected={date} onSelect={handleDateSelect} initialFocus />
+            <Calendar
+               mode="single"
+               required
+               selected={date}
+               onSelect={handleDateSelect}
+               initialFocus
+            />
+            {date ? (
+               <div className="flex justify-end border-t border-border p-2">
+                  <Button variant="ghost" size="xs" onClick={() => handleDateSelect(undefined)}>
+                     <X className="size-3.5" />
+                     Clear
+                  </Button>
+               </div>
+            ) : null}
          </PopoverContent>
       </Popover>
    );
