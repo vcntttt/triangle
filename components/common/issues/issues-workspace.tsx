@@ -552,24 +552,34 @@ function IssuesWorkspaceContent({
       showEmptyStatuses,
       viewType,
    ]);
+   // Bulk actions only touch selected issues the list still shows; filters can hide the rest.
+   const visibleSelectedIssues = useMemo(
+      () => displayIssues.filter((issue) => selectedIssueIds.has(issue.id)),
+      [displayIssues, selectedIssueIds]
+   );
+   const hiddenSelectedCount = selectedIssueIds.size - visibleSelectedIssues.length;
    const actionTargetIssues = useMemo(() => {
       if (selectedIssueIds.size > 0) {
-         return issues.filter((issue) => selectedIssueIds.has(issue.id));
+         return visibleSelectedIssues;
       }
 
       return selectedIssue ? [selectedIssue] : [];
-   }, [issues, selectedIssue, selectedIssueIds]);
+   }, [selectedIssue, selectedIssueIds.size, visibleSelectedIssues]);
    const markSelectedAsObjectives = useCallback(() => {
-      if (selectedIssueIds.size === 0) {
+      if (visibleSelectedIssues.length === 0) {
          return;
       }
 
-      const nextObjectiveIds = Array.from(new Set([...objectiveIssueIds, ...selectedIssueIds]));
-      setObjectiveIssueIds(nextObjectiveIds);
-      toast.success(
-         `${selectedIssueIds.size} ${selectedIssueIds.size === 1 ? 'issue marcado' : 'issues marcados'} como objetivo${selectedIssueIds.size === 1 ? '' : 's'} del grafo`
+      const count = visibleSelectedIssues.length;
+      setObjectiveIssueIds(
+         Array.from(
+            new Set([...objectiveIssueIds, ...visibleSelectedIssues.map((issue) => issue.id)])
+         )
       );
-   }, [objectiveIssueIds, selectedIssueIds, setObjectiveIssueIds]);
+      toast.success(
+         `${count} ${count === 1 ? 'issue marcado' : 'issues marcados'} como objetivo${count === 1 ? '' : 's'} del grafo`
+      );
+   }, [objectiveIssueIds, setObjectiveIssueIds, visibleSelectedIssues]);
 
    useEffect(() => {
       setSelectedIssueIds((current) => {
@@ -658,6 +668,7 @@ function IssuesWorkspaceContent({
                            onToggleParentCollapse: toggleParentCollapse,
                            onToggleStatusCollapse: toggleStatusCollapse,
                            hiddenByFiltersCount,
+                           hiddenSelectedCount,
                            onClearFilters: clearVisibleFilters,
                         }}
                         onDeleteOrArchive={navigateToAdjacentIssue}
@@ -700,6 +711,7 @@ function IssuesWorkspaceContent({
                         onToggleParentCollapse={toggleParentCollapse}
                         onToggleStatusCollapse={toggleStatusCollapse}
                         hiddenByFiltersCount={hiddenByFiltersCount}
+                        hiddenSelectedCount={hiddenSelectedCount}
                         onClearFilters={clearVisibleFilters}
                      />
                   )}
@@ -841,6 +853,7 @@ interface IssuesListPanelProps {
    onToggleParentCollapse: (issueId: string) => void;
    onToggleStatusCollapse: (statusId: string) => void;
    hiddenByFiltersCount: number;
+   hiddenSelectedCount: number;
    onClearFilters?: () => void;
 }
 
@@ -974,6 +987,7 @@ function IssuesListPanel({
    onToggleParentCollapse,
    onToggleStatusCollapse,
    hiddenByFiltersCount,
+   hiddenSelectedCount,
    onClearFilters,
 }: IssuesListPanelProps) {
    const { objectiveIssueIds } = useViewStore();
@@ -1022,8 +1036,17 @@ function IssuesListPanel({
                aria-live="polite"
             >
                <span className="text-xs font-medium">
-                  {selectedIssueIds.size}{' '}
-                  {selectedIssueIds.size === 1 ? 'issue seleccionado' : 'issues seleccionados'}
+                  {selectedIssueIds.size - hiddenSelectedCount}{' '}
+                  {selectedIssueIds.size - hiddenSelectedCount === 1
+                     ? 'issue seleccionado'
+                     : 'issues seleccionados'}
+                  {hiddenSelectedCount > 0 && (
+                     <span className="font-normal text-muted-foreground">
+                        {' '}
+                        · {hiddenSelectedCount} {hiddenSelectedCount === 1 ? 'oculto' : 'ocultos'}{' '}
+                        por filtros, sin cambios
+                     </span>
+                  )}
                </span>
                {objectiveIssueIds.some((issueId) => selectedIssueIds.has(issueId)) && (
                   <span className="hidden text-[11px] text-muted-foreground sm:inline">
@@ -1035,6 +1058,7 @@ function IssuesListPanel({
                      type="button"
                      size="xs"
                      variant="secondary"
+                     disabled={selectedIssueIds.size === hiddenSelectedCount}
                      onClick={onMarkSelectedAsObjectives}
                   >
                      <Crosshair className="size-3.5 text-orange-500" />
