@@ -8,6 +8,7 @@ import {
    UserRound,
    Zap,
    BriefcaseBusiness,
+   FlaskConical,
 } from 'lucide-react';
 import type { Health, Issue, Priority, SidebarItem, Status } from '@/lib/models';
 
@@ -353,19 +354,19 @@ export const health: Health[] = [
       id: 'no-update',
       name: 'No Update',
       color: '#94a3b8',
-      description: 'No hay una actualizacion reciente para este proyecto.',
+      description: 'No hay una actualización reciente para este proyecto.',
    },
    {
       id: 'off-track',
       name: 'Off Track',
       color: '#ef4444',
-      description: 'El proyecto esta desalineado y necesita atencion.',
+      description: 'El proyecto está desalineado y necesita atención.',
    },
    {
       id: 'on-track',
       name: 'On Track',
       color: '#22c55e',
-      description: 'El proyecto avanza segun lo esperado.',
+      description: 'El proyecto avanza según lo esperado.',
    },
    {
       id: 'at-risk',
@@ -380,6 +381,7 @@ export const workspaceItems: SidebarItem[] = [
    { name: 'My work', url: '/my-work', icon: BriefcaseBusiness },
    { name: 'Projects', url: '/projects', icon: Box },
    { name: 'Pulse', url: '/pulse', icon: Activity },
+   { name: 'Experiments', url: '/experiments', icon: FlaskConical },
 ];
 
 export const accountItems: SidebarItem[] = [

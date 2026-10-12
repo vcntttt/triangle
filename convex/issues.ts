@@ -699,6 +699,78 @@ export async function removeIssueCompletely(ctx: MutationCtx, issueId: Id<'issue
    await ctx.db.delete(issueId);
 }
 
+type CreateIssueInput = {
+   title: string;
+   description?: string;
+   status: string;
+   priority: string;
+   environment?: 'development' | 'production';
+   assigneeId?: string | null;
+   rank?: string;
+   estimatedHours?: number | null;
+   dueDate?: string | null;
+   parentIssueId?: string | null;
+   projectId?: string | null;
+   areaId?: string | null;
+   labelIds?: string[];
+   projectName?: string | null;
+   labelNames?: string[];
+};
+
+// Shared by issue creation and experiment promotion so both record activity and defaults the same way.
+export async function createIssueRecord(ctx: MutationCtx, input: CreateIssueInput) {
+   const project = input.projectId
+      ? await findProjectById(ctx, input.projectId)
+      : await findProjectByName(ctx, input.projectName);
+   const area = await findProjectAreaById(ctx, input.areaId, project?._id);
+   const matchedLabels =
+      input.labelIds !== undefined
+         ? await findLabelsByIds(ctx, input.labelIds)
+         : await findLabelsByNames(ctx, input.labelNames ?? []);
+   const { identifier, projectIssueNumber } = await createIssueIdentifier(
+      ctx,
+      project?.key ?? 'TRI'
+   );
+   if (!(await getStatusOption(ctx, input.status))) {
+      throw new Error(`Unknown issue status: ${input.status}.`);
+   }
+   const now = Date.now();
+   const issueId = await ctx.db.insert('issues', {
+      identifier,
+      projectIssueNumber,
+      title: input.title,
+      description: input.description || undefined,
+      status: input.status,
+      priority: input.priority,
+      environment: input.environment ?? defaultIssueEnvironment,
+      assigneeId: input.assigneeId ?? undefined,
+      rank: input.rank ?? (await createIssueRank(ctx)),
+      estimatedHours:
+         input.estimatedHours === undefined || input.estimatedHours === null
+            ? undefined
+            : input.estimatedHours.toString(),
+      dueDate: input.dueDate ? new Date(input.dueDate).getTime() : undefined,
+      projectId: project?._id,
+      areaId: area?._id,
+      parentIssueId: input.parentIssueId ? (input.parentIssueId as Id<'issues'>) : undefined,
+      labelIds: matchedLabels.map((label) => label._id),
+      createdAt: now,
+      updatedAt: now,
+   });
+   await recordIssueActivity(ctx, {
+      issueId,
+      type: 'created',
+      message: 'creó el issue',
+      createdAt: now,
+   });
+
+   if (input.parentIssueId) {
+      await validateParentAssignment(ctx, issueId, input.parentIssueId as Id<'issues'>);
+   }
+
+   return { id: issueId, identifier };
+}
+
 export const create = mutation({
    args: {
       title: v.string(),
@@ -718,55 +790,7 @@ export const create = mutation({
       labelNames: v.optional(v.array(v.string())),
    },
    handler: async (ctx, input) => {
-      const project = input.projectId
-         ? await findProjectById(ctx, input.projectId)
-         : await findProjectByName(ctx, input.projectName);
-      const area = await findProjectAreaById(ctx, input.areaId, project?._id);
-      const matchedLabels =
-         input.labelIds !== undefined
-            ? await findLabelsByIds(ctx, input.labelIds)
-            : await findLabelsByNames(ctx, input.labelNames ?? []);
-      const { identifier, projectIssueNumber } = await createIssueIdentifier(
-         ctx,
-         project?.key ?? 'TRI'
-      );
-      if (!(await getStatusOption(ctx, input.status))) {
-         throw new Error(`Unknown issue status: ${input.status}.`);
-      }
-      const now = Date.now();
-      const issueId = await ctx.db.insert('issues', {
-         identifier,
-         projectIssueNumber,
-         title: input.title,
-         description: input.description || undefined,
-         status: input.status,
-         priority: input.priority,
-         environment: input.environment ?? defaultIssueEnvironment,
-         assigneeId: input.assigneeId ?? undefined,
-         rank: input.rank ?? (await createIssueRank(ctx)),
-         estimatedHours:
-            input.estimatedHours === undefined || input.estimatedHours === null
-               ? undefined
-               : input.estimatedHours.toString(),
-         dueDate: input.dueDate ? new Date(input.dueDate).getTime() : undefined,
-         projectId: project?._id,
-         areaId: area?._id,
-         parentIssueId: input.parentIssueId ? (input.parentIssueId as Id<'issues'>) : undefined,
-         labelIds: matchedLabels.map((label) => label._id),
-         createdAt: now,
-         updatedAt: now,
-      });
-      await recordIssueActivity(ctx, {
-         issueId,
-         type: 'created',
-         message: 'creó el issue',
-         createdAt: now,
-      });
-
-      if (input.parentIssueId) {
-         await validateParentAssignment(ctx, issueId, input.parentIssueId as Id<'issues'>);
-      }
-
+      const { id: issueId } = await createIssueRecord(ctx, input);
       const createdIssue = (await listIssues(ctx)).find((issue) => issue.id === issueId);
       if (!createdIssue) {
          throw new Error('Created issue could not be reloaded.');

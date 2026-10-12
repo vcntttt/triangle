@@ -11,6 +11,7 @@
 import type * as issueAutomations from "../issueAutomations.js";
 import type * as issueStatusOptions from "../issueStatusOptions.js";
 import type * as issueStatuses from "../issueStatuses.js";
+import type * as experiments from "../experiments.js";
 import type * as issues from "../issues.js";
 import type * as labels from "../labels.js";
 import type * as liveReferences from "../liveReferences.js";
@@ -25,6 +26,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  experiments: typeof experiments;
   issueAutomations: typeof issueAutomations;
   issueStatusOptions: typeof issueStatusOptions;
   issueStatuses: typeof issueStatuses;

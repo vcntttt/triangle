@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as OrgIdRouteImport } from './routes/$orgId'
+import { Route as ExperimentsRouteImport } from './routes/experiments'
 import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as IssuesRouteImport } from './routes/issues'
 import { Route as McpRouteImport } from './routes/mcp'
@@ -39,6 +40,11 @@ const IndexRoute = IndexRouteImport.update({
 const OrgIdRoute = OrgIdRouteImport.update({
   id: '/$orgId',
   path: '/$orgId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExperimentsRoute = ExperimentsRouteImport.update({
+  id: '/experiments',
+  path: '/experiments',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InboxRoute = InboxRouteImport.update({
@@ -141,6 +147,7 @@ const OrgIdTeamTeamIdAllRoute = OrgIdTeamTeamIdAllRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$orgId': typeof OrgIdRouteWithChildren
+  '/experiments': typeof ExperimentsRoute
   '/inbox': typeof InboxRoute
   '/issues': typeof IssuesRouteWithChildren
   '/mcp': typeof McpRoute
@@ -164,6 +171,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$orgId': typeof OrgIdRouteWithChildren
+  '/experiments': typeof ExperimentsRoute
   '/inbox': typeof InboxRoute
   '/mcp': typeof McpRoute
   '/my-work': typeof MyWorkRoute
@@ -186,6 +194,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$orgId': typeof OrgIdRouteWithChildren
+  '/experiments': typeof ExperimentsRoute
   '/inbox': typeof InboxRoute
   '/issues': typeof IssuesRouteWithChildren
   '/mcp': typeof McpRoute
@@ -211,6 +220,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/$orgId'
+    | '/experiments'
     | '/inbox'
     | '/issues'
     | '/mcp'
@@ -234,6 +244,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/$orgId'
+    | '/experiments'
     | '/inbox'
     | '/mcp'
     | '/my-work'
@@ -255,6 +266,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/$orgId'
+    | '/experiments'
     | '/inbox'
     | '/issues'
     | '/mcp'
@@ -279,6 +291,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   OrgIdRoute: typeof OrgIdRouteWithChildren
+  ExperimentsRoute: typeof ExperimentsRoute
   InboxRoute: typeof InboxRoute
   IssuesRoute: typeof IssuesRouteWithChildren
   McpRoute: typeof McpRoute
@@ -302,6 +315,13 @@ declare module '@tanstack/react-router' {
       path: '/$orgId'
       fullPath: '/$orgId'
       preLoaderRoute: typeof OrgIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/experiments': {
+      id: '/experiments'
+      path: '/experiments'
+      fullPath: '/experiments'
+      preLoaderRoute: typeof ExperimentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/inbox': {
@@ -504,6 +524,7 @@ const ProjectsRouteWithChildren = ProjectsRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   OrgIdRoute: OrgIdRouteWithChildren,
+  ExperimentsRoute: ExperimentsRoute,
   InboxRoute: InboxRoute,
   IssuesRoute: IssuesRouteWithChildren,
   McpRoute: McpRoute,

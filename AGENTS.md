@@ -23,7 +23,7 @@
 
 - This is a single-package TanStack Start app, not a monorepo.
 - Runtime entrypoints are `src/client.tsx`, `src/router.tsx`, and `src/routes/__root.tsx`.
-- Canonical app routes are `/projects`, `/issues`, `/issues/$issueIdentifier`, and `/settings`.
+- Canonical app routes are `/projects`, `/issues`, `/issues/$issueIdentifier`, `/experiments`, and `/settings`.
 - `src/routes/$orgId*` files are legacy compatibility redirects only.
 - Shared app shell lives in `components/layout/main-layout.tsx` and `components/layout/sidebar/*`.
 - Convex schema and functions live in `convex/*`.

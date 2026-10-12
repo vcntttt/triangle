@@ -1,6 +1,16 @@
 import { defineSchema, defineTable } from 'convex/server';
 import { v } from 'convex/values';
 
+// Shared by the schema and the experiment functions so both read the same lifecycle.
+export const experimentStatus = v.union(
+   v.literal('idea'),
+   v.literal('ready'),
+   v.literal('running'),
+   v.literal('review'),
+   v.literal('completed'),
+   v.literal('discarded')
+);
+
 export default defineSchema({
    projectStatuses: defineTable({
       id: v.string(),
@@ -343,4 +353,13 @@ export default defineSchema({
       .index('by_blocker', ['blockerIssueId'])
       .index('by_blocked', ['blockedIssueId'])
       .index('by_pair', ['blockerIssueId', 'blockedIssueId']),
+   experiments: defineTable({
+      title: v.string(),
+      description: v.optional(v.string()),
+      status: experimentStatus,
+      projectId: v.optional(v.id('projects')),
+      issueId: v.optional(v.id('issues')),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+   }).index('by_updatedAt', ['updatedAt']),
 });
