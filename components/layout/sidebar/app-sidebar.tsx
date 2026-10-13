@@ -17,7 +17,6 @@ import {
 } from '@/components/ui/sidebar';
 import { Link, useRouterState } from '@tanstack/react-router';
 import { BackToApp } from '@/components/layout/sidebar/back-to-app';
-import { NavSavedViews } from '@/components/layout/sidebar/nav-saved-views';
 import { useViewerPreferences } from '@/src/data/viewer';
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -25,7 +24,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
    const pathname = useRouterState({ select: (state) => state.location.pathname });
    const isSettings = pathname.includes('/settings');
    const hiddenItems = preferences?.sidebar?.hiddenItems ?? [];
-   const savedViewsEnabled = preferences?.savedViewsEnabled ?? true;
    return (
       <>
          <Sidebar collapsible="offcanvas" {...props}>
@@ -37,12 +35,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                      <NavFeatures />
                   </>
                ) : (
-                  <>
-                     <NavWorkspace />
-                     {savedViewsEnabled && !hiddenItems.includes('saved-views') ? (
-                        <NavSavedViews />
-                     ) : null}
-                  </>
+                  <NavWorkspace />
                )}
             </SidebarContent>
             <SidebarFooter>

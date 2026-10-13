@@ -30,11 +30,9 @@ import { useCreateIssueStore } from '@/store/create-issue-store';
 import { DisplayMenu } from '@/components/layout/headers/issues/header-options';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { ProjectExternalLink, ProjectSourceBadge } from './project-source';
-import type { IssueDisplayConfig, IssueFilters, IssueScope } from '@/lib/issue-view';
 import { MarkdownContent } from '@/components/common/issues/markdown-content';
 import { DocumentOutline } from '@/components/common/projects/document-outline';
 import { extractMarkdownHeadings } from '@/lib/markdown-outline';
-import { SaveViewButton } from '@/components/common/views/saved-view-dialog';
 import { IssueInsightsToggle } from '@/components/common/issues/issue-insights-panel';
 
 const updateDateFormatter = new Intl.DateTimeFormat('en-US');
@@ -43,13 +41,10 @@ export function ProjectToolbar({
    title,
    project,
    activeTab,
-   scope = 'all',
 }: {
    title: string;
    project?: ProjectLike;
    activeTab?: 'overview' | 'issues';
-   scope?: IssueScope;
-   viewOverride?: { filters: IssueFilters; display: IssueDisplayConfig };
 }) {
    const showTabs = project && activeTab;
    const showIssueDisplay = activeTab === 'issues';
@@ -79,32 +74,8 @@ export function ProjectToolbar({
             ) : null}
          </div>
          <div className="flex items-center gap-2">
-            {showIssueDisplay && project ? (
-               <SaveViewButton projectId={project.id} scope={scope} captureFilters={false} />
-            ) : null}
             {showIssueDisplay ? <DisplayMenu /> : null}
             {showIssueDisplay ? <IssueInsightsToggle /> : null}
-            {showIssueDisplay && project ? (
-               <div className="hidden items-center gap-0.5 rounded-md bg-muted/60 p-0.5 md:flex">
-                  {(['active', 'backlog', 'all'] as const).map((item) => (
-                     <Button
-                        key={item}
-                        asChild
-                        size="xs"
-                        variant={scope === item ? 'secondary' : 'ghost'}
-                        className="h-6 px-2 text-[11px] capitalize"
-                     >
-                        <Link
-                           to="/projects/$projectSlug"
-                           params={{ projectSlug: project.slug }}
-                           search={{ tab: 'issues', scope: item }}
-                        >
-                           {item === 'all' ? 'All' : item}
-                        </Link>
-                     </Button>
-                  ))}
-               </div>
-            ) : null}
             {showTabs ? (
                <div className="flex items-center gap-1">
                   <Button
@@ -152,8 +123,6 @@ export function ProjectOverview({
    issues,
    activeTab,
    selectedIssueIdentifier,
-   scope = 'all',
-   viewOverride,
    isConnected,
 }: {
    initialProject: ProjectLike;
@@ -165,8 +134,6 @@ export function ProjectOverview({
    issues: IssueListItem[];
    activeTab: 'overview' | 'issues';
    selectedIssueIdentifier?: string;
-   scope?: IssueScope;
-   viewOverride?: { filters: IssueFilters; display: IssueDisplayConfig };
    isConnected: boolean;
 }) {
    const router = useRouter();
@@ -311,12 +278,7 @@ export function ProjectOverview({
       return router.navigate({
          to: '/projects/$projectSlug',
          params: { projectSlug: project.slug },
-         search: (prev) => ({
-            tab: 'issues' as const,
-            issue: issue.identifier,
-            scope: prev.scope,
-            view: prev.view,
-         }),
+         search: { tab: 'issues' as const, issue: issue.identifier },
       });
    };
 
@@ -324,19 +286,14 @@ export function ProjectOverview({
       return router.navigate({
          to: '/projects/$projectSlug',
          params: { projectSlug: project.slug },
-         search: (prev) => ({ tab: 'issues' as const, scope: prev.scope, view: prev.view }),
+         search: { tab: 'issues' as const },
          replace: true,
       });
    };
 
    return (
       <div className="flex h-full min-h-full flex-col bg-container">
-         <ProjectToolbar
-            title={project.name}
-            project={project}
-            activeTab={activeTab}
-            scope={scope}
-         />
+         <ProjectToolbar title={project.name} project={project} activeTab={activeTab} />
 
          {activeTab === 'issues' ? (
             <div className="min-h-0 flex-1">
@@ -349,8 +306,6 @@ export function ProjectOverview({
                   onSelectIssue={handleSelectIssue}
                   onClearSelectedIssue={handleClearSelectedIssue}
                   onSelectAdjacentIssue={handleSelectIssue}
-                  scope={scope}
-                  viewOverride={viewOverride}
                />
             </div>
          ) : (

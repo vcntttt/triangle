@@ -1,22 +1,16 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useSuspenseQuery } from '@tanstack/react-query';
 import { z } from 'zod';
-import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
    ProjectOverview,
    ProjectToolbar,
 } from '@/components/common/projects/project-detail-overview';
 import { projectDetailQuery } from '@/src/data/projects';
-import { savedViewQuery } from '@/src/data/saved-views';
-import { useViewerPreferences } from '@/src/data/viewer';
 
 const projectSearchSchema = z.object({
    tab: z.enum(['overview', 'issues']).optional().catch('overview'),
    issue: z.string().optional(),
-   scope: z.enum(['active', 'backlog', 'all']).optional().catch('all'),
-   view: z.string().optional(),
 });
 
 export const Route = createFileRoute('/projects/$projectSlug')({
@@ -49,21 +43,7 @@ function ProjectPage() {
       databaseError,
       isConnected,
    } = data;
-   const { tab = 'overview', issue, scope = 'all', view: viewId } = Route.useSearch();
-   const preferences = useViewerPreferences();
-   const savedViewsEnabled = preferences?.savedViewsEnabled ?? true;
-   const { data: savedView } = useQuery(savedViewQuery(savedViewsEnabled ? viewId : undefined));
-   const activeSavedView = savedViewsEnabled ? savedView : undefined;
-   const savedViewMatchesProject =
-      activeSavedView?.target === 'project' && activeSavedView.projectId === project?.id;
-
-   useEffect(() => {
-      if (!activeSavedView || savedViewMatchesProject || !project) {
-         return;
-      }
-
-      toast.error('This saved view belongs to another project.');
-   }, [activeSavedView, project, savedViewMatchesProject]);
+   const { tab = 'overview', issue } = Route.useSearch();
 
    if (databaseError) {
       return (
@@ -96,7 +76,6 @@ function ProjectPage() {
       );
    }
 
-   const usableSavedView = savedViewMatchesProject ? activeSavedView : undefined;
    return (
       <ProjectOverview
          key={project.id}
@@ -109,12 +88,6 @@ function ProjectPage() {
          issues={issues}
          activeTab={tab}
          selectedIssueIdentifier={issue}
-         scope={usableSavedView?.scope ?? scope}
-         viewOverride={
-            usableSavedView
-               ? { filters: usableSavedView.filters, display: usableSavedView.display }
-               : undefined
-         }
          isConnected={isConnected}
       />
    );

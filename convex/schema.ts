@@ -221,7 +221,6 @@ export default defineSchema({
          sort: v.string(),
       }),
       pinnedProjectIds: v.array(v.id('projects')),
-      savedViewsEnabled: v.optional(v.boolean()),
       sidebar: v.optional(
          v.object({
             itemOrder: v.array(v.string()),
@@ -235,51 +234,6 @@ export default defineSchema({
       createdAt: v.number(),
       updatedAt: v.number(),
    }).index('by_singletonKey', ['singletonKey']),
-   savedViews: defineTable({
-      name: v.string(),
-      icon: v.optional(v.string()),
-      target: v.union(v.literal('global'), v.literal('project')),
-      projectId: v.optional(v.id('projects')),
-      scope: v.union(v.literal('active'), v.literal('backlog'), v.literal('all')),
-      filters: v.object({
-         status: v.array(v.string()),
-         assignee: v.array(v.string()),
-         priority: v.array(v.string()),
-         labels: v.array(v.string()),
-         project: v.array(v.string()),
-         area: v.array(v.string()),
-      }),
-      display: v.object({
-         viewType: v.union(v.literal('list'), v.literal('grid'), v.literal('graph')),
-         listMode: v.union(v.literal('hierarchy'), v.literal('flat')),
-         groupBy: v.union(
-            v.literal('status'),
-            v.literal('priority'),
-            v.literal('project'),
-            v.literal('assignee'),
-            v.literal('none')
-         ),
-         orderBy: v.union(v.literal('priority'), v.literal('created'), v.literal('title')),
-         orderDirection: v.union(v.literal('ascending'), v.literal('descending')),
-         showEmptyGroups: v.boolean(),
-         hideCompletedIssues: v.boolean(),
-         showSubissues: v.boolean(),
-         visibleProperties: v.object({
-            identifier: v.boolean(),
-            labels: v.boolean(),
-            project: v.boolean(),
-            area: v.boolean(),
-            dependencies: v.boolean(),
-            assignee: v.boolean(),
-            createdAt: v.boolean(),
-         }),
-      }),
-      position: v.number(),
-      createdAt: v.number(),
-      updatedAt: v.number(),
-   })
-      .index('by_target_position', ['target', 'position'])
-      .index('by_project_position', ['projectId', 'position']),
    issues: defineTable({
       identifier: v.string(),
       projectIssueNumber: v.optional(v.number()),

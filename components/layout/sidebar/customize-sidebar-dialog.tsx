@@ -18,14 +18,10 @@ const sidebarItems = [
    { id: 'my-work', name: 'My work' },
    { id: 'projects', name: 'Projects' },
    { id: 'pulse', name: 'Pulse' },
-   { id: 'saved-views', name: 'Saved views' },
    { id: 'settings', name: 'Settings' },
 ] as const;
 
-const sectionNames = [
-   { id: 'workspace', name: 'Workspace' },
-   { id: 'saved-views', name: 'Saved views' },
-] as const;
+const sectionNames = [{ id: 'workspace', name: 'Workspace' }] as const;
 
 type SidebarItemId = (typeof sidebarItems)[number]['id'];
 
@@ -39,14 +35,7 @@ export function CustomizeSidebarDialog({
    const preferences = useViewerPreferences();
    const { updatePreferences } = useViewerCommands();
    const sidebar = preferences?.sidebar;
-   const savedViewsEnabled = preferences?.savedViewsEnabled ?? true;
-   const availableSidebarItems = savedViewsEnabled
-      ? sidebarItems
-      : sidebarItems.filter((item) => item.id !== 'saved-views');
-   const availableSectionNames = savedViewsEnabled
-      ? sectionNames
-      : sectionNames.filter((section) => section.id !== 'saved-views');
-   const defaultOrder = availableSidebarItems.map((item) => item.id);
+   const defaultOrder = sidebarItems.map((item) => item.id);
    const order = useMemo(() => {
       const configured = sidebar?.itemOrder ?? [];
       return [...defaultOrder].sort((left, right) => {
@@ -164,7 +153,7 @@ export function CustomizeSidebarDialog({
                   <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                      Sections
                   </h3>
-                  {availableSectionNames.map((section) => {
+                  {sectionNames.map((section) => {
                      const collapsed = collapsedSections.includes(section.id);
                      return (
                         <div

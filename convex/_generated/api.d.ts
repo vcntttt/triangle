@@ -8,15 +8,14 @@
  * @module
  */
 
+import type * as experiments from "../experiments.js";
 import type * as issueAutomations from "../issueAutomations.js";
 import type * as issueStatusOptions from "../issueStatusOptions.js";
 import type * as issueStatuses from "../issueStatuses.js";
-import type * as experiments from "../experiments.js";
 import type * as issues from "../issues.js";
 import type * as labels from "../labels.js";
 import type * as liveReferences from "../liveReferences.js";
 import type * as projects from "../projects.js";
-import type * as savedViews from "../savedViews.js";
 import type * as viewer from "../viewer.js";
 
 import type {
@@ -34,7 +33,6 @@ declare const fullApi: ApiFromModules<{
   labels: typeof labels;
   liveReferences: typeof liveReferences;
   projects: typeof projects;
-  savedViews: typeof savedViews;
   viewer: typeof viewer;
 }>;
 

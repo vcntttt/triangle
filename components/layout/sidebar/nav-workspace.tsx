@@ -163,7 +163,7 @@ function ProjectMenuItem({ project, isActive }: { project: Project; isActive: bo
                </ContextMenuItem>
                <ContextMenuItem onSelect={() => setDeleteDialogOpen(true)} variant="destructive">
                   <Trash2 className="size-4" />
-                  Eliminar proyecto…
+                  Delete project…
                </ContextMenuItem>
             </ContextMenuContent>
          </ContextMenu>

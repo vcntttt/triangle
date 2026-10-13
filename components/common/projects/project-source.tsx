@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 
 const sourceLabels: Record<ProjectSource, string> = {
    internal: 'Local',
-   external: 'Externo',
+   external: 'External',
 };
 
 export function ProjectSourceBadge({
@@ -49,7 +49,7 @@ export function ProjectExternalLink({
          )}
       >
          <ExternalLink className="size-3.5" />
-         Abrir referencia
+         Open reference
       </a>
    );
 }

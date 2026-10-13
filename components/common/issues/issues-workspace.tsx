@@ -48,13 +48,10 @@ import { useIssueInsightsStore } from '@/store/issue-insights-store';
 import type { ProjectOptionLike } from '@/lib/projects-presentation';
 import {
    buildIssueDisplayGroups,
-   filterIssuesByScope,
    filterIssuesForDisplay,
    issueInsightsValue,
    sortIssuesByConfiguredPriority,
    type IssueInsightsFocus,
-   type IssueScope,
-   type IssueFilters,
    type IssueDisplayConfig,
 } from '@/lib/issue-view';
 import {
@@ -69,11 +66,6 @@ interface IssuesWorkspaceProps {
    databaseError: string | null;
    selectedIssueIdentifier?: string;
    projectFilterId?: string;
-   scope?: IssueScope;
-   viewOverride?: {
-      filters: IssueFilters;
-      display: IssueDisplayConfig;
-   };
    applyIssueFilters?: boolean;
    onSelectIssue?: (issue: Issue) => void | Promise<void>;
    onClearSelectedIssue?: () => void | Promise<void>;
@@ -254,8 +246,6 @@ export function IssuesWorkspace({
    databaseError,
    selectedIssueIdentifier,
    projectFilterId,
-   scope = 'all',
-   viewOverride,
    applyIssueFilters,
    onSelectIssue,
    onClearSelectedIssue,
@@ -278,12 +268,9 @@ export function IssuesWorkspace({
             <IssuesWorkspaceContent
                initialStatuses={initialStatuses}
                initialPriorities={initialPriorities}
-               scopeStatuses={initialStatuses}
                databaseError={databaseError}
                selectedIssueIdentifier={selectedIssueIdentifier}
                projectFilterId={projectFilterId}
-               scope={scope}
-               viewOverride={viewOverride}
                applyIssueFilters={applyIssueFilters}
                onSelectIssue={onSelectIssue}
                onClearSelectedIssue={onClearSelectedIssue}
@@ -298,20 +285,15 @@ export function IssuesWorkspace({
 function IssuesWorkspaceContent({
    initialStatuses,
    initialPriorities,
-   scopeStatuses,
    databaseError,
    selectedIssueIdentifier,
    projectFilterId,
-   scope = 'all',
-   viewOverride,
    applyIssueFilters = true,
    onSelectIssue,
    onClearSelectedIssue,
    onSelectAdjacentIssue,
    emptyCopy,
-}: Omit<IssuesWorkspaceProps, 'initialIssues'> & {
-   scopeStatuses: ProjectOptionLike[];
-}) {
+}: Omit<IssuesWorkspaceProps, 'initialIssues'>) {
    const { issues, filterIssues } = useIssuesData();
    const { isSearchOpen, searchQuery } = useSearchStore();
    const { filters, hasActiveFilters, clearFilters } = useFilterStore();
@@ -419,7 +401,7 @@ function IssuesWorkspaceContent({
    );
 
    const isSearching = isSearchOpen && searchQuery.trim() !== '';
-   const preferenceDisplay = useMemo<IssueDisplayConfig>(
+   const activeDisplay = useMemo<IssueDisplayConfig>(
       () => ({
          viewType,
          listMode,
@@ -443,26 +425,14 @@ function IssuesWorkspaceContent({
          visibleProperties,
       ]
    );
-   const activeDisplay = viewOverride?.display ?? preferenceDisplay;
-   const activeFilters = viewOverride?.filters ?? filters;
-   const hasActiveFilterValues = Object.values(activeFilters).some((values) => values.length > 0);
-   const isFiltering =
-      applyIssueFilters && (viewOverride ? hasActiveFilterValues : hasActiveFilters());
-   const statusTypes = useMemo(
-      () => new Map(scopeStatuses.map((status) => [status.id, status.type ?? 'unstarted'])),
-      [scopeStatuses]
-   );
-   const scopedIssues = useMemo(
-      () => filterIssuesByScope(issues, scope, statusTypes),
-      [issues, scope, statusTypes]
-   );
-   const visibleIssues = scopedIssues.filter((issue) => issue.status.id !== archivedStatus.id);
-   const scopedIssueIds = useMemo(
+   const isFiltering = applyIssueFilters && hasActiveFilters();
+   const visibleIssues = issues.filter((issue) => issue.status.id !== archivedStatus.id);
+   const visibleIssueIds = useMemo(
       () => new Set(visibleIssues.map((issue) => issue.id)),
       [visibleIssues]
    );
    const storeFilteredIssues = isFiltering
-      ? filterIssues(activeFilters).filter((issue) => scopedIssueIds.has(issue.id))
+      ? filterIssues(filters).filter((issue) => visibleIssueIds.has(issue.id))
       : visibleIssues;
    const insightsIssues = projectFilterId
       ? storeFilteredIssues.filter((issue) => issue.project?.id === projectFilterId)
@@ -481,7 +451,7 @@ function IssuesWorkspaceContent({
       : visibleIssues;
    const hiddenByFiltersCount =
       filterIssuesForDisplay(unfilteredIssues, activeDisplay).length - displayIssues.length;
-   const canClearStoredFilters = applyIssueFilters && !viewOverride && hasActiveFilters();
+   const canClearStoredFilters = applyIssueFilters && hasActiveFilters();
    const clearVisibleFilters =
       insightsFocus || canClearStoredFilters
          ? () => {
@@ -567,7 +537,7 @@ function IssuesWorkspaceContent({
          )
       );
       toast.success(
-         `${count} ${count === 1 ? 'issue marcado' : 'issues marcados'} como objetivo${count === 1 ? '' : 's'} del grafo`
+         `${count} ${count === 1 ? 'issue added' : 'issues added'} as graph ${count === 1 ? 'objective' : 'objectives'}`
       );
    }, [objectiveIssueIds, setObjectiveIssueIds, visibleSelectedIssues]);
 
@@ -737,11 +707,7 @@ function IssuesWorkspaceContent({
             navigate({
                to: '/issues/$issueIdentifier',
                params: { issueIdentifier: nextIssue.identifier },
-               search: (prev) => ({
-                  ...(projectFilterId ? { projectId: projectFilterId } : {}),
-                  scope: prev.scope,
-                  view: prev.view,
-               }),
+               search: projectFilterId ? { projectId: projectFilterId } : {},
                replace: true,
             })
          );
@@ -756,11 +722,7 @@ function IssuesWorkspaceContent({
       runSelectionChange(undefined, () =>
          navigate({
             to: '/issues',
-            search: (prev) => ({
-               ...(projectFilterId ? { projectId: projectFilterId } : {}),
-               scope: prev.scope,
-               view: prev.view,
-            }),
+            search: projectFilterId ? { projectId: projectFilterId } : {},
          })
       );
    }
@@ -775,11 +737,7 @@ function IssuesWorkspaceContent({
          navigate({
             to: '/issues/$issueIdentifier',
             params: { issueIdentifier: issue.identifier },
-            search: (prev) => ({
-               ...(projectFilterId ? { projectId: projectFilterId } : {}),
-               scope: prev.scope,
-               view: prev.view,
-            }),
+            search: projectFilterId ? { projectId: projectFilterId } : {},
          })
       );
    }
@@ -793,11 +751,7 @@ function IssuesWorkspaceContent({
       runSelectionChange(undefined, () =>
          navigate({
             to: '/issues',
-            search: (prev) => ({
-               ...(projectFilterId ? { projectId: projectFilterId } : {}),
-               scope: prev.scope,
-               view: prev.view,
-            }),
+            search: projectFilterId ? { projectId: projectFilterId } : {},
          })
       );
    }
@@ -1007,7 +961,10 @@ function IssuesListPanel({
    const showCompletedSummary = hideCompletedIssues && completedIssuesCount > 0 && completedStatus;
 
    return (
-      <div className="flex h-full w-full flex-col overflow-hidden border-r border-border/60 bg-container">
+      <div
+         data-selecting={selectedIssueIds.size > 0 || undefined}
+         className="group/list flex h-full w-full flex-col overflow-hidden border-r border-border/60 bg-container"
+      >
          {viewType === 'list' && selectedIssueIds.size > 0 && (
             <div
                className="flex shrink-0 items-center gap-3 border-b border-primary/15 bg-primary/[0.04] px-6 py-2"
@@ -1017,19 +974,18 @@ function IssuesListPanel({
                <span className="text-xs font-medium">
                   {selectedIssueIds.size - hiddenSelectedCount}{' '}
                   {selectedIssueIds.size - hiddenSelectedCount === 1
-                     ? 'issue seleccionado'
-                     : 'issues seleccionados'}
+                     ? 'issue selected'
+                     : 'issues selected'}
                   {hiddenSelectedCount > 0 && (
                      <span className="font-normal text-muted-foreground">
                         {' '}
-                        · {hiddenSelectedCount} {hiddenSelectedCount === 1 ? 'oculto' : 'ocultos'}{' '}
-                        por filtros, sin cambios
+                        · {hiddenSelectedCount} hidden by filters, unchanged
                      </span>
                   )}
                </span>
                {objectiveIssueIds.some((issueId) => selectedIssueIds.has(issueId)) && (
                   <span className="hidden text-[11px] text-muted-foreground sm:inline">
-                     Parte de la selección ya es objetivo
+                     Some selected issues are already objectives
                   </span>
                )}
                <div className="ml-auto flex items-center gap-1.5">
@@ -1041,10 +997,10 @@ function IssuesListPanel({
                      onClick={onMarkSelectedAsObjectives}
                   >
                      <Crosshair className="size-3.5 text-orange-500" />
-                     Marcar como objetivos
+                     Mark as objectives
                   </Button>
                   <Button type="button" size="xs" variant="ghost" onClick={onClearIssueSelection}>
-                     Limpiar
+                     Clear
                   </Button>
                </div>
             </div>
@@ -1141,9 +1097,9 @@ function HiddenByFiltersFooter({ count, onClear }: { count: number; onClear?: ()
       >
          <span>
             <span className="font-medium text-foreground tabular-nums">
-               {count} {count === 1 ? 'issue oculto' : 'issues ocultos'}
+               {count} {count === 1 ? 'issue hidden' : 'issues hidden'}
             </span>{' '}
-            por filtros
+            by filters
          </span>
          {onClear ? (
             <button
@@ -1151,7 +1107,7 @@ function HiddenByFiltersFooter({ count, onClear }: { count: number; onClear?: ()
                onClick={onClear}
                className="inline-flex items-center gap-1 rounded-sm transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             >
-               Limpiar filtros
+               Clear filters
                <X className="size-3" aria-hidden="true" />
             </button>
          ) : null}

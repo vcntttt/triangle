@@ -62,7 +62,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
          {
             name: 'description',
             content:
-               'Fork personal de Triangle, una UI inspirada en Linear, recortada para gestionar proyectos, issues y etiquetas.',
+               'A personal Triangle fork inspired by Linear, built to manage projects, issues, and labels.',
          },
       ],
       links: [

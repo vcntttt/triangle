@@ -59,7 +59,6 @@ function mergePreferencesPatch(
          ? { ...prev.projectFilters, ...patch.projectFilters }
          : prev.projectFilters,
       pinnedProjectIds: patch.pinnedProjectIds ?? prev.pinnedProjectIds,
-      savedViewsEnabled: patch.savedViewsEnabled ?? prev.savedViewsEnabled,
       sidebar: patch.sidebar ? { ...prev.sidebar, ...patch.sidebar } : prev.sidebar,
       sidebarOpen: patch.sidebarOpen ?? prev.sidebarOpen,
    };
@@ -82,7 +81,7 @@ export function useUpdatePreferences() {
          await updatePreferences(patch);
       } catch (error) {
          console.error('Failed to save preferences.', error);
-         toast.error('No se pudieron guardar las preferencias.');
+         toast.error('Could not save preferences.');
          await queryClient.invalidateQueries({ queryKey });
       }
    };

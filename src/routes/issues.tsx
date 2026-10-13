@@ -1,5 +1,5 @@
 import { createFileRoute, useMatches } from '@tanstack/react-router';
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
+import { useSuspenseQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import { useEffect, useMemo } from 'react';
 import Header from '@/components/layout/headers/issues/header';
@@ -8,14 +8,10 @@ import { useProjectOptions } from '@/hooks/use-project-options';
 import type { Project } from '@/lib/models';
 import { useCreateIssueStore } from '@/store/create-issue-store';
 import { issuesPageQuery } from '@/src/data/issues';
-import { savedViewQuery } from '@/src/data/saved-views';
-import { useViewerPreferences } from '@/src/data/viewer';
 import { IssuesWorkspace } from '@/components/common/issues/issues-workspace';
 
 const issuesSearchSchema = z.object({
    projectId: z.string().optional(),
-   scope: z.enum(['active', 'backlog', 'all']).optional().catch('all'),
-   view: z.string().optional(),
 });
 
 export const Route = createFileRoute('/issues')({
@@ -32,11 +28,8 @@ export const Route = createFileRoute('/issues')({
 });
 
 function IssuesLayout() {
-   const { projectId, scope = 'all', view: viewId } = Route.useSearch();
-   const preferences = useViewerPreferences();
-   const savedViewsEnabled = preferences?.savedViewsEnabled ?? true;
+   const { projectId } = Route.useSearch();
    const { data: pageData } = useSuspenseQuery(issuesPageQuery({ projectId }));
-   const { data: savedView } = useQuery(savedViewQuery(savedViewsEnabled ? viewId : undefined));
    const { issues, isConnected } = pageData;
    const projects = useProjectOptions();
    const setDefaultProject = useCreateIssueStore((state) => state.setDefaultProject);
@@ -57,8 +50,6 @@ function IssuesLayout() {
       [issues, projectId]
    );
    const projectTitle = project ? `Issues for ${project.name}` : 'Issues';
-   const activeSavedView = savedViewsEnabled ? savedView : undefined;
-   const activeScope = activeSavedView?.scope ?? scope;
 
    useEffect(() => {
       setDefaultProject(project ?? null);
@@ -81,8 +72,6 @@ function IssuesLayout() {
                isConnected={isConnected}
                projectTitle={projectTitle}
                project={project}
-               scope={activeScope}
-               viewId={viewId}
             />
          }
       >
@@ -93,12 +82,6 @@ function IssuesLayout() {
             databaseError={pageData.databaseError}
             selectedIssueIdentifier={selectedIssueIdentifier}
             projectFilterId={projectId}
-            scope={activeScope}
-            viewOverride={
-               activeSavedView
-                  ? { filters: activeSavedView.filters, display: activeSavedView.display }
-                  : undefined
-            }
          />
       </MainLayout>
    );

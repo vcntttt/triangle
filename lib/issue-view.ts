@@ -8,7 +8,6 @@ export interface IssueDisplayGroup {
    isStatusGroup: boolean;
 }
 
-export type IssueScope = 'active' | 'backlog' | 'all';
 export type IssueGroupBy = 'status' | 'priority' | 'project' | 'assignee' | 'none';
 export type IssueOrderBy = 'priority' | 'created' | 'title';
 export type IssueOrderDirection = 'ascending' | 'descending';
@@ -69,8 +68,8 @@ export const defaultIssueDisplay: IssueDisplayConfig = {
       project: true,
       area: true,
       dependencies: true,
-      assignee: true,
-      createdAt: true,
+      assignee: false,
+      createdAt: false,
    },
 };
 
@@ -167,19 +166,6 @@ function sortOptionsByConfiguredOrder<T extends IssueOrderOption>(options: T[]):
          return leftPosition - rightPosition || left.index - right.index;
       })
       .map(({ option }) => option);
-}
-
-export function filterIssuesByScope(
-   issues: Issue[],
-   scope: IssueScope,
-   statusTypes: Map<string, 'unstarted' | 'started' | 'completed'>
-) {
-   if (scope === 'all') {
-      return issues.filter((issue) => issue.status.id !== 'archived');
-   }
-
-   const expectedType = scope === 'active' ? 'started' : 'unstarted';
-   return issues.filter((issue) => statusTypes.get(issue.status.id) === expectedType);
 }
 
 // Display options hide issues on purpose, so they never count as "hidden by filters".
