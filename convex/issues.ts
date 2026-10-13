@@ -274,7 +274,7 @@ async function transitionIssueStatus(
       await recordIssueActivity(ctx, {
          issueId: issue._id,
          type: 'status_changed',
-         message: 'cambió el estado',
+         message: 'changed the status',
          fromValue: activityValue(issue.status),
          toValue: activityValue(status),
          createdAt: updatedAt,
@@ -482,7 +482,7 @@ export const detail = query({
             id: issueId,
             actorId: 'me',
             type: 'created',
-            message: 'creó el issue',
+            message: 'created the issue',
             fromValue: null,
             toValue: null,
             createdAt: issue.createdAt,
@@ -760,7 +760,7 @@ export async function createIssueRecord(ctx: MutationCtx, input: CreateIssueInpu
    await recordIssueActivity(ctx, {
       issueId,
       type: 'created',
-      message: 'creó el issue',
+      message: 'created the issue',
       createdAt: now,
    });
 
@@ -859,7 +859,7 @@ export const createWithSubissues = mutation({
       await recordIssueActivity(ctx, {
          issueId,
          type: 'created',
-         message: 'creó el issue',
+         message: 'created the issue',
          createdAt: now,
       });
 
@@ -896,7 +896,7 @@ export const createWithSubissues = mutation({
          await recordIssueActivity(ctx, {
             issueId: childIssueId,
             type: 'created',
-            message: 'creó el issue',
+            message: 'created the issue',
             createdAt: Date.now(),
          });
       }
@@ -1020,7 +1020,7 @@ export const update = mutation({
          await recordIssueActivity(ctx, {
             issueId: id,
             type: 'title_changed',
-            message: 'cambió el título',
+            message: 'changed the title',
             createdAt: updatedAt,
          });
       }
@@ -1031,7 +1031,7 @@ export const update = mutation({
          await recordIssueActivity(ctx, {
             issueId: id,
             type: 'description_changed',
-            message: 'actualizó la descripción',
+            message: 'updated the description',
             createdAt: updatedAt,
          });
       }
@@ -1039,7 +1039,7 @@ export const update = mutation({
          await recordIssueActivity(ctx, {
             issueId: id,
             type: 'priority_changed',
-            message: 'cambió la prioridad',
+            message: 'changed the priority',
             fromValue: activityValue(issue.priority),
             toValue: activityValue(input.priority),
             createdAt: updatedAt,
@@ -1050,7 +1050,7 @@ export const update = mutation({
          await recordIssueActivity(ctx, {
             issueId: id,
             type: 'environment_changed',
-            message: 'cambió el entorno',
+            message: 'changed the environment',
             fromValue: previousEnvironment,
             toValue: input.environment,
             createdAt: updatedAt,
@@ -1060,7 +1060,7 @@ export const update = mutation({
          await recordIssueActivity(ctx, {
             issueId: id,
             type: 'assignee_changed',
-            message: 'cambió la asignación',
+            message: 'changed the assignee',
             fromValue: issue.assigneeId ?? null,
             toValue: input.assigneeId,
             createdAt: updatedAt,
@@ -1072,7 +1072,7 @@ export const update = mutation({
             await recordIssueActivity(ctx, {
                issueId: id,
                type: 'estimate_changed',
-               message: 'cambió la estimación',
+               message: 'changed the estimate',
                fromValue: issue.estimatedHours,
                toValue: nextEstimatedHours,
                createdAt: updatedAt,
@@ -1090,7 +1090,7 @@ export const update = mutation({
             await recordIssueActivity(ctx, {
                issueId: id,
                type: 'due_date_changed',
-               message: 'cambió la fecha límite',
+               message: 'changed the due date',
                fromValue: previousDueDate,
                toValue: nextDueDate,
                createdAt: updatedAt,
@@ -1105,7 +1105,7 @@ export const update = mutation({
          await recordIssueActivity(ctx, {
             issueId: id,
             type: 'project_changed',
-            message: 'cambió el proyecto',
+            message: 'changed the project',
             fromValue: previousProject?.name,
             toValue: project?.name,
             createdAt: updatedAt,
@@ -1130,7 +1130,7 @@ export const update = mutation({
             await recordIssueActivity(ctx, {
                issueId: child._id,
                type: 'project_changed',
-               message: 'cambió el proyecto',
+               message: 'changed the project',
                fromValue: childPreviousProject?.name,
                toValue: project?.name,
                createdAt: updatedAt,
@@ -1142,7 +1142,7 @@ export const update = mutation({
          await recordIssueActivity(ctx, {
             issueId: id,
             type: 'area_changed',
-            message: 'cambió el área',
+            message: 'changed the area',
             fromValue: previousArea?.name,
             toValue: area?.name,
             createdAt: updatedAt,
@@ -1159,7 +1159,7 @@ export const update = mutation({
          await recordIssueActivity(ctx, {
             issueId: id,
             type: 'parent_changed',
-            message: 'cambió el issue padre',
+            message: 'changed the parent issue',
             fromValue: previousParent?.identifier,
             toValue: nextParent?.identifier,
             createdAt: updatedAt,
@@ -1174,7 +1174,7 @@ export const update = mutation({
                await recordIssueActivity(ctx, {
                   issueId: id,
                   type: 'label_added',
-                  message: 'añadió la etiqueta',
+                  message: 'added a label',
                   toValue: label.name,
                   createdAt: updatedAt,
                });
@@ -1185,7 +1185,7 @@ export const update = mutation({
                await recordIssueActivity(ctx, {
                   issueId: id,
                   type: 'label_removed',
-                  message: 'quitó la etiqueta',
+                  message: 'removed a label',
                   fromValue: label.name,
                   createdAt: updatedAt,
                });
@@ -1285,7 +1285,7 @@ export const assign = mutation({
          await recordIssueActivity(ctx, {
             issueId: id,
             type: 'assignee_changed',
-            message: 'cambió la asignación',
+            message: 'changed the assignee',
             fromValue: issue.assigneeId,
             toValue: assigneeId,
             createdAt: now,
@@ -1312,7 +1312,7 @@ export const claim = mutation({
          await recordIssueActivity(ctx, {
             issueId: id,
             type: 'assignee_changed',
-            message: 'cambió la asignación',
+            message: 'changed the assignee',
             fromValue: issue.assigneeId,
             toValue: assigneeId,
             createdAt: now,
@@ -1442,7 +1442,7 @@ export const addArtifact = mutation({
       await recordIssueActivity(ctx, {
          issueId,
          type: 'artifact_added',
-         message: 'añadió un artefacto',
+         message: 'added an artifact',
          toValue: title,
          createdAt: now,
       });
@@ -1496,7 +1496,7 @@ export const addBlocker = mutation({
       await recordIssueActivity(ctx, {
          issueId: blockedIssueId,
          type: 'blocker_added',
-         message: 'añadió un bloqueador',
+         message: 'added a blocker',
          toValue: blocker.identifier,
          createdAt: Date.now(),
       });
@@ -1521,7 +1521,7 @@ export const removeBlocker = mutation({
          await recordIssueActivity(ctx, {
             issueId: relation.blockedIssueId,
             type: 'blocker_removed',
-            message: 'quitó un bloqueador',
+            message: 'removed a blocker',
             fromValue: blocker?.identifier,
             createdAt: Date.now(),
          });
@@ -1568,7 +1568,7 @@ export const setParent = mutation({
          await recordIssueActivity(ctx, {
             issueId: id,
             type: 'parent_changed',
-            message: 'cambió el issue padre',
+            message: 'changed the parent issue',
             fromValue: previousParent?.identifier,
             toValue: nextParent?.identifier,
             createdAt: now,
