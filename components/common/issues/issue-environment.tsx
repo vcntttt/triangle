@@ -39,7 +39,7 @@ export function IssueEnvironmentSelector({
                variant="ghost"
                role="combobox"
                aria-expanded={open}
-               aria-label="Entorno del issue"
+               aria-label="Issue environment"
             >
                <SelectedIcon className={issueChipIconClassName} />
                <span className="max-w-[160px] truncate">{issueEnvironmentLabels[environment]}</span>
@@ -84,7 +84,7 @@ export function ProductionEnvironmentBadge({ className }: { className?: string }
          )}
       >
          <Rocket className="size-3" aria-hidden="true" />
-         <span>Producción</span>
+         <span>Production</span>
       </span>
    );
 }

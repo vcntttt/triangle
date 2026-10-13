@@ -857,10 +857,10 @@ function createGraphLayout(issues: Issue[], objectiveIssueIds: string[]) {
 }
 
 const stateCopy: Record<NodeState, string> = {
-   completed: 'Resuelta',
-   active: 'En curso',
-   ready: 'Disponible',
-   blocked: 'Bloqueada',
+   completed: 'Completed',
+   active: 'In progress',
+   ready: 'Ready',
+   blocked: 'Blocked',
 };
 
 function GraphCard({
@@ -923,7 +923,7 @@ function GraphCard({
                {objective && (
                   <span className="inline-flex h-5 min-w-0 items-center gap-1 rounded-md border border-orange-500/25 bg-orange-500/[0.08] px-1.5 text-[9px] font-semibold uppercase tracking-[0.06em] text-orange-500">
                      <Crosshair className="size-2.5 shrink-0" />
-                     Objetivo
+                     Objective
                   </span>
                )}
             </div>
@@ -933,7 +933,7 @@ function GraphCard({
                </div>
             ) : (
                <span className="rounded-full border border-dashed px-2 py-0.5 text-[10px] text-muted-foreground">
-                  Contexto
+                  Context
                </span>
             )}
          </div>
@@ -980,7 +980,7 @@ function GraphCard({
                </span>
             )}
             {unlockCount > 0 && <span className="shrink-0">Libera {unlockCount}</span>}
-            {!node.issue && <span className="truncate">Fuera de este proyecto</span>}
+            {!node.issue && <span className="truncate">Outside this project</span>}
          </div>
       </article>
    );
@@ -1035,8 +1035,8 @@ function ObjectivePicker({
             >
                <Crosshair className="size-3.5 text-orange-500" />
                {selectedIds.length > 0
-                  ? `${selectedIds.length} ${selectedIds.length === 1 ? 'objetivo' : 'objetivos'}`
-                  : 'Definir objetivo'}
+                  ? `${selectedIds.length} ${selectedIds.length === 1 ? 'objective' : 'objectives'}`
+                  : 'Set objectives'}
                <ChevronDown className="size-3 text-muted-foreground" />
             </Button>
          </PopoverTrigger>
@@ -1045,10 +1045,10 @@ function ObjectivePicker({
             className="w-[min(380px,calc(100vw-2rem))] overflow-hidden p-0"
          >
             <Command>
-               <CommandInput placeholder="Buscar por ID o título…" />
+               <CommandInput placeholder="Search by ID or title…" />
                <CommandList className="max-h-[360px]">
-                  <CommandEmpty>No encontramos ese issue.</CommandEmpty>
-                  <CommandGroup heading="Elige uno o varios objetivos">
+                  <CommandEmpty>No matching issues found.</CommandEmpty>
+                  <CommandGroup heading="Choose one or more objectives">
                      {orderedIssues.map((issue) => {
                         const selected = selectedSet.has(issue.id);
                         return (
@@ -1080,8 +1080,8 @@ function ObjectivePicker({
                <div className="flex items-center justify-between border-t px-3 py-2 text-xs text-muted-foreground">
                   <span>
                      {draftIds.length === 0
-                        ? 'El grafo mostrará solo lo necesario.'
-                        : `${draftIds.length} seleccionados`}
+                        ? 'The graph will show only what’s needed.'
+                        : `${draftIds.length} selected`}
                   </span>
                   {draftIds.length > 0 && (
                      <Button
@@ -1090,7 +1090,7 @@ function ObjectivePicker({
                         size="xs"
                         onClick={() => setDraftIds([])}
                      >
-                        Limpiar
+                        Clear
                      </Button>
                   )}
                </div>
@@ -1160,9 +1160,9 @@ export function IssueDependencyGraph({
          <div className="flex h-full items-center justify-center p-8">
             <div className="max-w-md rounded-2xl border border-dashed bg-card/40 p-8 text-center">
                <GitFork className="mx-auto size-6 text-muted-foreground" />
-               <h2 className="mt-3 text-sm font-semibold">Aún no hay una ruta que dibujar</h2>
+               <h2 className="mt-3 text-sm font-semibold">No path to draw yet</h2>
                <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  Añade relaciones de bloqueo entre issues y aquí aparecerá el orden de ejecución.
+                  Add blocking relations between issues to see their execution order here.
                </p>
             </div>
          </div>
@@ -1191,27 +1191,27 @@ export function IssueDependencyGraph({
                      </span>
                      <div>
                         <h2 className="text-sm font-semibold">
-                           {isObjectiveMode ? 'Ruta hacia tus objetivos' : 'Camino de ejecución'}
+                           {isObjectiveMode ? 'Path to objectives' : 'Execution path'}
                         </h2>
                         <p className="text-xs text-muted-foreground">
                            {isObjectiveMode
-                              ? `${pendingPrerequisiteCount} ${pendingPrerequisiteCount === 1 ? 'tarea previa pendiente' : 'tareas previas pendientes'} · ${layout.readyCount} ${layout.readyCount === 1 ? 'disponible ahora' : 'disponibles ahora'}.`
+                              ? `${pendingPrerequisiteCount} ${pendingPrerequisiteCount === 1 ? 'pending prerequisite' : 'pending prerequisites'} · ${layout.readyCount} ${layout.readyCount === 1 ? 'ready now' : 'ready now'}.`
                               : hasActivePath
-                                ? `${layout.activeIds.length} ${layout.activeIds.length === 1 ? 'rama activa detectada' : 'ramas activas detectadas'} por su estado.`
-                                : `Elige entre ${layout.readyCount} ${layout.readyCount === 1 ? 'inicio disponible' : 'inicios disponibles'} y muévelo a In Progress.`}
+                                ? `${layout.activeIds.length} active ${layout.activeIds.length === 1 ? 'branch' : 'branches'} detected by status.`
+                                : `Choose one of ${layout.readyCount} ${layout.readyCount === 1 ? 'available starting point' : 'available starting points'} and move it to In Progress.`}
                         </p>
                      </div>
                   </div>
                </div>
                <div className="flex flex-wrap items-center justify-end gap-3 text-[11px] text-muted-foreground">
                   <span className="inline-flex items-center gap-1.5">
-                     <span className="size-2 rounded-full bg-emerald-500" /> Activa
+                     <span className="size-2 rounded-full bg-emerald-500" /> Active
                   </span>
                   <span className="inline-flex items-center gap-1.5">
-                     <span className="size-2 rounded-full bg-sky-500" /> Disponible
+                     <span className="size-2 rounded-full bg-sky-500" /> Ready
                   </span>
                   <span className="inline-flex items-center gap-1.5">
-                     <span className="size-2 rounded-full bg-muted-foreground/40" /> Alternativa
+                     <span className="size-2 rounded-full bg-muted-foreground/40" /> Alternative
                   </span>
                   <ObjectivePicker
                      issues={issues}
@@ -1223,7 +1223,7 @@ export function IssueDependencyGraph({
             {isObjectiveMode && (
                <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-border/50 pt-3">
                   <span className="mr-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                     Objetivos
+                     Objectives
                   </span>
                   {objectiveIssues.map((issue) => (
                      <button
@@ -1235,7 +1235,7 @@ export function IssueDependencyGraph({
                            )
                         }
                         className="inline-flex h-6 items-center gap-1.5 rounded-md border border-orange-500/20 bg-orange-500/[0.06] px-2 text-[11px] text-orange-600 transition-colors hover:bg-orange-500/10 dark:text-orange-400"
-                        title={`Quitar ${issue.identifier} de los objetivos`}
+                        title={`Remove ${issue.identifier} from objectives`}
                      >
                         {issue.identifier}
                         <X className="size-3" />
@@ -1289,10 +1289,10 @@ export function IssueDependencyGraph({
                               style={{ left: position?.x ?? CANVAS_PADDING }}
                            >
                               {index === 0
-                                 ? 'Inicio'
+                                 ? 'Start'
                                  : index === layout.orderedLayers.length - 1
-                                   ? 'Resultado'
-                                   : `Paso ${index + 1}`}
+                                   ? 'Outcome'
+                                   : `Step ${index + 1}`}
                               {index < layout.orderedLayers.length - 1 && (
                                  <ArrowRight className="size-3" />
                               )}
@@ -1441,7 +1441,7 @@ export function IssueDependencyGraph({
                   <section className="border-t border-border/60 px-5 py-4">
                      <div className="flex items-center gap-2 text-xs font-medium">
                         <CircleDashed className="size-3.5 text-muted-foreground" />
-                        Disponibles fuera de la ruta
+                        Ready outside the path
                         <span className="text-muted-foreground">
                            {layout.independentIssues.length}
                         </span>
@@ -1476,16 +1476,16 @@ export function IssueDependencyGraph({
                <Hand className={cn('size-3.5', pan.panning && 'fill-current')} />
                {pan.spacePressed ? (
                   pan.panning ? (
-                     'Moviendo mapa'
+                     'Moving canvas'
                   ) : (
-                     'Arrastra para mover'
+                     'Drag to move'
                   )
                ) : (
                   <>
                      <kbd className="rounded border border-border/70 bg-muted/70 px-1 py-0.5 font-mono text-[9px] leading-none">
-                        Espacio
+                        Space
                      </kbd>
-                     + arrastrar
+                     + drag
                   </>
                )}
             </div>
@@ -1496,8 +1496,8 @@ export function IssueDependencyGraph({
                   className="flex size-8 items-center justify-center text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-35"
                   onClick={zoom.zoomOut}
                   disabled={zoom.scale <= MIN_ZOOM}
-                  title="Alejar"
-                  aria-label="Alejar el grafo"
+                  title="Zoom out"
+                  aria-label="Zoom out on graph"
                >
                   <Minus className="size-3.5" />
                </button>
@@ -1505,8 +1505,8 @@ export function IssueDependencyGraph({
                   type="button"
                   className="h-8 min-w-12 border-x px-2 text-[10px] font-medium tabular-nums text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                   onClick={zoom.reset}
-                  title="Restablecer al 100 %"
-                  aria-label={`Zoom ${Math.round(zoom.scale * 100)} %. Restablecer al 100 %`}
+                  title="Reset to 100%"
+                  aria-label={`Zoom ${Math.round(zoom.scale * 100)}%. Reset to 100%`}
                >
                   {Math.round(zoom.scale * 100)}%
                </button>
@@ -1515,8 +1515,8 @@ export function IssueDependencyGraph({
                   className="flex size-8 items-center justify-center text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-35"
                   onClick={zoom.zoomIn}
                   disabled={zoom.scale >= MAX_ZOOM}
-                  title="Acercar"
-                  aria-label="Acercar el grafo"
+                  title="Zoom in"
+                  aria-label="Zoom in on graph"
                >
                   <Plus className="size-3.5" />
                </button>
@@ -1524,8 +1524,8 @@ export function IssueDependencyGraph({
                   type="button"
                   className="flex size-8 items-center justify-center border-l text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                   onClick={() => zoom.fit(layout.width, layout.height)}
-                  title="Ajustar a pantalla"
-                  aria-label="Ajustar el grafo a la pantalla"
+                  title="Fit to screen"
+                  aria-label="Fit graph to screen"
                >
                   <Maximize2 className="size-3.5" />
                </button>

@@ -39,12 +39,15 @@ export function IssueDependencyIndicator({ issue }: { issue: Issue }) {
 
       return (
          <span
-            className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-lg border border-amber-500/20 bg-amber-500/8 px-2.5 text-[13px] font-medium text-amber-700 dark:text-amber-300"
-            title={`Primero: ${blockerNames}`}
-            aria-label={`Bloqueada por ${pendingBlockers.length} ${pendingBlockers.length === 1 ? 'tarea' : 'tareas'}`}
+            className="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-lg border border-amber-500/20 bg-amber-500/8 px-2 text-xs font-normal text-amber-700 dark:text-amber-300"
+            title={`First: ${blockerNames}`}
+            aria-label={`Blocked by ${pendingBlockers.length} ${pendingBlockers.length === 1 ? 'task' : 'tasks'}`}
          >
             <LockKeyhole className="size-3.5" />
-            {pendingBlockers.length} {pendingBlockers.length === 1 ? 'previa' : 'previas'}
+            {pendingBlockers.length}
+            <span className="hidden sm:inline">
+               {pendingBlockers.length === 1 ? 'prerequisite' : 'prerequisites'}
+            </span>
          </span>
       );
    }
@@ -52,15 +55,17 @@ export function IssueDependencyIndicator({ issue }: { issue: Issue }) {
    if (hasResolvedPath) {
       return (
          <span
-            className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/8 px-2.5 text-[13px] font-medium text-emerald-700 dark:text-emerald-300"
+            className="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/8 px-2 text-xs font-normal text-emerald-700 dark:text-emerald-300"
             title={
                pendingBlocks.length > 0
-                  ? `Lista para empezar; libera ${pendingBlocks.length} ${pendingBlocks.length === 1 ? 'tarea' : 'tareas'}`
-                  : 'Todos sus bloqueos están resueltos'
+                  ? `Ready to start; unblocks ${pendingBlocks.length} ${pendingBlocks.length === 1 ? 'task' : 'tasks'}`
+                  : 'All its blockers are resolved'
             }
          >
             <Unlock className="size-3.5" />
-            Lista{pendingBlocks.length > 0 ? ` · libera ${pendingBlocks.length}` : ''}
+            <span className="hidden sm:inline">
+               Ready{pendingBlocks.length > 0 ? ` · unblocks ${pendingBlocks.length}` : ''}
+            </span>
          </span>
       );
    }
@@ -68,11 +73,11 @@ export function IssueDependencyIndicator({ issue }: { issue: Issue }) {
    if (pendingBlocks.length > 0) {
       return (
          <span
-            className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-lg border border-sky-500/20 bg-sky-500/8 px-2.5 text-[13px] font-medium text-sky-700 dark:text-sky-300"
-            title={`Completar esta tarea libera ${pendingBlocks.length} ${pendingBlocks.length === 1 ? 'tarea' : 'tareas'}`}
+            className="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-lg border border-sky-500/20 bg-sky-500/8 px-2 text-xs font-normal text-sky-700 dark:text-sky-300"
+            title={`Completing this task unblocks ${pendingBlocks.length} ${pendingBlocks.length === 1 ? 'task' : 'tasks'}`}
          >
             <GitBranch className="size-3.5" />
-            Libera {pendingBlocks.length}
+            <span className="hidden sm:inline">Unblocks</span> {pendingBlocks.length}
          </span>
       );
    }
@@ -134,7 +139,7 @@ function RelationCard({
          </Link>
          {(complete || direction === 'before') && (
             <span className="shrink-0 text-[11px] text-muted-foreground">
-               {complete ? 'Hecha' : 'Pendiente'}
+               {complete ? 'Done' : 'Pending'}
             </span>
          )}
          <Button
@@ -143,7 +148,7 @@ function RelationCard({
             size="icon"
             className="size-7 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
             onClick={onRemove}
-            aria-label={`Quitar relación con ${relation.identifier}`}
+            aria-label={`Remove relation with ${relation.identifier}`}
          >
             <X className="size-3.5" />
          </Button>
@@ -201,14 +206,14 @@ export function IssueDependencyFlow({
             <div className="min-w-0">
                <div className="flex items-center gap-2">
                   <GitBranch className="size-4 text-muted-foreground" />
-                  <h2 className="text-sm font-semibold">Ruta de desbloqueo</h2>
+                  <h2 className="text-sm font-semibold">Unblock path</h2>
                </div>
                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                   {isBlocked
-                     ? `Completa ${pendingBlockers.length} ${pendingBlockers.length === 1 ? 'tarea previa' : 'tareas previas'} para poder empezar.`
+                     ? `Complete ${pendingBlockers.length} ${pendingBlockers.length === 1 ? 'prerequisite task' : 'prerequisite tasks'} to start.`
                      : pendingBlocks.length > 0
-                       ? `Lista para avanzar; al completarla liberarás ${pendingBlocks.length} ${pendingBlocks.length === 1 ? 'tarea' : 'tareas'}.`
-                       : 'Sin bloqueos pendientes. Esta tarea puede avanzar.'}
+                       ? `Ready to move forward; completing it unblocks ${pendingBlocks.length} ${pendingBlocks.length === 1 ? 'task' : 'tasks'}.`
+                       : 'No pending blockers. This task can move forward.'}
                </p>
             </div>
             <Button
@@ -219,7 +224,7 @@ export function IssueDependencyFlow({
                onClick={onAddBlocker}
             >
                <Plus className="size-3.5" />
-               Añadir bloqueador
+               Add blocker
             </Button>
          </div>
 
@@ -228,11 +233,11 @@ export function IssueDependencyFlow({
                <div>
                   <div className="mb-2 flex items-center justify-between gap-3">
                      <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                        1 · Primero
+                        1 · First
                      </span>
                      <span className="text-[11px] text-muted-foreground">
                         {issue.blockedBy.length - pendingBlockers.length}/{issue.blockedBy.length}{' '}
-                        completadas
+                        done
                      </span>
                   </div>
                   <div className="space-y-2">
@@ -283,7 +288,7 @@ export function IssueDependencyFlow({
                   </span>
                   <div className="min-w-0 flex-1">
                      <span className="block text-xs font-medium text-muted-foreground">
-                        {issue.identifier} · Esta tarea
+                        {issue.identifier} · This task
                      </span>
                      <span className="block truncate text-sm font-semibold">{issue.title}</span>
                   </div>
@@ -296,9 +301,9 @@ export function IssueDependencyFlow({
                      )}
                   >
                      {isBlocked
-                        ? 'Bloqueada'
+                        ? 'Blocked'
                         : isReadyToStartStatus(issue.status.id)
-                          ? 'Lista'
+                          ? 'Ready'
                           : issue.status.name}
                   </span>
                </div>
@@ -309,11 +314,11 @@ export function IssueDependencyFlow({
                   <FlowConnector />
                   <div className="mb-2 flex items-center justify-between gap-3">
                      <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                        {issue.blockedBy.length > 0 ? '3 · Después' : 'Después'}
+                        {issue.blockedBy.length > 0 ? '3 · Then' : 'Then'}
                      </span>
                      {pendingBlocks.length > 0 && (
                         <span className="text-[11px] text-sky-700 dark:text-sky-300">
-                           Libera {pendingBlocks.length}
+                           <span className="hidden sm:inline">Unblocks</span> {pendingBlocks.length}
                         </span>
                      )}
                   </div>

@@ -3,6 +3,7 @@
 import type { Issue } from '@/lib/models';
 import { format } from 'date-fns';
 import { ChevronDown, ChevronRight, GitBranchPlus } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { AssigneeUser } from './assignee-user';
 import { LabelBadge } from './label-badge';
 import { PrioritySelector } from './priority-selector';
@@ -58,6 +59,9 @@ export const IssueLine = memo(function IssueLine({
    const { visibleProperties } = useIssueDisplay();
    const activityLabel = format(new Date(issue.lastActivityAt ?? issue.createdAt), 'MMM dd');
 
+   // Shift+clic y el checkbox comparten la misma alternancia de selección.
+   const toggleSelection = () => onToggleSelection?.(issue);
+
    return (
       <LazyMotion features={domAnimation}>
          <ContextMenu>
@@ -67,7 +71,7 @@ export const IssueLine = memo(function IssueLine({
                   onClick={(event) => {
                      if (event.shiftKey) {
                         event.preventDefault();
-                        onToggleSelection?.(issue);
+                        toggleSelection();
                         return;
                      }
 
@@ -83,7 +87,7 @@ export const IssueLine = memo(function IssueLine({
                   aria-pressed={isBulkSelected}
                   tabIndex={0}
                   className={cn(
-                     'w-full flex items-center justify-start min-h-10 px-6 py-1 hover:bg-sidebar/50 cursor-pointer border-l-2 border-transparent',
+                     'group relative w-full flex items-center justify-start min-h-10 px-6 py-1 hover:bg-sidebar/50 cursor-pointer border-l-2 border-transparent',
                      isBulkSelected && 'border-l-primary bg-primary/5 hover:bg-primary/10',
                      isActive && 'bg-accent/70 hover:bg-accent/70',
                      isActive &&
@@ -94,6 +98,20 @@ export const IssueLine = memo(function IssueLine({
                      paddingLeft: `${24 + nestingLevel * 22}px`,
                   }}
                >
+                  <Checkbox
+                     aria-label={`Select ${issue.identifier}`}
+                     checked={isBulkSelected}
+                     onCheckedChange={toggleSelection}
+                     onClick={(event) => event.stopPropagation()}
+                     onMouseDown={(event) => event.stopPropagation()}
+                     onKeyDown={(event) => event.stopPropagation()}
+                     className={cn(
+                        'absolute left-2 top-1/2 -translate-y-1/2 transition-opacity focus-visible:opacity-100',
+                        isBulkSelected
+                           ? 'opacity-100'
+                           : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 group-data-selecting/list:opacity-100'
+                     )}
+                  />
                   <div
                      className="flex items-center gap-0.5"
                      onMouseDownCapture={(event) => event.stopPropagation()}
@@ -106,12 +124,10 @@ export const IssueLine = memo(function IssueLine({
                               aria-expanded={!isCollapsed}
                               aria-label={
                                  isCollapsed
-                                    ? `Expandir issue padre ${issue.identifier}`
-                                    : `Colapsar issue padre ${issue.identifier}`
+                                    ? `Expand ${issue.identifier}`
+                                    : `Collapse ${issue.identifier}`
                               }
-                              title={
-                                 isCollapsed ? 'Expandir issues hijas' : 'Colapsar issues hijas'
-                              }
+                              title={isCollapsed ? 'Show sub-issues' : 'Hide sub-issues'}
                               onClick={(event) => {
                                  event.stopPropagation();
                                  onToggleCollapse?.(issue.id);
@@ -128,15 +144,15 @@ export const IssueLine = memo(function IssueLine({
                      <PrioritySelector priority={issue.priority} issueId={issue.id} />
                      <StatusSelector status={issue.status} issueId={issue.id} />
                   </div>
-                  <div className="min-w-0 flex items-center justify-start mr-1 ml-0.5">
-                     <div className="min-w-0">
+                  <div className="min-w-0 flex-1 flex items-center justify-start mr-1 ml-0.5">
+                     <div className="min-w-0 w-full">
                         <div className="flex items-center gap-2 min-w-0">
                            {visibleProperties.identifier && (
-                              <span className="shrink-0 text-xs font-medium leading-5 text-muted-foreground">
+                              <span className="shrink-0 text-xs font-normal leading-5 text-muted-foreground">
                                  {issue.identifier}
                               </span>
                            )}
-                           <span className="text-sm font-medium leading-5 truncate hover:underline">
+                           <span className="min-w-0 truncate text-sm font-medium leading-5 hover:underline">
                               {issue.title}
                            </span>
                            {issue.environment === 'production' && <ProductionEnvironmentBadge />}
@@ -149,9 +165,10 @@ export const IssueLine = memo(function IssueLine({
                         </div>
                      </div>
                   </div>
-                  <div className="flex items-center justify-end gap-2 ml-auto sm:w-fit">
+                  <div className="flex min-w-0 max-w-[50%] shrink items-center justify-end gap-2 ml-auto sm:w-fit">
                      <div className="w-3 shrink-0"></div>
-                     <div className="flex items-center justify-end gap-1">
+                     {/* Wrapped chips fall onto a clipped second line; the dependency signal comes first so it never drops. */}
+                     <div className="flex h-6 min-w-0 shrink flex-wrap items-center justify-end gap-1 overflow-hidden">
                         {visibleProperties.dependencies && (
                            <IssueDependencyIndicator issue={issue} />
                         )}
@@ -179,9 +196,13 @@ export const IssueLine = memo(function IssueLine({
                            {activityLabel}
                         </span>
                      )}
-                     {visibleProperties.assignee && (
+                     {visibleProperties.assignee && issue.assignee && (
                         <div onMouseDownCapture={(event) => event.stopPropagation()}>
-                           <AssigneeUser user={issue.assignee} issueId={issue.id} />
+                           <AssigneeUser
+                              user={issue.assignee}
+                              issueId={issue.id}
+                              showPresence={false}
+                           />
                         </div>
                      )}
                   </div>

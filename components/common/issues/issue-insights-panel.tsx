@@ -20,14 +20,15 @@ export function IssueInsightsToggle() {
    return (
       <Button
          type="button"
-         size="xs"
+         size="icon"
          variant={isOpen ? 'secondary' : 'ghost'}
-         className="hidden h-7 gap-1.5 px-2 text-xs md:inline-flex"
+         className="hidden size-7 md:inline-flex"
+         title="Insights"
+         aria-label="Insights"
          aria-pressed={isOpen}
          onClick={toggle}
       >
-         <BarChart3 className="size-3.5" />
-         Insights
+         <BarChart3 className="size-4" />
       </Button>
    );
 }

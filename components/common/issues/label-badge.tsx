@@ -1,11 +1,11 @@
 import type { LabelInterface } from '@/lib/models';
-import { IssueChip, issueChipDotClassName } from './issue-chip';
+import { IssueChip, issueChipDotClassName, issueMetaChipClassName } from './issue-chip';
 
 export function LabelBadge({ label }: { label: LabelInterface[] }) {
    return (
       <>
          {label.map((l) => (
-            <IssueChip key={l.id}>
+            <IssueChip key={l.id} className={issueMetaChipClassName}>
                <span
                   className={issueChipDotClassName}
                   style={{ backgroundColor: l.color }}

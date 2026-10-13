@@ -317,7 +317,7 @@ export function MarkdownContent({ content }: { content: string }) {
             <Tag
                key={`heading-${blocks.length}`}
                id={headingId}
-               className="mt-6 scroll-mt-6 text-lg font-semibold leading-tight tracking-tight first:mt-0"
+               className="mt-6 scroll-mt-6 text-base font-semibold leading-tight tracking-tight first:mt-0"
             >
                {renderInline(heading[2])}
             </Tag>

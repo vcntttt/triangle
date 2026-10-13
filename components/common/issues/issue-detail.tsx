@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -13,7 +13,7 @@ import {
    MessageSquare,
    Minimize2,
    Plus,
-   Send,
+   ArrowUp,
    Trash2,
    X,
 } from 'lucide-react';
@@ -35,7 +35,7 @@ import { AreaSelector } from '@/components/layout/sidebar/create-new-issue/area-
 import { ParentIssueSelector } from './parent-issue-selector';
 import { cn } from '@/lib/utils';
 import { priorities, status as statusOptions } from '@/lib/ui-catalog';
-import { IssueChip, issueChipClassName } from './issue-chip';
+import { issueChipClassName } from './issue-chip';
 import { IssueEnvironmentSelector } from './issue-environment';
 import { parseIssueInlineTokens } from '@/lib/issue-inline-tokens';
 import { usePendingAction } from '@/hooks/use-pending-action';
@@ -53,6 +53,27 @@ const agentAvatars: Record<string, string> = {
 
 // Local copy of a server-backed text field. Server changes replace it unless the user has
 // unsaved edits in progress, so autosave echoes never eat keystrokes typed meanwhile.
+// Activity rows store a Spanish `message` from older writes; render by `type` so history reads in one language.
+const activityCopy: Record<string, string> = {
+   created: 'created the issue',
+   status_changed: 'changed the status',
+   title_changed: 'changed the title',
+   description_changed: 'updated the description',
+   priority_changed: 'changed the priority',
+   environment_changed: 'changed the environment',
+   assignee_changed: 'changed the assignee',
+   estimate_changed: 'changed the estimate',
+   due_date_changed: 'changed the due date',
+   project_changed: 'changed the project',
+   area_changed: 'changed the area',
+   parent_changed: 'changed the parent issue',
+   label_added: 'added a label',
+   label_removed: 'removed a label',
+   artifact_added: 'added an artifact',
+   blocker_added: 'added a blocker',
+   blocker_removed: 'removed a blocker',
+};
+
 function useFieldDraft(serverValue: string, isEditing: boolean) {
    const [draft, setDraft] = useState(serverValue);
    const [syncedValue, setSyncedValue] = useState(serverValue);
@@ -90,6 +111,20 @@ function resolveCommentAuthor(authorId: string, viewer: User): User {
    return { ...viewer, id: authorId };
 }
 
+// Filas de propiedades sin caja: el valor es el selector existente, con estilo de la fila
+// para que parezca texto y solo se resalte en hover.
+const propertyValueClassName =
+   'flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-[13px] font-normal text-foreground [&_button]:h-7 [&_button]:border-transparent [&_button]:bg-transparent [&_button]:px-1.5 [&_button]:font-normal [&_button]:shadow-none [&_button:hover]:bg-accent/60';
+
+function PropertyRow({ label, children }: { label: string; children: ReactNode }) {
+   return (
+      <div className="flex min-h-8 items-center gap-3">
+         <span className="w-[88px] shrink-0 text-xs text-muted-foreground">{label}</span>
+         <div className={propertyValueClassName}>{children}</div>
+      </div>
+   );
+}
+
 function IssueDetailProperties({
    issue,
    canBecomeSubissue,
@@ -122,46 +157,64 @@ function IssueDetailProperties({
    };
 
    return (
-      <div className="flex flex-wrap items-center gap-2">
-         <StatusSelector status={issue.status} issueId={issue.id} display="chip" />
-         <PrioritySelector priority={issue.priority} issueId={issue.id} display="chip" />
-         <IssueEnvironmentSelector
-            environment={issue.environment}
-            onChange={(environment) => updateIssueEnvironment(issue.id, environment)}
-         />
-         <AssigneeUser user={issue.assignee} issueId={issue.id} />
-         <ProjectSelector
-            project={issue.project}
-            onChange={handleProjectChange}
-            showShortcut={false}
-            triggerClassName={issueChipClassName}
-            variant="ghost"
-            size="sm"
-         />
+      <div className="flex flex-col gap-0.5">
+         <PropertyRow label="Status">
+            <StatusSelector status={issue.status} issueId={issue.id} display="chip" />
+         </PropertyRow>
+         <PropertyRow label="Priority">
+            <PrioritySelector priority={issue.priority} issueId={issue.id} display="chip" />
+         </PropertyRow>
+         <PropertyRow label="Environment">
+            <IssueEnvironmentSelector
+               environment={issue.environment}
+               onChange={(environment) => updateIssueEnvironment(issue.id, environment)}
+            />
+         </PropertyRow>
+         <PropertyRow label="Assignee">
+            <AssigneeUser user={issue.assignee} issueId={issue.id} showPresence={false} />
+         </PropertyRow>
+         <PropertyRow label="Project">
+            <ProjectSelector
+               project={issue.project}
+               onChange={handleProjectChange}
+               showShortcut={false}
+               triggerClassName={issueChipClassName}
+               variant="ghost"
+               size="sm"
+            />
+         </PropertyRow>
          {!condensed ? (
             <>
-               <AreaSelector
-                  project={issue.project}
-                  area={issue.area}
-                  onChange={(area) => updateIssueArea(issue.id, area?.id ?? null)}
-                  triggerClassName={issueChipClassName}
-                  variant="ghost"
-                  size="sm"
-               />
-               <LabelSelector issueId={issue.id} />
+               <PropertyRow label="Area">
+                  <AreaSelector
+                     project={issue.project}
+                     area={issue.area}
+                     onChange={(area) => updateIssueArea(issue.id, area?.id ?? null)}
+                     triggerClassName={issueChipClassName}
+                     variant="ghost"
+                     size="sm"
+                  />
+               </PropertyRow>
+               <PropertyRow label="Labels">
+                  <LabelSelector issueId={issue.id} />
+               </PropertyRow>
                {issue.dueDate ? (
-                  <IssueChip suppressHydrationWarning>
-                     Due {format(new Date(issue.dueDate), 'MMM dd')}
-                  </IssueChip>
+                  <PropertyRow label="Due date">
+                     <span className="px-1.5" suppressHydrationWarning>
+                        {format(new Date(issue.dueDate), 'MMM dd')}
+                     </span>
+                  </PropertyRow>
                ) : null}
                {!issue.parent ? (
-                  <ParentIssueSelector
-                     issueId={issue.id}
-                     parent={null}
-                     onChange={handleParentChange}
-                     compact
-                     emptyLabel="Add parent"
-                  />
+                  <PropertyRow label="Parent">
+                     <ParentIssueSelector
+                        issueId={issue.id}
+                        parent={null}
+                        onChange={handleParentChange}
+                        compact
+                        emptyLabel="Add parent"
+                     />
+                  </PropertyRow>
                ) : null}
             </>
          ) : null}
@@ -428,9 +481,9 @@ export function IssueDetail({
             blockedIssueId: presentationIssue.id,
             blockerIssueId: issue.id,
          });
-         toast.success('Bloqueador añadido');
+         toast.success('Blocker added');
       } catch (error) {
-         toast.error(error instanceof Error ? error.message : 'No se pudo añadir el bloqueador');
+         toast.error(error instanceof Error ? error.message : 'Could not add the blocker');
       }
    };
 
@@ -540,7 +593,7 @@ export function IssueDetail({
                            handleEditorShortcuts(event);
                         }}
                         rows={1}
-                        className="min-h-0 resize-none border-none bg-transparent px-0 text-[26px] font-semibold leading-tight shadow-none focus-visible:ring-0"
+                        className="min-h-0 resize-none border-none bg-transparent px-0 text-2xl font-semibold leading-tight tracking-tight shadow-none md:text-2xl focus-visible:ring-0"
                      />
                      {presentationIssue.parent && (
                         <Link
@@ -612,12 +665,12 @@ export function IssueDetail({
                                  setEditingDescription(true);
                               }
                            }}
-                           className="block min-h-[156px] w-full rounded-md border border-transparent p-0 text-left transition-colors hover:border-primary/30"
+                           className="block min-h-[156px] w-full rounded-md border border-transparent p-0 text-left text-[15px] leading-7 text-foreground transition-colors hover:border-primary/30"
                         >
                            {description.trim() ? (
                               <MarkdownContent content={description} />
                            ) : (
-                              <span className="text-sm text-muted-foreground">
+                              <span className="text-[15px] text-muted-foreground">
                                  Add a description...
                               </span>
                            )}
@@ -658,12 +711,15 @@ export function IssueDetail({
                            />
                            <div className="flex items-center justify-end">
                               <Button
-                                 size="sm"
+                                 variant="secondary"
+                                 size="icon"
+                                 className="size-7"
                                  disabled={!commentBody.trim() || submittingComment}
                                  onClick={() => void handleSubmitComment()}
+                                 aria-label="Send comment"
+                                 title="Send comment (⌘/Ctrl+Enter)"
                               >
-                                 <Send className="mr-1.5 size-3.5" />
-                                 Comment
+                                 <ArrowUp className="size-4" />
                               </Button>
                            </div>
                         </div>
@@ -707,8 +763,7 @@ export function IssueDetail({
                      <details className="group" open>
                         <summary className="flex cursor-pointer list-none items-center justify-between rounded-md text-xs font-medium text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
                            <span>
-                              <Activity className="-mt-0.5 mr-1.5 inline-block size-3.5" />{' '}
-                              Actividad{' '}
+                              <Activity className="-mt-0.5 mr-1.5 inline-block size-3.5" /> Activity{' '}
                               <span className="text-muted-foreground/70">({activity.length})</span>
                            </span>
                            <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
@@ -738,12 +793,12 @@ export function IssueDetail({
                                              {author.name}
                                           </span>
                                           <span className="text-muted-foreground">
-                                             {event.message}
+                                             {activityCopy[event.type] ?? event.message}
                                           </span>
                                           {hasValueChange && (
                                              <span className="text-muted-foreground">
-                                                {event.fromValue ?? 'Ninguno'} →{' '}
-                                                {event.toValue ?? 'Ninguno'}
+                                                {event.fromValue ?? 'None'} →{' '}
+                                                {event.toValue ?? 'None'}
                                              </span>
                                           )}
                                           <span
@@ -765,7 +820,16 @@ export function IssueDetail({
                      </details>
                   </section>
 
-                  <section className="border-t border-border/60 pt-5">
+                  <section className="space-y-3 border-t border-border/60 pt-5">
+                     <div className="text-xs font-medium text-muted-foreground">
+                        Sub-issues
+                        {presentationIssue.subissues.length > 0 && (
+                           <span className="text-muted-foreground/70">
+                              {' '}
+                              ({presentationIssue.subissues.length})
+                           </span>
+                        )}
+                     </div>
                      <div className="space-y-3">
                         {presentationIssue.subissues.map((subissue) => {
                            const childIssue = getIssueById(subissue.id);

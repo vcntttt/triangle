@@ -44,7 +44,7 @@ export function DeleteProjectDialog({ project, open, onOpenChange }: DeleteProje
          }
       } catch (err) {
          setMode(null);
-         setError(err instanceof Error ? err.message : 'No se pudo eliminar el proyecto.');
+         setError(err instanceof Error ? err.message : 'Could not delete project.');
       }
    };
 
@@ -62,11 +62,11 @@ export function DeleteProjectDialog({ project, open, onOpenChange }: DeleteProje
             <AlertDialogHeader>
                <AlertDialogTitle className="flex items-center gap-2">
                   <AlertTriangle className="size-5 text-destructive" />
-                  Eliminar proyecto
+                  Delete project
                </AlertDialogTitle>
                <AlertDialogDescription>
-                  Estás a punto de eliminar <strong>{project.name}</strong>. Esta acción es
-                  peligrosa y no se puede deshacer. Elige cómo quieres continuar.
+                  You’re about to delete <strong>{project.name}</strong>. This action is
+                  irreversible. Choose how to continue.
                </AlertDialogDescription>
             </AlertDialogHeader>
 
@@ -76,7 +76,7 @@ export function DeleteProjectDialog({ project, open, onOpenChange }: DeleteProje
                   onClick={() => handleOpenChange(false)}
                   disabled={isPending}
                >
-                  Cancelar
+                  Cancel
                </Button>
 
                <Button
@@ -85,7 +85,7 @@ export function DeleteProjectDialog({ project, open, onOpenChange }: DeleteProje
                   disabled={isPending}
                >
                   {mode === 'unlink' && <Loader2 className="size-4 animate-spin" />}
-                  Eliminar desvinculando los issues
+                  Delete project and keep its issues
                </Button>
 
                <Button
@@ -94,7 +94,7 @@ export function DeleteProjectDialog({ project, open, onOpenChange }: DeleteProje
                   disabled={isPending}
                >
                   {mode === 'withIssues' && <Loader2 className="size-4 animate-spin" />}
-                  Eliminar proyecto y los issues
+                  Delete project and its issues
                </Button>
             </div>
 

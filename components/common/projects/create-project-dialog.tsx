@@ -197,20 +197,18 @@ export function CreateProjectDialog({ disabled = false }: CreateProjectDialogPro
                      disabled={isCreating}
                   >
                      <SelectTrigger id="source" aria-label="Origen del proyecto">
-                        <span>{selectedSource === 'external' ? 'Externo' : 'Local'}</span>
+                        <span>{selectedSource === 'external' ? 'External' : 'Local'}</span>
                      </SelectTrigger>
                      <SelectContent>
-                        <SelectItem value="internal">Local: se gestiona en Triangle</SelectItem>
-                        <SelectItem value="external">
-                           Externo: referencia a otra herramienta
-                        </SelectItem>
+                        <SelectItem value="internal">Local: managed in Triangle</SelectItem>
+                        <SelectItem value="external">External: linked to another tool</SelectItem>
                      </SelectContent>
                   </Select>
                </div>
 
                {selectedSource === 'external' ? (
                   <div className="space-y-2">
-                     <Label htmlFor="externalUrl">URL de referencia</Label>
+                     <Label htmlFor="externalUrl">Reference URL</Label>
                      <Input
                         id="externalUrl"
                         name="externalUrl"
@@ -218,7 +216,7 @@ export function CreateProjectDialog({ disabled = false }: CreateProjectDialogPro
                         placeholder="https://linear.app/..."
                      />
                      <p className="text-xs text-muted-foreground">
-                        Este proyecto aparecerá en tu board, pero sus tareas viven fuera de
+                        This project will appear on your board, but its issues live outside
                         Triangle.
                      </p>
                   </div>

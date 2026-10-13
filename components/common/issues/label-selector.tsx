@@ -13,7 +13,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useLabelOptions } from '@/hooks/use-label-options';
 import { useIssuesData } from '@/components/common/issues/issues-data-context';
-import { IssueChip, issueChipDotClassName } from './issue-chip';
+import { IssueChip, issueChipDotClassName, issueMetaChipClassName } from './issue-chip';
 
 export function LabelSelector({ issueId }: { issueId: string }) {
    const [open, setOpen] = useState(false);
@@ -50,7 +50,7 @@ export function LabelSelector({ issueId }: { issueId: string }) {
             >
                {currentLabels.length > 0 ? (
                   currentLabels.map((label) => (
-                     <IssueChip key={label.id}>
+                     <IssueChip key={label.id} className={issueMetaChipClassName}>
                         <span
                            className={issueChipDotClassName}
                            style={{ backgroundColor: label.color }}

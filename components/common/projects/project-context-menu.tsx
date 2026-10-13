@@ -113,7 +113,7 @@ export function ProjectContextMenu({
          <ContextMenuSeparator />
 
          <ContextMenuItem onSelect={onDelete} variant="destructive">
-            <Trash2 className="size-4" /> Eliminar proyecto…
+            <Trash2 className="size-4" /> Delete project…
          </ContextMenuItem>
       </ContextMenuContent>
    );

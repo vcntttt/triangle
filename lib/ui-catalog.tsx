@@ -354,25 +354,25 @@ export const health: Health[] = [
       id: 'no-update',
       name: 'No Update',
       color: '#94a3b8',
-      description: 'No hay una actualización reciente para este proyecto.',
+      description: 'There’s no recent update for this project.',
    },
    {
       id: 'off-track',
       name: 'Off Track',
       color: '#ef4444',
-      description: 'El proyecto está desalineado y necesita atención.',
+      description: 'The project is off track and needs attention.',
    },
    {
       id: 'on-track',
       name: 'On Track',
       color: '#22c55e',
-      description: 'El proyecto avanza según lo esperado.',
+      description: 'The project is progressing as expected.',
    },
    {
       id: 'at-risk',
       name: 'At Risk',
       color: '#f59e0b',
-      description: 'El proyecto muestra riesgo y requiere seguimiento.',
+      description: 'The project is at risk and needs follow-up.',
    },
 ];
 

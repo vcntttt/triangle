@@ -18,6 +18,8 @@ import { useViewerUser } from '@/hooks/use-viewer-user';
 interface AssigneeUserProps {
    user: User | null;
    issueId: string;
+   // Las filas de la lista ocultan el punto de presencia para bajar el ruido visual.
+   showPresence?: boolean;
 }
 
 function AssigneeAvatar({ user }: { user: User | null }) {
@@ -37,7 +39,7 @@ function AssigneeAvatar({ user }: { user: User | null }) {
    );
 }
 
-export function AssigneeUser({ user, issueId }: AssigneeUserProps) {
+export function AssigneeUser({ user, issueId, showPresence = true }: AssigneeUserProps) {
    const [open, setOpen] = useState(false);
    const { updateIssueAssignee } = useIssuesData();
    const currentUser = useViewerUser();
@@ -48,7 +50,7 @@ export function AssigneeUser({ user, issueId }: AssigneeUserProps) {
          <DropdownMenuTrigger asChild>
             <button type="button" className="relative w-fit focus:outline-none">
                <AssigneeAvatar user={user} />
-               {user && (
+               {user && showPresence && (
                   <span
                      className="border-background absolute -end-0.5 -bottom-0.5 size-2.5 rounded-full border-2"
                      style={{ backgroundColor: statusUserColors[user.status] }}
