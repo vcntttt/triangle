@@ -14,7 +14,8 @@ export const HEARTBEAT_INTERVAL_MS = 60_000;
 export const STALE_AFTER_MS = 3 * HEARTBEAT_INTERVAL_MS;
 
 const isoDate = z.iso.datetime();
-const id = z.string().min(1).max(200);
+// T3 subagent thread ids embed their provider path and exceed 200 characters.
+const id = z.string().min(1).max(1000);
 const label = z.string().min(1).max(500);
 const absolutePath = z.string().startsWith('/').max(4096);
 const count = z.number().int().nonnegative();
@@ -250,6 +251,9 @@ export const devStateBatch = z
 
 export type DevStateObservation = z.infer<typeof devStateObservation>;
 export type DevStateBatch = z.infer<typeof devStateBatch>;
+// What the observer queues; the queue assigns `sequence` when it persists the observation.
+type WithoutSequence<T> = T extends unknown ? Omit<T, 'sequence'> : never;
+export type DevStateObservationDraft = WithoutSequence<DevStateObservation>;
 
 export const devStateResponse = z.discriminatedUnion('status', [
    // HTTP 200. Everything up to this sequence is persisted; the observer may drop it.
