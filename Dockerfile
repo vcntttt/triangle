@@ -4,7 +4,7 @@ WORKDIR /app
 
 FROM base AS deps
 
-ENV HUSKY=0
+ENV VP_GIT_HOOKS=0
 
 COPY package.json bun.lock ./
 

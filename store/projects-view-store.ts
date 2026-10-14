@@ -1,7 +1,12 @@
 import { useUpdatePreferences, useViewerPreferences } from '@/src/data/viewer';
 
 export type ProjectDisplayProperty =
-   'health' | 'priority' | 'lead' | 'targetDate' | 'status' | 'attention';
+   | 'health'
+   | 'priority'
+   | 'lead'
+   | 'targetDate'
+   | 'status'
+   | 'attention';
 export type ProjectViewType = 'list' | 'board';
 export type ProjectBoardGroupBy = 'status' | 'priority' | 'attention' | 'health';
 
