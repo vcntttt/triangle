@@ -119,16 +119,20 @@ export function CreateProjectDialog({ disabled = false }: CreateProjectDialogPro
       setError(null);
 
       const formData = new FormData(event.currentTarget);
+      // Every field in this form is a text input, so a missing value is the only non-string case.
+      const field = (name: string) => {
+         const value = formData.get(name);
+         return typeof value === 'string' ? value : '';
+      };
 
       try {
          await createProjectMutation({
-            name: String(formData.get('name') ?? ''),
+            name: field('name'),
             key: projectKey,
             source: selectedSource,
-            externalUrl:
-               selectedSource === 'external' ? String(formData.get('externalUrl') ?? '') : null,
-            subtitle: String(formData.get('subtitle') ?? ''),
-            description: String(formData.get('description') ?? ''),
+            externalUrl: selectedSource === 'external' ? field('externalUrl') : null,
+            subtitle: field('subtitle'),
+            description: field('description'),
             status: selectedStatus?.id ?? 'backlog',
             priority: selectedPriority?.id ?? 'no-priority',
             iconType: iconConfig.type,

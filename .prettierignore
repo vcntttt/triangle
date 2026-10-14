@@ -1,9 +1,0 @@
-.next
-node_modules
-public
-bun.lock
-.github
-build
-dist
-src/routeTree.gen.ts
-convex/_generated

@@ -15,7 +15,13 @@ export type IssueViewType = 'list' | 'grid' | 'graph';
 export type IssueListMode = 'hierarchy' | 'flat';
 
 export type IssueDisplayProperty =
-   'identifier' | 'labels' | 'project' | 'area' | 'dependencies' | 'assignee' | 'createdAt';
+   | 'identifier'
+   | 'labels'
+   | 'project'
+   | 'area'
+   | 'dependencies'
+   | 'assignee'
+   | 'createdAt';
 
 export interface IssueFilters {
    status: string[];

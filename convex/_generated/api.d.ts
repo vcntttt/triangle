@@ -8,7 +8,13 @@
  * @module
  */
 
+import type * as devState_contract from "../devState/contract.js";
+import type * as devState_credentials from "../devState/credentials.js";
+import type * as devState_ingest from "../devState/ingest.js";
+import type * as devState_tables from "../devState/tables.js";
+import type * as devState_token from "../devState/token.js";
 import type * as experiments from "../experiments.js";
+import type * as http from "../http.js";
 import type * as issueAutomations from "../issueAutomations.js";
 import type * as issueStatusOptions from "../issueStatusOptions.js";
 import type * as issueStatuses from "../issueStatuses.js";
@@ -25,7 +31,13 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "devState/contract": typeof devState_contract;
+  "devState/credentials": typeof devState_credentials;
+  "devState/ingest": typeof devState_ingest;
+  "devState/tables": typeof devState_tables;
+  "devState/token": typeof devState_token;
   experiments: typeof experiments;
+  http: typeof http;
   issueAutomations: typeof issueAutomations;
   issueStatusOptions: typeof issueStatusOptions;
   issueStatuses: typeof issueStatuses;

@@ -4,8 +4,6 @@ WORKDIR /app
 
 FROM base AS deps
 
-ENV HUSKY=0
-
 COPY package.json bun.lock ./
 
 RUN bun install --frozen-lockfile

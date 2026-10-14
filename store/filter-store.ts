@@ -8,7 +8,7 @@ export type { IssueFilters };
 export function useFilterStore() {
    const preferences = useViewerPreferences();
    const updatePreferences = useUpdatePreferences();
-   const filters = { ...defaultIssueFilters, ...(preferences?.issueFilters ?? {}) };
+   const filters = { ...defaultIssueFilters, ...preferences?.issueFilters };
 
    const setFilter = (type: IssueFilterType, ids: string[]) => {
       void updatePreferences({ issueFilters: { [type]: ids } });
