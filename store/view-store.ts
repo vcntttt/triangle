@@ -25,10 +25,10 @@ export function useViewStore() {
    const updatePreferences = useUpdatePreferences();
    const issueView = {
       ...defaultIssueDisplay,
-      ...(preferences?.issueView ?? {}),
+      ...preferences?.issueView,
       visibleProperties: {
          ...defaultIssueDisplay.visibleProperties,
-         ...(preferences?.issueView?.visibleProperties ?? {}),
+         ...preferences?.issueView?.visibleProperties,
       },
    };
 

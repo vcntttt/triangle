@@ -31,7 +31,7 @@ async function setup() {
       label: 'caburgua',
    });
    // Fixtures are sent "now" unless a test is about clock skew.
-   const send = async (batch: DevStateBatch | unknown, init: { token?: string } = {}) => {
+   const send = async (batch: unknown, init: { token?: string } = {}) => {
       const body = typeof batch === 'string' ? batch : JSON.stringify(withSentAt(batch));
       const response = await t.fetch(DEV_STATE_OBSERVATIONS_PATH, {
          method: 'POST',
