@@ -136,6 +136,29 @@ describe('readCheckoutInventory', () => {
       assert.match(state.remoteCheckedAt ?? '', /^\d{4}-\d{2}-\d{2}T/);
    });
 
+   test('keeps two clones of the same branch apart, as on two machines', async () => {
+      const origin = path.join(root, 'machines-origin.git');
+      await mkdir(origin);
+      await git(origin, ['init', '--bare', '-b', 'main']);
+      const seed = await createRepo(path.join(root, 'machines-seed'));
+      await commitFile(seed, 'base.txt', 'base');
+      await git(seed, ['push', origin, 'main']);
+
+      const vrhome = path.join(root, 'machines-vrhome');
+      const caburgua = path.join(root, 'machines-caburgua');
+      await git(root, ['clone', origin, vrhome]);
+      await git(root, ['clone', origin, caburgua]);
+      await writeFile(path.join(vrhome, 'base.txt'), 'edited on vrhome');
+
+      const [home] = listCheckouts(await readCheckoutInventory(vrhome));
+      const [server] = listCheckouts(await readCheckoutInventory(caburgua));
+      assert.equal(gitStateOf(home).branch, 'main');
+      assert.equal(gitStateOf(server).branch, 'main');
+      assert.notEqual(home.fsIdentity, server.fsIdentity);
+      assert.equal(gitStateOf(home).changes.unstaged, 1);
+      assert.equal(gitStateOf(server).changes.unstaged, 0);
+   });
+
    test('reports a branch without upstream as having no remote state', async () => {
       const repo = await createRepo(path.join(root, 'no-upstream'));
       await commitFile(repo, 'base.txt', 'base');
