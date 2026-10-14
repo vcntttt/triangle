@@ -1,6 +1,8 @@
 import { defineSchema, defineTable } from 'convex/server';
 import { v } from 'convex/values';
 
+import { devStateTables } from './devState/tables';
+
 // Shared by the schema and the experiment functions so both read the same lifecycle.
 export const experimentStatus = v.union(
    v.literal('idea'),
@@ -12,6 +14,7 @@ export const experimentStatus = v.union(
 );
 
 export default defineSchema({
+   ...devStateTables,
    projectStatuses: defineTable({
       id: v.string(),
       name: v.string(),

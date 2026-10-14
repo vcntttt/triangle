@@ -86,6 +86,7 @@
       "@types/node": "^20.19.43",
       "@types/react": "^19.3.0",
       "@types/react-dom": "^19.3.0",
+      "convex-test": "0.0.54",
       "eslint": "^9.39.5",
       "eslint-config-prettier": "^10.1.8",
       "eslint-plugin-prettier": "^5.5.6",
