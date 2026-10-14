@@ -26,7 +26,9 @@ El observador envía `emitter` al menos cada `HEARTBEAT_INTERVAL_MS`. Pasado `ST
 
 ## Cola local
 
-El observador retiene como máximo 10.000 observaciones sin confirmar o 7 días. Al superar el límite descarta las más antiguas y encola un `history_gap` con el intervalo afectado. Así la pérdida de datos queda registrada.
+El observador retiene como máximo 10.000 observaciones sin confirmar o 7 días. Al superar el límite descarta la cola completa, porque quitar solo las más antiguas rompería la secuencia contigua. Luego empieza un stream nuevo con un `history_gap` del intervalo perdido y vuelve a enviar el estado completo. Así la pérdida queda registrada y el receptor recupera el estado actual.
+
+Mientras la entrega falla, el observador no encola latidos: el lote pendiente ya demuestra que sigue vivo.
 
 ## Reloj
 
