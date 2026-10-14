@@ -24,8 +24,7 @@
       "check": "vp check",
       "lint": "vp lint",
       "format": "vp fmt",
-      "test": "bun test",
-      "prepare": "vp config"
+      "test": "bun test"
    },
    "dependencies": {
       "@convex-dev/react-query": "^0.1.0",

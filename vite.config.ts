@@ -33,7 +33,4 @@ export default defineConfig({
       sortPackageJson: false,
       ignorePatterns: ['public/**', 'bun.lock', '.github/**', ...generated],
    },
-   staged: {
-      '*': 'vp check --fix',
-   },
 });
