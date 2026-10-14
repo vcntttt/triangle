@@ -20,4 +20,6 @@ Triangle es el gestor personal de proyectos y tareas de Vicente. Su contexto de 
 
 **Trabajo sin vincular**: Trabajo observado cuyo repositorio todavía no está asociado a un proyecto de Triangle. Permanece en el inventario hasta que Vicente lo asocie o cree un proyecto.
 
+**Observador local**: Proceso de Triangle que corre en cada máquina, lee T3 Code oficial y el estado local de Git y procesos, y publica observaciones hacia Triangle. T3 no se modifica.
+
 **Pendiente operativo**: Situación concreta del desarrollo que puede necesitar intervención, como cambios sin commit o un agente esperando respuesta. Es independiente de la atención requerida que Vicente declara para el proyecto.
